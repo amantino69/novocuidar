@@ -2,16 +2,16 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { AuthService } from '../../../core/services/auth.service';
-import { CustomValidators } from '../../../core/validators/custom-validators';
-import { AUTH_CONSTANTS } from '../../../core/constants/auth.constants';
-import { ButtonComponent } from '../../../shared/components/atoms/button/button';
-import { LogoComponent } from '../../../shared/components/atoms/logo/logo';
-import { IconComponent } from '../../../shared/components/atoms/icon/icon';
-import { InputPasswordComponent } from '../../../shared/components/atoms/input-password/input-password';
-import { CheckboxComponent } from '../../../shared/components/atoms/checkbox/checkbox';
-import { CpfMaskDirective } from '../../../shared/directives/cpf-mask.directive';
-import { PhoneMaskDirective } from '../../../shared/directives/phone-mask.directive';
+import { AuthService } from '@app/core/services/auth.service';
+import { CustomValidators } from '@app/core/validators/custom-validators';
+import { AUTH_CONSTANTS } from '@app/core/constants/auth.constants';
+import { ButtonComponent } from '@app/shared/components/atoms/button/button';
+import { LogoComponent } from '@app/shared/components/atoms/logo/logo';
+import { IconComponent } from '@app/shared/components/atoms/icon/icon';
+import { InputPasswordComponent } from '@app/shared/components/atoms/input-password/input-password';
+import { CheckboxComponent } from '@app/shared/components/atoms/checkbox/checkbox';
+import { CpfMaskDirective } from '@app/core/directives/cpf-mask.directive';
+import { PhoneMaskDirective } from '@app/core/directives/phone-mask.directive';
 
 @Component({
   selector: 'app-register',

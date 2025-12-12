@@ -1,8 +1,8 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
-import { ModalService, ModalConfig } from '../../../../core/services/modal.service';
-import { IconComponent, IconName } from '../icon/icon';
-import { ButtonComponent } from '../button/button';
+import { ModalService, ModalConfig } from '@app/core/services/modal.service';
+import { IconComponent, IconName } from '@app/shared/components/atoms/icon/icon';
+import { ButtonComponent } from '@app/shared/components/atoms/button/button';
 
 @Component({
   selector: 'app-modal',

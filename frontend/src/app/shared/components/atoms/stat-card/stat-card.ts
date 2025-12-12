@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { DecimalPipe, PercentPipe, CurrencyPipe, NgClass } from '@angular/common';
-import { IconComponent, IconName } from '../icon/icon';
+import { IconComponent, IconName } from '@app/shared/components/atoms/icon/icon';
 
 export type StatCardVariant = 'default' | 'primary' | 'success' | 'warning' | 'danger';
 export type StatCardFormat = 'number' | 'currency' | 'percent' | 'text';

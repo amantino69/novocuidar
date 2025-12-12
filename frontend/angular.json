@@ -32,6 +32,16 @@
             "styles": [
               "src/styles.scss"
             ],
+            "stylePreprocessorOptions": {
+              "includePaths": [
+                "src/styles",
+                "src/app",
+                "src/app/core",
+                "src/app/shared",
+                "src/app/pages",
+                "src/environments"
+              ]
+            },
             "server": "src/main.server.ts",
             "outputMode": "server",
             "ssr": {

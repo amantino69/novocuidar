@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output, forwardRef } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormsModule } from '@angular/forms';
-import { IconComponent, IconName } from '../icon/icon';
+import { IconComponent, IconName } from '@app/shared/components/atoms/icon/icon';
 
 @Component({
   selector: 'app-search-input',

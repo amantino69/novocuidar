@@ -2,11 +2,11 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { AuthService } from '../../../core/services/auth.service';
-import { AUTH_CONSTANTS } from '../../../core/constants/auth.constants';
-import { ButtonComponent } from '../../../shared/components/atoms/button/button';
-import { LogoComponent } from '../../../shared/components/atoms/logo/logo';
-import { IconComponent } from '../../../shared/components/atoms/icon/icon';
+import { AuthService } from '@app/core/services/auth.service';
+import { AUTH_CONSTANTS } from '@app/core/constants/auth.constants';
+import { ButtonComponent } from '@app/shared/components/atoms/button/button';
+import { LogoComponent } from '@app/shared/components/atoms/logo/logo';
+import { IconComponent } from '@app/shared/components/atoms/icon/icon';
 
 @Component({
   selector: 'app-forgot-password',

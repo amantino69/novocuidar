@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FeatureCardComponent } from '../../../../shared/components/molecules/feature-card/feature-card';
-import { IconName } from '../../../../shared/components/atoms/icon/icon';
+import { FeatureCardComponent } from '@app/shared/components/molecules/feature-card/feature-card';
+import { IconName } from '@app/shared/components/atoms/icon/icon';
 
 interface Feature {
   icon: IconName;

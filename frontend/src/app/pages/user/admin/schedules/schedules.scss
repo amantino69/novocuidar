@@ -1,0 +1,293 @@
+@use 'variables' as *;
+@use 'mixins' as *;
+
+.schedules {
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+
+  &__header {
+    @include flex-between;
+    align-items: flex-start;
+    margin-bottom: $spacing-2xl;
+    gap: $spacing-xl;
+
+    @include mobile {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+
+  &__title {
+    @include heading-1;
+    margin: 0 0 $spacing-xs 0;
+  }
+
+  &__subtitle {
+    color: var(--text-secondary);
+    font-size: $font-size-lg;
+    margin: 0;
+  }
+
+  &__create-btn {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-md $spacing-lg;
+    background: var(--primary-600);
+    color: white;
+    border: none;
+    border-radius: $radius-lg;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    white-space: nowrap;
+    @include transition(all);
+
+    &:hover:not(:disabled) {
+      background: var(--primary-700);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  &__filters {
+    display: flex;
+    gap: $spacing-lg;
+    margin-bottom: $spacing-2xl;
+    align-items: flex-end;
+
+    @include mobile {
+      flex-direction: column;
+      gap: $spacing-md;
+    }
+
+    > * {
+      flex: 1;
+      min-width: 200px;
+
+      @include mobile {
+        flex: auto;
+        min-width: auto;
+      }
+    }
+  }
+
+  &__loading,
+  &__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: $spacing-3xl $spacing-xl;
+    text-align: center;
+    color: var(--text-secondary);
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: $radius-xl;
+    gap: $spacing-lg;
+
+    > p {
+      font-size: $font-size-lg;
+      margin: 0;
+    }
+  }
+
+  &__empty-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-md $spacing-lg;
+    background: var(--primary-600);
+    color: white;
+    border: none;
+    border-radius: $radius-lg;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    @include transition(all);
+
+    &:hover {
+      background: var(--primary-700);
+    }
+  }
+
+  &__table-wrapper {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: $radius-xl;
+    overflow-x: auto;
+
+    @include mobile {
+      border-radius: $radius-lg;
+    }
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+
+    thead {
+      background: var(--background-hover);
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr:hover {
+      background: var(--background-hover);
+
+      &.schedules__table-row--inactive {
+        background: rgba(0, 0, 0, 0.02);
+      }
+    }
+  }
+
+  &__table-header {
+    padding: $spacing-md $spacing-lg;
+    text-align: left;
+    font-weight: $font-weight-semibold;
+    color: var(--text-primary);
+    white-space: nowrap;
+
+    &--actions {
+      text-align: center;
+      width: 200px;
+
+      @include mobile {
+        width: 150px;
+      }
+    }
+  }
+
+  &__table-row {
+    border-bottom: 1px solid var(--border);
+    @include transition(background-color);
+
+    &--inactive {
+      opacity: 0.7;
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  &__table-cell {
+    padding: $spacing-md $spacing-lg;
+    color: var(--text-primary);
+    font-size: $font-size-base;
+
+    &--professional {
+      font-weight: $font-weight-medium;
+    }
+
+    &--actions {
+      text-align: center;
+    }
+  }
+
+  &__cell-content {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__warning-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: $radius-md;
+    color: #ffc107;
+    flex-shrink: 0;
+    @include transition(all);
+
+    &:hover {
+      background: rgba(255, 193, 7, 0.2);
+      border-color: rgba(255, 193, 7, 0.5);
+    }
+
+    app-icon {
+      color: #ffc107;
+    }
+  }
+
+  &__professional-info {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__professional-name {
+    margin: 0;
+    font-weight: $font-weight-semibold;
+    color: var(--text-primary);
+  }
+
+  &__professional-email {
+    margin: 0;
+    font-size: $font-size-sm;
+    color: var(--text-secondary);
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-sm;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  &__action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: $radius-md;
+    cursor: pointer;
+    color: var(--text-secondary);
+    @include transition(all);
+
+    &:hover:not(:disabled) {
+      background: var(--background-hover);
+      color: var(--text-primary);
+    }
+
+    &--view:hover:not(:disabled) {
+      border-color: var(--info-600);
+      color: var(--info-600);
+    }
+
+    &--toggle:hover:not(:disabled) {
+      border-color: var(--warning-600);
+      color: var(--warning-600);
+    }
+
+    &--edit:hover:not(:disabled) {
+      border-color: var(--primary-600);
+      color: var(--primary-600);
+    }
+
+    &--delete:hover:not(:disabled) {
+      border-color: var(--danger-600);
+      color: var(--danger-600);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: $spacing-2xl;
+    padding: $spacing-xl;
+  }
+}

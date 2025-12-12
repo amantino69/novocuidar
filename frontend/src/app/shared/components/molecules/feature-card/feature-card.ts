@@ -1,6 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IconComponent, IconName } from '../../atoms/icon/icon';
+import { IconComponent, IconName } from '@app/shared/components/atoms/icon/icon';
 
 @Component({
   selector: 'app-feature-card',

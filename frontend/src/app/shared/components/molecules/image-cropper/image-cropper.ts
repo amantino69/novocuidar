@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output, OnInit, OnDestroy, ElementRef, ViewChild } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
-import { IconComponent } from '../../atoms/icon/icon';
-import { ButtonComponent } from '../../atoms/button/button';
+import { IconComponent } from '@app/shared/components/atoms/icon/icon';
+import { ButtonComponent } from '@app/shared/components/atoms/button/button';
 
 export interface CropperResult {
   imageUrl: string;

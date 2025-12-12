@@ -2,13 +2,13 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { AuthService } from '../../../core/services/auth.service';
-import { ButtonComponent } from '../../../shared/components/atoms/button/button';
-import { LogoComponent } from '../../../shared/components/atoms/logo/logo';
-import { IconComponent } from '../../../shared/components/atoms/icon/icon';
-import { InputPasswordComponent } from '../../../shared/components/atoms/input-password/input-password';
-import { CheckboxComponent } from '../../../shared/components/atoms/checkbox/checkbox';
-import { VALIDATION_MESSAGES } from '../../../core/constants/auth.constants';
+import { AuthService } from '@app/core/services/auth.service';
+import { ButtonComponent } from '@app/shared/components/atoms/button/button';
+import { LogoComponent } from '@app/shared/components/atoms/logo/logo';
+import { IconComponent } from '@app/shared/components/atoms/icon/icon';
+import { InputPasswordComponent } from '@app/shared/components/atoms/input-password/input-password';
+import { CheckboxComponent } from '@app/shared/components/atoms/checkbox/checkbox';
+import { VALIDATION_MESSAGES } from '@app/core/constants/auth.constants';
 
 @Component({
   selector: 'app-login',

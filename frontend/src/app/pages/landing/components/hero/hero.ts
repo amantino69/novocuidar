@@ -1,9 +1,9 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ButtonComponent } from '../../../../shared/components/atoms/button/button';
-import { IconComponent } from '../../../../shared/components/atoms/icon/icon';
-import { BadgeComponent } from '../../../../shared/components/atoms/badge/badge';
-import { StatCardComponent } from '../../../../shared/components/molecules/stat-card/stat-card';
+import { ButtonComponent } from '@app/shared/components/atoms/button/button';
+import { IconComponent } from '@app/shared/components/atoms/icon/icon';
+import { BadgeComponent } from '@app/shared/components/atoms/badge/badge';
+import { StatCardComponent } from '@app/shared/components/molecules/stat-card/stat-card';
 
 @Component({
   selector: 'app-hero',

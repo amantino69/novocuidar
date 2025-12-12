@@ -14,8 +14,8 @@ import {
   VerifyEmailRequest,
   VerifyEmailResponse,
   AuthState
-} from '../../shared/models/auth.model';
-import { AUTH_ENDPOINTS, STORAGE_KEYS } from '../constants/auth.constants';
+} from '@app/core/models/auth.model';
+import { AUTH_ENDPOINTS, STORAGE_KEYS } from '@app/core/constants/auth.constants';
 
 @Injectable({
   providedIn: 'root'

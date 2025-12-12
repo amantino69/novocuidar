@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { AvatarComponent } from '../../atoms/avatar/avatar';
-import { IconComponent } from '../../atoms/icon/icon';
-import { ImageCropperComponent, CropperResult } from '../image-cropper/image-cropper';
+import { AvatarComponent } from '@app/shared/components/atoms/avatar/avatar';
+import { IconComponent } from '@app/shared/components/atoms/icon/icon';
+import { ImageCropperComponent, CropperResult } from '@app/shared/components/molecules/image-cropper/image-cropper';
 
 @Component({
   selector: 'app-avatar-upload',

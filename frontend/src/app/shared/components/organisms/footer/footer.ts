@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LogoComponent } from '../../atoms/logo/logo';
+import { LogoComponent } from '@app/shared/components/atoms/logo/logo';
 
 @Component({
   selector: 'app-footer',

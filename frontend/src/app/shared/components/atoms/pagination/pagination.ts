@@ -1,5 +1,5 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
-import { IconComponent } from '../icon/icon';
+import { IconComponent } from '@app/shared/components/atoms/icon/icon';
 
 @Component({
   selector: 'app-pagination',

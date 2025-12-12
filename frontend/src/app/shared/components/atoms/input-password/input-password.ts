@@ -1,7 +1,7 @@
 import { Component, Input, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, ReactiveFormsModule } from '@angular/forms';
-import { IconComponent } from '../icon/icon';
+import { IconComponent } from '@app/shared/components/atoms/icon/icon';
 
 @Component({
   selector: 'app-input-password',
@@ -30,8 +30,8 @@ import { IconComponent } from '../icon/icon';
     </div>
   `,
   styles: [`
-    @use '../../../../../styles/variables' as *;
-    @use '../../../../../styles/mixins' as *;
+    @use 'variables' as *;
+    @use 'mixins' as *;
 
     .input-password {
       position: relative;

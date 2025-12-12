@@ -1,0 +1,201 @@
+@use 'variables' as *;
+@use 'mixins' as *;
+
+.profile {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+
+  &__header {
+    @include flex-between;
+    align-items: flex-start;
+    margin-bottom: $spacing-2xl;
+    gap: $spacing-xl;
+
+    @include mobile {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+
+  &__title {
+    @include heading-1;
+    margin: 0 0 $spacing-xs 0;
+  }
+
+  &__subtitle {
+    color: var(--text-secondary);
+    font-size: $font-size-lg;
+    margin: 0;
+  }
+
+  &__edit-btn {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-md $spacing-lg;
+    background: var(--primary-600);
+    color: white;
+    border: none;
+    border-radius: $radius-lg;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    white-space: nowrap;
+    @include transition(all);
+
+    &:hover {
+      background: var(--primary-700);
+    }
+  }
+
+  &__content {
+    @include flex-column;
+    gap: $spacing-xl;
+  }
+
+  &__card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: $radius-xl;
+    padding: $spacing-xl;
+
+    &--main {
+      padding: $spacing-2xl;
+    }
+  }
+
+  &__avatar-section {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xl;
+
+    @include mobile {
+      flex-direction: column;
+      text-align: center;
+    }
+  }
+
+  &__avatar-info {
+    flex: 1;
+    @include flex-column;
+    gap: $spacing-sm;
+
+    @include mobile {
+      align-items: center;
+    }
+  }
+
+  &__name {
+    font-size: $font-size-2xl;
+    font-weight: $font-weight-bold;
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  &__email {
+    font-size: $font-size-lg;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: $radius-full;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    margin-top: $spacing-xs;
+    width: fit-content;
+
+    &--active {
+      background: var(--green-50);
+      color: var(--green-700);
+    }
+
+    &--inactive {
+      background: var(--neutral-100);
+      color: var(--neutral-700);
+    }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: $spacing-xl;
+
+    @include tablet {
+      grid-template-columns: 1fr;
+    }
+
+      @include mobile {
+        grid-template-columns: 1fr;
+      }
+  }
+
+  &__card-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    margin-bottom: $spacing-lg;
+    padding-bottom: $spacing-lg;
+    border-bottom: 1px solid var(--border);
+    color: var(--primary-600);
+  }
+
+  &__card-title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  &__card-content {
+    @include flex-column;
+    gap: $spacing-lg;
+  }
+
+  &__field {
+    @include flex-column;
+    gap: $spacing-xs;
+  }
+
+  &__field-label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__field-value {
+    font-size: $font-size-base;
+    color: var(--text-primary);
+    font-weight: $font-weight-medium;
+  }
+
+  &__field--email-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: $spacing-md;
+  }
+
+  &__email-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__email-badge {
+    margin-left: $spacing-xs;
+    margin-top: 0;
+  }
+
+  &__email-verify-btn {
+    margin-left: $spacing-xs;
+    padding: 0 $spacing-md;
+    height: 28px;
+    font-size: $font-size-xs;
+  }
+}

@@ -21,8 +21,8 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
     </label>
   `,
   styles: [`
-    @use '../../../../../styles/variables' as *;
-    @use '../../../../../styles/mixins' as *;
+    @use 'variables' as *;
+    @use 'mixins' as *;
 
     .checkbox {
       display: inline-flex;

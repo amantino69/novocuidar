@@ -1,10 +1,10 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
-import { AuthService } from '../../../core/services/auth.service';
-import { ButtonComponent } from '../../../shared/components/atoms/button/button';
-import { LogoComponent } from '../../../shared/components/atoms/logo/logo';
-import { IconComponent } from '../../../shared/components/atoms/icon/icon';
+import { AuthService } from '@app/core/services/auth.service';
+import { ButtonComponent } from '@app/shared/components/atoms/button/button';
+import { LogoComponent } from '@app/shared/components/atoms/logo/logo';
+import { IconComponent } from '@app/shared/components/atoms/icon/icon';
 
 @Component({
   selector: 'app-verify-email',

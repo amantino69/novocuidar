@@ -1,14 +1,21 @@
 import { Routes } from '@angular/router';
-import { LandingComponent } from './pages/landing/landing';
-import { LoginComponent } from './pages/auth/login/login';
-import { RegisterComponent } from './pages/auth/register/register';
-import { ForgotPasswordComponent } from './pages/auth/forgot-password/forgot-password';
-import { ResetPasswordComponent } from './pages/auth/reset-password/reset-password';
-import { VerifyEmailComponent } from './pages/auth/verify-email/verify-email';
-import { AdminLayoutComponent } from './pages/admin/admin-layout/admin-layout';
-import { DashboardComponent } from './pages/admin/dashboard/dashboard';
-import { NotificationsComponent } from './pages/admin/notifications/notifications';
-import { UsersComponent } from './pages/admin/users/users';
+import { LandingComponent } from '@pages/landing/landing';
+import { LoginComponent } from '@pages/auth/login/login';
+import { RegisterComponent } from '@pages/auth/register/register';
+import { ForgotPasswordComponent } from '@pages/auth/forgot-password/forgot-password';
+import { ResetPasswordComponent } from '@pages/auth/reset-password/reset-password';
+import { VerifyEmailComponent } from '@pages/auth/verify-email/verify-email';
+import { AdminLayoutComponent } from '@pages/user/admin/admin-layout/admin-layout';
+import { DashboardComponent } from '@pages/user/admin/dashboard/dashboard';
+import { NotificationsComponent } from '@pages/user/admin/notifications/notifications';
+import { UsersComponent } from '@pages/user/admin/users/users';
+import { InvitesComponent } from '@pages/user/admin/invites/invites';
+import { SpecialtiesComponent } from '@pages/user/admin/specialties/specialties';
+import { SchedulesComponent } from '@pages/user/admin/schedules';
+import { ScheduleBlocksComponent } from '@pages/user/admin/schedule-blocks';
+import { ReportsComponent } from '@pages/user/admin/reports/reports';
+import { AuditLogsComponent } from '@pages/user/admin/audit-logs/audit-logs';
+import { ProfileComponent } from '@pages/user/admin/profile/profile';
 
 export const routes: Routes = [
   {
@@ -46,7 +53,7 @@ export const routes: Routes = [
     ]
   },
   {
-    path: 'admin',
+    path: 'user/admin',
     component: AdminLayoutComponent,
     children: [
       {
@@ -54,40 +61,40 @@ export const routes: Routes = [
         component: DashboardComponent
       },
       {
-        path: 'notifications',
-        component: NotificationsComponent
-      },
-      {
         path: 'users',
         component: UsersComponent
       },
       {
-        path: 'specialties',
-        loadComponent: () => import('./pages/admin/specialties/specialties').then(m => m.SpecialtiesComponent)
-      },
-      {
-        path: 'profile',
-        loadComponent: () => import('./pages/admin/profile/profile').then(m => m.ProfileComponent)
-      },
-      {
-        path: 'audit-logs',
-        loadComponent: () => import('./pages/admin/audit-logs/audit-logs').then(m => m.AuditLogsComponent)
-      },
-      {
-        path: 'reports',
-        loadComponent: () => import('./pages/admin/reports/reports').then(m => m.ReportsComponent)
+        path: 'notifications',
+        component: NotificationsComponent
       },
       {
         path: 'invites',
-        loadComponent: () => import('./pages/admin/invites/invites').then(m => m.InvitesComponent)
+        component: InvitesComponent
+      },
+      {
+        path: 'specialties',
+        component: SpecialtiesComponent
       },
       {
         path: 'schedules',
-        loadComponent: () => import('./pages/admin/schedules').then(m => m.SchedulesComponent)
+        component: SchedulesComponent
       },
       {
         path: 'schedule-blocks',
-        loadComponent: () => import('./pages/admin/schedule-blocks').then(m => m.ScheduleBlocksComponent)
+        component: ScheduleBlocksComponent
+      },
+      {
+        path: 'reports',
+        component: ReportsComponent
+      },
+      {
+        path: 'audit-logs',
+        component: AuditLogsComponent
+      },
+      {
+        path: 'profile',
+        component: ProfileComponent
       },
       {
         path: '',
@@ -95,9 +102,5 @@ export const routes: Routes = [
         pathMatch: 'full'
       }
     ]
-  },
-  {
-    path: '**',
-    redirectTo: ''
   }
 ];

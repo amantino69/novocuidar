@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { IconComponent } from '../icon/icon';
+import { IconComponent } from '@app/shared/components/atoms/icon/icon';
 
 export type SortDirection = 'asc' | 'desc' | null;
 
