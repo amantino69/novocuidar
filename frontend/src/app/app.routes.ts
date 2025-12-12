@@ -28,6 +28,8 @@ import { AuditLogsComponent } from '@pages/user/admin/audit-logs/audit-logs';
 import { SchedulingComponent } from '@pages/user/patient/scheduling/scheduling';
 import { SchedulingSuccessComponent } from '@pages/user/patient/scheduling-success/scheduling-success';
 
+import { TeleconsultationComponent } from '@pages/user/shared/teleconsultation/teleconsultation';
+
 export const routes: Routes = [
   {
     path: '',
@@ -71,6 +73,7 @@ export const routes: Routes = [
       { path: 'appointments', component: AppointmentsComponent },
       { path: 'scheduling', component: SchedulingComponent },
       { path: 'scheduling/success', component: SchedulingSuccessComponent },
+      { path: 'teleconsultation/:id', component: TeleconsultationComponent },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },
@@ -83,6 +86,7 @@ export const routes: Routes = [
       { path: 'profile', component: ProfileComponent },
       { path: 'appointments', component: AppointmentsComponent },
       { path: 'schedule-blocks', component: ProfessionalScheduleBlocksComponent },
+      { path: 'teleconsultation/:id', component: TeleconsultationComponent },
       // Future professional-specific routes will go here
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]

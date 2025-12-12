@@ -161,9 +161,9 @@ export class AppointmentsComponent implements OnInit {
   }
 
   accessConsultation(appointment: Appointment) {
-    if (appointment.meetLink) {
-        window.open(appointment.meetLink, '_blank');
-    }
+    // Navigate to teleconsultation screen within the app
+    const basePath = this.userRole === 'patient' ? 'patient' : 'professional';
+    this.router.navigate([`/${basePath}/teleconsultation`, appointment.id]);
   }
 
   cancelAppointment(appointment: Appointment) {

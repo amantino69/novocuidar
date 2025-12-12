@@ -1,0 +1,103 @@
+@use 'variables' as *;
+@use 'mixins' as *;
+
+.tele-sidebar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 350px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  transform: translateX(100%);
+  transition: transform $transition-base, width $transition-base, top $transition-base, height $transition-base;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  color: var(--text-primary);
+  box-shadow: $shadow-xl;
+
+  &.open {
+    transform: translateX(0);
+  }
+
+  &.with-header {
+    top: 80px; // Match header height
+    height: calc(100% - 80px);
+  }
+
+  &.full-screen {
+    width: 100%;
+  }
+
+  .sidebar-header {
+    padding: $spacing-md;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .sidebar-actions {
+    display: flex;
+    gap: $spacing-sm;
+  }
+
+  .sidebar-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--background);
+
+    .tab-btn {
+      flex: 1;
+      padding: $spacing-md;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-weight: $font-weight-medium;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all $transition-fast;
+
+      &:hover {
+        color: var(--primary-600);
+        background: var(--primary-50);
+      }
+
+      &.active {
+        color: var(--primary-600);
+        border-bottom-color: var(--primary-600);
+      }
+    }
+  }
+
+  .sidebar-content {
+    flex: 1;
+    padding: $spacing-lg;
+    overflow-y: auto;
+  }
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: $radius-md;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  &:hover {
+    background: var(--background);
+    color: var(--text-primary);
+  }
+
+  &.close-btn:hover {
+      color: var(--red-600);
+      background: var(--red-50);
+      border-color: var(--red-200);
+  }
+}
