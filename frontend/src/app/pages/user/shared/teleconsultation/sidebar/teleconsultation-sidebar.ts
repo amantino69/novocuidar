@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { BiometricsTabComponent } from '../tabs/biometrics-tab/biometrics-tab';
 import { AttachmentsChatTabComponent } from '../tabs/attachments-chat-tab/attachments-chat-tab';
+import { SoapTabComponent } from '../tabs/soap-tab/soap-tab';
 
 @Component({
   selector: 'app-teleconsultation-sidebar',
   standalone: true,
-  imports: [CommonModule, IconComponent, BiometricsTabComponent, AttachmentsChatTabComponent],
+  imports: [CommonModule, IconComponent, BiometricsTabComponent, AttachmentsChatTabComponent, SoapTabComponent],
   templateUrl: './teleconsultation-sidebar.html',
   styleUrls: ['./teleconsultation-sidebar.scss']
 })

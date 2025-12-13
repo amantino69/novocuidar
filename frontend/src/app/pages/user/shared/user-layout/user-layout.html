@@ -86,7 +86,7 @@
   </aside>
 
   <div class="admin-content">
-    <header class="admin-header">
+    <header class="admin-header" [class.admin-header--hidden]="!isHeaderVisible">
       <div class="admin-header__left">
         <button 
           type="button"

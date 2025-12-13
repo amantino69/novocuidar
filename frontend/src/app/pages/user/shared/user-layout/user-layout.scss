@@ -141,8 +141,11 @@
 }
 
 .admin-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  right: 0;
+  left: 280px; // Sidebar width
+  width: auto;
   z-index: $z-index-sticky;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -152,6 +155,15 @@
   align-items: center;
   gap: $spacing-lg;
   backdrop-filter: blur(10px);
+  transition: transform 0.3s ease-in-out;
+
+  &--hidden {
+    transform: translateY(-100%);
+  }
+
+  @include max-width($breakpoint-tablet) {
+    left: 0;
+  }
 
   @include mobile {
     padding: $spacing-md $spacing-lg;
@@ -231,15 +243,18 @@
 .admin-main {
   flex: 1;
   padding: $spacing-2xl;
+  padding-top: calc($spacing-2xl + 90px); // Add header height offset
   overflow-x: hidden;
   width: 100%;
 
   @include tablet {
     padding: $spacing-xl;
+    padding-top: calc($spacing-xl + 90px);
   }
 
   @include mobile {
     padding: $spacing-md;
+    padding-top: calc($spacing-md + 74px); // Slightly smaller header on mobile
   }
 }
 

@@ -228,34 +228,42 @@
   }
 }
 
+.mobile-buttons-grid {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+  width: 100%;
+
+  .add-attachment-btn {
+    width: 100%;
+    justify-content: flex-start;
+    padding: $spacing-md;
+  }
+}
+
 .add-attachment-btn {
-  flex: 1;
-  padding: $spacing-lg;
-  border: 2px dashed var(--primary-light);
-  border-radius: $radius-lg;
-  background: var(--primary-50);
-  color: var(--primary);
-  font-weight: $font-weight-medium;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: $spacing-md;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  background: var(--surface);
+  border: 1px dashed var(--primary-500);
+  border-radius: $radius-md;
+  color: var(--primary-600);
+  font-weight: $font-weight-medium;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    background: var(--primary-100);
-    border-color: var(--primary);
+    background: var(--primary-50);
   }
 
   &.mobile-btn {
-    border-color: var(--secondary-light);
-    background: var(--secondary-50);
-    color: var(--secondary);
+    border-color: var(--secondary-500);
+    color: var(--secondary-600);
 
     &:hover {
-      background: var(--secondary-100);
-      border-color: var(--secondary);
+      background: var(--secondary-50);
     }
   }
 }

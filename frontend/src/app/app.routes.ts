@@ -71,6 +71,14 @@ export const routes: Routes = [
     ]
   },
   {
+    path: 'patient/teleconsultation/:id',
+    component: TeleconsultationComponent
+  },
+  {
+    path: 'professional/teleconsultation/:id',
+    component: TeleconsultationComponent
+  },
+  {
     path: 'patient',
     component: UserLayoutComponent,
     children: [
@@ -81,7 +89,6 @@ export const routes: Routes = [
       { path: 'scheduling', component: SchedulingComponent },
       { path: 'scheduling/success', component: SchedulingSuccessComponent },
       { path: 'appointments/:id/pre-consultation', component: PreConsultationComponent },
-      { path: 'teleconsultation/:id', component: TeleconsultationComponent },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },
@@ -95,7 +102,6 @@ export const routes: Routes = [
       { path: 'appointments', component: AppointmentsComponent },
       { path: 'schedule-blocks', component: ProfessionalScheduleBlocksComponent },
       { path: 'my-schedule', component: MyScheduleComponent },
-      { path: 'teleconsultation/:id', component: TeleconsultationComponent },
       // Future professional-specific routes will go here
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]

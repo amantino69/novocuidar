@@ -185,7 +185,7 @@
         <div class="attachments-list">
           @for (att of attachments; track $index) {
             <div class="attachment-item">
-              <div class="attachment-preview">
+              <div class="attachment-preview" (click)="openPreview(att)" style="cursor: pointer;">
                 <img [src]="att.previewUrl" [alt]="att.title">
               </div>
               <div class="attachment-info">
@@ -218,25 +218,6 @@
               </div>
             </div>
           } @else {
-            @if (isMobile) {
-              <div class="buttons-grid">
-                <button type="button" class="upload-btn camera" (click)="cameraInput.click()">
-                  <app-icon name="camera" [size]="32" />
-                  <span>Tirar Foto</span>
-                </button>
-                <button type="button" class="upload-btn gallery" (click)="photoInput.click()">
-                  <app-icon name="image" [size]="32" />
-                  <span>Galeria</span>
-                </button>
-                <button type="button" class="upload-btn file" (click)="fileInputMobile.click()">
-                  <app-icon name="file" [size]="32" />
-                  <span>Arquivo</span>
-                </button>
-              </div>
-              <input #cameraInput type="file" (change)="onFileSelected($event)" accept="image/*" capture="environment" hidden>
-              <input #photoInput type="file" (change)="onFileSelected($event)" accept="image/*" hidden>
-              <input #fileInputMobile type="file" (change)="onFileSelected($event)" accept="*/*" hidden>
-            } @else {
               <div class="upload-area" 
                    (drop)="onFileDropped($event)" 
                    (dragover)="onDragOver($event)"
@@ -248,7 +229,6 @@
                   <p class="text-sm text-secondary">SVG, PNG, JPG or GIF (max. 800x400px)</p>
                 </div>
               </div>
-            }
           }
 
           <div class="attachment-actions">
@@ -258,14 +238,38 @@
         </div>
       } @else {
         <div class="add-buttons">
-          <button type="button" class="add-attachment-btn" (click)="startAddingAttachment()">
-            <app-icon name="plus" [size]="20" />
-            Adicionar Novo Anexo
-          </button>
-          <button type="button" class="add-attachment-btn mobile-btn" (click)="openMobileUpload()">
-            <app-icon name="smartphone" [size]="20" />
-            Adicionar pelo Celular
-          </button>
+          @if (isMobile) {
+            <!-- Mobile Specific Buttons -->
+             <div class="mobile-buttons-grid">
+               <button type="button" class="add-attachment-btn" (click)="fileInputMobile.click()">
+                 <app-icon name="file" [size]="20" />
+                 Adicionar Arquivo
+               </button>
+               <button type="button" class="add-attachment-btn" (click)="photoInput.click()">
+                 <app-icon name="image" [size]="20" />
+                 Adicionar da Galeria
+               </button>
+               <button type="button" class="add-attachment-btn" (click)="cameraInput.click()">
+                 <app-icon name="camera" [size]="20" />
+                 Tirar Foto/Vídeo
+               </button>
+             </div>
+             
+             <!-- Hidden Inputs for Mobile -->
+             <input #cameraInput type="file" (change)="onFileSelectedDirectly($event)" accept="image/*" capture="environment" hidden>
+             <input #photoInput type="file" (change)="onFileSelectedDirectly($event)" accept="image/*" hidden>
+             <input #fileInputMobile type="file" (change)="onFileSelectedDirectly($event)" accept="*/*" hidden>
+          } @else {
+            <!-- Desktop Buttons -->
+            <button type="button" class="add-attachment-btn" (click)="startAddingAttachment()">
+              <app-icon name="plus" [size]="20" />
+              Adicionar Novo Anexo
+            </button>
+            <button type="button" class="add-attachment-btn mobile-btn" (click)="openMobileUpload()">
+              <app-icon name="smartphone" [size]="20" />
+              Adicionar pelo Celular
+            </button>
+          }
         </div>
       }
     </section>
@@ -289,3 +293,12 @@
   (close)="closeQrCodeModal()"
   (regenerate)="regenerateQrCode()">
 </app-qrcode-modal>
+
+<app-media-preview-modal
+  [isOpen]="isPreviewModalOpen"
+  [url]="previewUrl"
+  [title]="previewTitle"
+  [type]="previewType"
+  (close)="closePreview()"
+  (download)="downloadAttachment()">
+</app-media-preview-modal>

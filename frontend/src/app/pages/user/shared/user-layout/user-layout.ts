@@ -1,5 +1,5 @@
-import { Component, OnInit, PLATFORM_ID, Inject } from '@angular/core';
-import { isPlatformBrowser, TitleCasePipe } from '@angular/common';
+import { Component, OnInit, PLATFORM_ID, Inject, HostListener } from '@angular/core';
+import { isPlatformBrowser, TitleCasePipe, DOCUMENT } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { LogoComponent } from '@app/shared/components/atoms/logo/logo';
 import { IconComponent } from '@app/shared/components/atoms/icon/icon';
@@ -47,9 +47,15 @@ export class UserLayoutComponent implements OnInit {
   notifications: Notification[] = [];
   basePath = '';
 
+  // Scroll handling
+  isHeaderVisible = true;
+  private lastScrollTop = 0;
+  private readonly SCROLL_THRESHOLD = 50;
+
   constructor(
     private router: Router,
-    @Inject(PLATFORM_ID) private platformId: Object
+    @Inject(PLATFORM_ID) private platformId: Object,
+    @Inject(DOCUMENT) private document: Document
   ) {}
 
   ngOnInit(): void {
@@ -57,6 +63,29 @@ export class UserLayoutComponent implements OnInit {
     this.loadUserData();
     this.loadUnreadNotifications();
     this.loadNotifications();
+  }
+
+  @HostListener('window:scroll')
+  onWindowScroll() {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    const currentScroll = window.scrollY || this.document.documentElement.scrollTop;
+    
+    // Ignore negative scroll (bounce effect on some browsers)
+    if (currentScroll < 0) return;
+
+    // Determine scroll direction
+    if (Math.abs(currentScroll - this.lastScrollTop) > 5) { // minimal threshold to avoid noise
+      if (currentScroll > this.lastScrollTop && currentScroll > this.SCROLL_THRESHOLD) {
+        // Scrolling Down
+        this.isHeaderVisible = false;
+      } else {
+        // Scrolling Up
+        this.isHeaderVisible = true;
+      }
+    }
+
+    this.lastScrollTop = currentScroll;
   }
 
   toggleSidebar(): void {

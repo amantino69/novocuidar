@@ -80,7 +80,14 @@ export class MobileUploadComponent implements OnInit {
     this.isUploading = true;
 
     try {
-      const base64 = await this.fileToBase64(this.selectedFile);
+      let base64: string | ArrayBuffer | null;
+      
+      // Compress image if it's an image
+      if (this.selectedFile.type.startsWith('image/')) {
+        base64 = await this.compressImage(this.selectedFile);
+      } else {
+        base64 = await this.fileToBase64(this.selectedFile);
+      }
       
       if (this.appointmentId) {
           // Mode 1: Chat Upload (Direct to Service)
@@ -106,7 +113,14 @@ export class MobileUploadComponent implements OnInit {
             timestamp: new Date().getTime()
           };
     
-          localStorage.setItem(`mobile_upload_${this.token}`, JSON.stringify(payload));
+          try {
+            localStorage.setItem(`mobile_upload_${this.token}`, JSON.stringify(payload));
+          } catch (e: any) {
+            if (e.name === 'QuotaExceededError' || e.code === 22) {
+              throw new Error('Arquivo muito grande para transferência via QR Code. Tente um arquivo menor.');
+            }
+            throw e;
+          }
       }
 
       this.uploadSuccess = true;
@@ -116,12 +130,53 @@ export class MobileUploadComponent implements OnInit {
         this.cancelUpload();
       }, 3000);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error processing file', error);
-      alert('Erro ao processar arquivo.');
+      alert(error.message || 'Erro ao processar arquivo.');
     } finally {
       this.isUploading = false;
     }
+  }
+
+  private compressImage(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event: any) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800; // Resize to max 800px width
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Compress to JPEG with 0.7 quality
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          resolve(dataUrl);
+        };
+        img.onerror = (error) => reject(error);
+      };
+      reader.onerror = (error) => reject(error);
+    });
   }
 
   private fileToBase64(file: File): Promise<string | ArrayBuffer | null> {

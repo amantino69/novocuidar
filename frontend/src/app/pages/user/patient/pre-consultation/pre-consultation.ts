@@ -1,10 +1,11 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, FormsModule } from '@angular/forms';
 import { ButtonComponent } from '@shared/components/atoms/button/button';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { QrCodeModalComponent } from './qrcode-modal/qrcode-modal';
+import { MediaPreviewModalComponent } from '@shared/components/molecules/media-preview-modal/media-preview-modal';
 import { AppointmentsService, Appointment } from '@core/services/appointments.service';
 import { ModalService } from '@core/services/modal.service';
 
@@ -25,7 +26,8 @@ interface Attachment {
     RouterModule,
     ButtonComponent,
     IconComponent,
-    QrCodeModalComponent
+    QrCodeModalComponent,
+    MediaPreviewModalComponent
   ],
   templateUrl: './pre-consultation.html',
   styleUrls: ['./pre-consultation.scss']
@@ -50,12 +52,19 @@ export class PreConsultationComponent implements OnInit, OnDestroy {
   isMobile = false;
   private pollingInterval: any;
 
+  // Media Preview
+  isPreviewModalOpen = false;
+  previewUrl = '';
+  previewTitle = '';
+  previewType: 'image' | 'file' = 'image';
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private fb: FormBuilder,
     private appointmentsService: AppointmentsService,
-    private modalService: ModalService
+    private modalService: ModalService,
+    private zone: NgZone
   ) {
     this.checkIfMobile();
     this.form = this.fb.group({
@@ -96,7 +105,9 @@ export class PreConsultationComponent implements OnInit, OnDestroy {
   }
 
   checkIfMobile() {
-    this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (typeof navigator !== 'undefined') {
+      this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
   }
 
   ngOnDestroy() {
@@ -170,6 +181,29 @@ export class PreConsultationComponent implements OnInit, OnDestroy {
     event.preventDefault();
   }
 
+  onFileSelectedDirectly(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.selectedFile = file;
+      this.newAttachmentTitle = file.name.replace(/\.[^/.]+$/, ""); // Default title from filename
+      
+      // Create preview and save immediately (simplified flow for mobile)
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e: any) => {
+          this.selectedFilePreview = e.target.result;
+          this.saveAttachment(); // Auto-save for streamlined mobile UX
+        };
+        reader.readAsDataURL(file);
+      } else {
+        this.selectedFilePreview = 'assets/icons/file-placeholder.svg';
+        this.saveAttachment();
+      }
+    }
+    // Reset input
+    event.target.value = '';
+  }
+
   private handleFile(file: File) {
     this.selectedFile = file;
     
@@ -226,6 +260,11 @@ export class PreConsultationComponent implements OnInit, OnDestroy {
     this.pollingInterval = setInterval(() => {
       this.checkMobileUpload();
     }, 1000);
+    
+    // Also listen for storage events for instant updates
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', this.storageListener);
+    }
   }
 
   stopPolling() {
@@ -233,7 +272,18 @@ export class PreConsultationComponent implements OnInit, OnDestroy {
       clearInterval(this.pollingInterval);
       this.pollingInterval = null;
     }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('storage', this.storageListener);
+    }
   }
+
+  private storageListener = (event: StorageEvent) => {
+    if (event.key === `mobile_upload_${this.mobileUploadToken}` && event.newValue) {
+      this.zone.run(() => {
+        this.checkMobileUpload();
+      });
+    }
+  };
 
   checkMobileUpload() {
     const key = `mobile_upload_${this.mobileUploadToken}`;
@@ -270,6 +320,28 @@ export class PreConsultationComponent implements OnInit, OnDestroy {
 
   removeAttachment(index: number) {
     this.attachments.splice(index, 1);
+  }
+
+  openPreview(attachment: Attachment) {
+    this.previewUrl = attachment.previewUrl;
+    this.previewTitle = attachment.title;
+    // Assuming type logic - if it has image in type string or starts with image
+    this.previewType = attachment.type === 'image' ? 'image' : 'file';
+    this.isPreviewModalOpen = true;
+  }
+
+  closePreview() {
+    this.isPreviewModalOpen = false;
+    this.previewUrl = '';
+    this.previewTitle = '';
+  }
+
+  downloadAttachment() {
+    // Basic download implementation
+    const link = document.createElement('a');
+    link.href = this.previewUrl;
+    link.download = this.previewTitle;
+    link.click();
   }
 
   onSubmit() {
