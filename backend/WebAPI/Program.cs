@@ -43,7 +43,10 @@ builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
-})var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") 
+})
+.AddJwtBearer(options =>
+{
+    var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") 
         ?? builder.Configuration["JwtSettings:SecretKey"]
         ?? throw new InvalidOperationException("JWT Secret Key not configured");
     
@@ -61,6 +64,15 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
             System.Text.Encoding.UTF8.GetBytes(secretKey)),
         ValidateIssuer = true,
+        ValidIssuer = issuer,
+        ValidateAudience = true,
+        ValidAudience = audience,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+// CORS Configuration
 var corsOrigins = Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS")
     ?? "http://localhost:4200";
 var allowedOrigins = corsOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries)
@@ -71,10 +83,16 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(allowedOrigins
-        ValidAudience = builder.Configuration["JwtSettings:Audience"],
-        ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
+var app = builder.Build();
+
+// Seed database
 var seedEnabled = Environment.GetEnvironmentVariable("SEED_DATA_ENABLED")?.ToLower() != "false";
 if (seedEnabled)
 {
@@ -83,6 +101,10 @@ if (seedEnabled)
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         await context.Database.EnsureCreatedAsync();
         await WebAPI.Data.DataSeeder.SeedAsync(context);
+    }
+}
+
+// Configure the HTTP request pipeline.
 var swaggerEnabled = Environment.GetEnvironmentVariable("SWAGGER_ENABLED")?.ToLower() != "false";
 if (app.Environment.IsDevelopment() || swaggerEnabled)
 {
@@ -93,28 +115,6 @@ if (app.Environment.IsDevelopment() || swaggerEnabled)
 var httpsRedirect = Environment.GetEnvironmentVariable("ENABLE_HTTPS_REDIRECT")?.ToLower() == "true";
 if (!app.Environment.IsDevelopment() && httpsRedirect)
 {
-    });
-});
-
-var app = builder.Build();
-
-// Seed database
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await context.Database.EnsureCreatedAsync();
-    await WebAPI.Data.DataSeeder.SeedAsync(context);
-}
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-else
-{
-    // Only use HTTPS redirection in production
     app.UseHttpsRedirection();
 }
 
