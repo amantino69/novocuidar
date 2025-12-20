@@ -10,6 +10,8 @@ export class DictationService {
   private isListening = false;
   private activeElement: HTMLInputElement | HTMLTextAreaElement | null = null;
   private lastInterim = '';
+  private ignoreResultsUntilIndex = -1; // Ignore results with index <= this value
+  private lastResultIndex = -1; // Track the latest result index
   
   public isDictationActive$ = new BehaviorSubject<boolean>(false);
   public isListening$ = new BehaviorSubject<boolean>(false);
@@ -25,6 +27,8 @@ export class DictationService {
 
         this.recognition.onresult = (event: any) => {
           this.zone.run(() => {
+            // Track the latest result index (used when focusing a new field)
+            this.lastResultIndex = event.results.length - 1;
             this.handleResult(event);
           });
         };
@@ -51,7 +55,21 @@ export class DictationService {
           const target = e.target as HTMLElement;
           if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
             this.activeElement = target;
-            this.lastInterim = ''; // Reset when switching inputs
+            this.lastInterim = '';
+            // Ignore all results captured before this field was focused
+            this.ignoreResultsUntilIndex = this.lastResultIndex;
+          }
+        });
+
+        // Setup global blur listener to stop writing when field loses focus
+        document.addEventListener('focusout', (e) => {
+          const target = e.target as HTMLElement;
+          if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+            // Only clear if it's the currently active element
+            if (this.activeElement === target) {
+              this.activeElement = null;
+              this.lastInterim = '';
+            }
           }
         });
       }
@@ -112,7 +130,10 @@ export class DictationService {
     let newFinals = '';
     let newInterim = '';
 
-    for (let i = event.resultIndex; i < event.results.length; ++i) {
+    // Only process results with index > ignoreResultsUntilIndex
+    const startIndex = Math.max(event.resultIndex, this.ignoreResultsUntilIndex + 1);
+    
+    for (let i = startIndex; i < event.results.length; ++i) {
       const transcript = event.results[i][0].transcript;
       if (event.results[i].isFinal) {
         if (newFinals && !newFinals.endsWith(' ') && !transcript.startsWith(' ')) {
