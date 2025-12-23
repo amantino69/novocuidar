@@ -49,7 +49,9 @@
     <!-- Anamnese -->
     <div class="tab-content" *ngIf="activeTab === 'Anamnese'">
       <app-anamnesis-tab
-        [appointmentId]="appointmentId">
+        [appointmentId]="appointmentId"
+        [appointment]="appointment"
+        [userrole]="userrole">
       </app-anamnesis-tab>
     </div>
 
@@ -89,6 +91,7 @@
     <div class="tab-content" *ngIf="activeTab === 'SOAP'">
       <app-soap-tab
         [appointmentId]="appointmentId"
+        [appointment]="appointment"
         [userrole]="userrole">
       </app-soap-tab>
     </div>

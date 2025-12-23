@@ -128,8 +128,9 @@ export class CertificateService {
 
   /**
    * Atualiza configurações de um certificado (nome, requirePasswordOnUse)
+   * @param password - Necessário quando requirePasswordOnUse muda de true para false
    */
-  updateCertificate(certificateId: string, updates: { name?: string; requirePasswordOnUse?: boolean }): Observable<SavedCertificate> {
+  updateCertificate(certificateId: string, updates: { name?: string; requirePasswordOnUse?: boolean; password?: string }): Observable<SavedCertificate> {
     return this.http.patch<SavedCertificate>(`${this.baseUrl}/${certificateId}`, updates).pipe(
       tap(updated => {
         const current = this.savedCertificates$.value;

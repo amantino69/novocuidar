@@ -201,6 +201,26 @@ public class CertificateStorageService : ICertificateStorageService
             {
                 cert.EncryptedPassword = null;
             }
+            // Se está mudando para NÃO pedir senha, precisa salvar a senha
+            else if (!request.RequirePasswordOnUse.Value && cert.RequirePasswordOnUse)
+            {
+                if (string.IsNullOrEmpty(request.Password))
+                {
+                    throw new InvalidOperationException("Senha do certificado e obrigatoria para desativar a exigencia de senha");
+                }
+                // Validar a senha antes de salvar
+                var pfxBase64 = Decrypt(cert.EncryptedPfxData);
+                var pfxBytes = Convert.FromBase64String(pfxBase64);
+                try
+                {
+                    using var _ = X509CertificateLoader.LoadPkcs12(pfxBytes, request.Password);
+                }
+                catch
+                {
+                    throw new InvalidOperationException("Senha do certificado incorreta");
+                }
+                cert.EncryptedPassword = Encrypt(request.Password);
+            }
             cert.RequirePasswordOnUse = request.RequirePasswordOnUse.Value;
         }
 
@@ -262,7 +282,10 @@ public class CertificateStorageService : ICertificateStorageService
         {
             if (string.IsNullOrEmpty(cert.EncryptedPassword))
             {
-                throw new InvalidOperationException("Senha do certificado nao encontrada");
+                // Cenário de inconsistência: RequirePasswordOnUse=false mas sem senha salva
+                // Isso pode acontecer com certificados criados antes de correções no sistema
+                _logger.LogError("Certificado {CertificateId} está configurado para não exigir senha, mas a senha não foi salva. O certificado precisa ser recadastrado.", certificateId);
+                throw new InvalidOperationException("Certificado com configuracao inconsistente. Por favor, exclua e adicione o certificado novamente na pagina de certificados.");
             }
             certPassword = Decrypt(cert.EncryptedPassword);
         }

@@ -5,19 +5,25 @@
 namespace Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddBiometricsAndAttachmentsChat : Migration
+    public partial class AddClinicalDataFields : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
-                name: "AttachmentsChatJson",
+                name: "AnamnesisJson",
                 table: "Appointments",
                 type: "TEXT",
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
-                name: "BiometricsJson",
+                name: "SoapJson",
+                table: "Appointments",
+                type: "TEXT",
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "SpecialtyFieldsJson",
                 table: "Appointments",
                 type: "TEXT",
                 nullable: true);
@@ -27,11 +33,15 @@ namespace Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "AttachmentsChatJson",
+                name: "AnamnesisJson",
                 table: "Appointments");
 
             migrationBuilder.DropColumn(
-                name: "BiometricsJson",
+                name: "SoapJson",
+                table: "Appointments");
+
+            migrationBuilder.DropColumn(
+                name: "SpecialtyFieldsJson",
                 table: "Appointments");
         }
     }

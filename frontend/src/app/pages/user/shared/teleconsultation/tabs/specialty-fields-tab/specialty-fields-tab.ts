@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { ButtonComponent } from '@shared/components/atoms/button/button';
-import { Appointment } from '@core/services/appointments.service';
+import { AppointmentsService, Appointment } from '@core/services/appointments.service';
 import { Subject, takeUntil, debounceTime } from 'rxjs';
 
 interface SpecialtyField {
@@ -36,7 +36,10 @@ export class SpecialtyFieldsTabComponent implements OnInit, OnDestroy {
   lastSaved: Date | null = null;
   private destroy$ = new Subject<void>();
 
-  constructor(private fb: FormBuilder) {
+  constructor(
+    private fb: FormBuilder,
+    private appointmentsService: AppointmentsService
+  ) {
     this.specialtyFieldsForm = this.fb.group({});
   }
 
@@ -124,20 +127,38 @@ export class SpecialtyFieldsTabComponent implements OnInit, OnDestroy {
   }
 
   loadSavedData() {
-    // TODO: Carregar dados salvos do backend
+    // Carregar dados salvos do backend
+    if (this.appointment?.specialtyFieldsJson) {
+      try {
+        const savedData = JSON.parse(this.appointment.specialtyFieldsJson);
+        this.specialtyFieldsForm.patchValue(savedData);
+        this.specialtyFieldsForm.markAsPristine();
+      } catch (error) {
+        console.error('Erro ao carregar dados salvos:', error);
+      }
+    }
   }
 
   saveSpecialtyFields() {
-    if (this.specialtyFieldsForm.invalid) return;
+    if (this.specialtyFieldsForm.invalid || !this.appointmentId) return;
 
     this.isSaving = true;
     
-    // TODO: Salvar no backend
-    setTimeout(() => {
-      this.isSaving = false;
-      this.lastSaved = new Date();
-      this.specialtyFieldsForm.markAsPristine();
-    }, 1000);
+    const specialtyFieldsJson = JSON.stringify(this.specialtyFieldsForm.value);
+    
+    this.appointmentsService.updateAppointment(this.appointmentId, { specialtyFieldsJson })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.isSaving = false;
+          this.lastSaved = new Date();
+          this.specialtyFieldsForm.markAsPristine();
+        },
+        error: (error) => {
+          console.error('Erro ao salvar campos da especialidade:', error);
+          this.isSaving = false;
+        }
+      });
   }
 
   onManualSave() {

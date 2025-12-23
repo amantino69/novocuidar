@@ -57,6 +57,10 @@ public class UpdateCertificateRequestDto
 {
     public string? Name { get; set; }
     public bool? RequirePasswordOnUse { get; set; }
+    /// <summary>
+    /// Senha do certificado - necessária quando RequirePasswordOnUse muda de true para false
+    /// </summary>
+    public string? Password { get; set; }
 }
 
 /// <summary>

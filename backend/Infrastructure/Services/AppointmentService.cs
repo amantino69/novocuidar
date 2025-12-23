@@ -140,6 +140,9 @@ public class AppointmentService : IAppointmentService
             Observation = appointment.Observation,
             MeetLink = appointment.MeetLink,
             PreConsultationJson = appointment.PreConsultationJson,
+            AnamnesisJson = appointment.AnamnesisJson,
+            SoapJson = appointment.SoapJson,
+            SpecialtyFieldsJson = appointment.SpecialtyFieldsJson,
             AISummary = appointment.AISummary,
             AISummaryGeneratedAt = appointment.AISummaryGeneratedAt,
             AIDiagnosticHypothesis = appointment.AIDiagnosticHypothesis,
@@ -253,6 +256,16 @@ public class AppointmentService : IAppointmentService
         if (dto.PreConsultationJson != null)
             appointment.PreConsultationJson = dto.PreConsultationJson;
 
+        // Clinical Data Fields
+        if (dto.AnamnesisJson != null)
+            appointment.AnamnesisJson = dto.AnamnesisJson;
+
+        if (dto.SoapJson != null)
+            appointment.SoapJson = dto.SoapJson;
+
+        if (dto.SpecialtyFieldsJson != null)
+            appointment.SpecialtyFieldsJson = dto.SpecialtyFieldsJson;
+
         appointment.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
@@ -295,6 +308,9 @@ public class AppointmentService : IAppointmentService
             Observation = appointment.Observation,
             MeetLink = appointment.MeetLink,
             PreConsultationJson = appointment.PreConsultationJson,
+            AnamnesisJson = appointment.AnamnesisJson,
+            SoapJson = appointment.SoapJson,
+            SpecialtyFieldsJson = appointment.SpecialtyFieldsJson,
             CreatedAt = appointment.CreatedAt,
             UpdatedAt = appointment.UpdatedAt
         };

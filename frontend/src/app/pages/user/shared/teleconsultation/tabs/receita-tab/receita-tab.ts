@@ -134,9 +134,11 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
         this.isLoading = false;
       },
       error: (error) => {
+        // 404 é esperado quando não existe receita ainda
         if (error.status === 404) {
-          // Receita não existe ainda, vamos criar
           this.prescription = null;
+        } else {
+          console.error('Erro ao carregar receita:', error);
         }
         this.isLoading = false;
       }
@@ -167,15 +169,29 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
   onMedicamentoInput(event: Event) {
     const input = event.target as HTMLInputElement;
     this.medicamentoSearch = input.value;
+    
+    // Atualizar o formControl diretamente para liberar o botão
+    this.itemForm.patchValue({
+      medicamento: input.value,
+      codigoAnvisa: '' // Limpar código ANVISA quando digita manualmente
+    });
+    
+    // Mostrar spinner imediatamente se tiver pelo menos 2 caracteres
+    if (input.value.length >= 2) {
+      this.isSearching = true;
+    } else {
+      this.isSearching = false;
+    }
+    
     this.searchSubject.next(input.value);
   }
 
   searchMedicamentos(query: string) {
-    this.isSearching = true;
     this.prescriptionService.searchMedicamentos(query).subscribe({
       next: (results) => {
         this.medicamentoResults = results;
         this.showMedicamentoDropdown = results.length > 0;
+        this.isSearching = false;
         this.isSearching = false;
       },
       error: () => {

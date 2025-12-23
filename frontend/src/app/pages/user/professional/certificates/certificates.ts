@@ -46,6 +46,7 @@ export class CertificatesComponent implements OnInit {
   showConfirmNoPasswordModal = false;
   confirmPassword = '';
   pendingRequirePasswordChange = false;
+  validatedPasswordForDisable = ''; // Senha validada para ser enviada no update
 
   private isBrowser: boolean;
 
@@ -202,6 +203,7 @@ export class CertificatesComponent implements OnInit {
   closeEditModal(): void {
     this.showEditModal = false;
     this.editingCert = null;
+    this.validatedPasswordForDisable = ''; // Limpar senha validada
   }
 
   onRequirePasswordChange(value: boolean): void {
@@ -231,6 +233,7 @@ export class CertificatesComponent implements OnInit {
       next: (result) => {
         this.isValidating = false;
         if (result.isValid) {
+          this.validatedPasswordForDisable = this.confirmPassword; // Guardar a senha para enviar no update
           this.editRequirePassword = false;
           this.showConfirmNoPasswordModal = false;
           this.confirmPassword = '';
@@ -258,10 +261,19 @@ export class CertificatesComponent implements OnInit {
     if (!this.editingCert) return;
 
     this.isUpdating = true;
-    this.certificateService.updateCertificate(this.editingCert.id, {
+    
+    // Se está desativando a exigência de senha, enviar a senha validada
+    const updates: { name?: string; requirePasswordOnUse?: boolean; password?: string } = {
       name: this.editName,
       requirePasswordOnUse: this.editRequirePassword
-    }).subscribe({
+    };
+    
+    // Adicionar senha se estiver mudando de exigir senha para não exigir
+    if (!this.editRequirePassword && this.editingCert.requirePasswordOnUse && this.validatedPasswordForDisable) {
+      updates.password = this.validatedPasswordForDisable;
+    }
+    
+    this.certificateService.updateCertificate(this.editingCert.id, updates).subscribe({
       next: () => {
         this.isUpdating = false;
         this.closeEditModal();

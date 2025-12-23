@@ -28,6 +28,11 @@ public class AppointmentDto
     public string? MeetLink { get; set; }
     public string? PreConsultationJson { get; set; }
     
+    // Clinical Data (JSON)
+    public string? AnamnesisJson { get; set; }
+    public string? SoapJson { get; set; }
+    public string? SpecialtyFieldsJson { get; set; }
+    
     // AI Generated Data
     public string? AISummary { get; set; }
     public DateTime? AISummaryGeneratedAt { get; set; }
@@ -56,6 +61,11 @@ public class UpdateAppointmentDto
     public string? Status { get; set; }
     public string? Observation { get; set; }
     public string? PreConsultationJson { get; set; }
+    
+    // Clinical Data (JSON)
+    public string? AnamnesisJson { get; set; }
+    public string? SoapJson { get; set; }
+    public string? SpecialtyFieldsJson { get; set; }
 }
 
 public class PaginatedAppointmentsDto

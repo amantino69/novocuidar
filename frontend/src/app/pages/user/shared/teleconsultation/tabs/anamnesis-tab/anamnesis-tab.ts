@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { ButtonComponent } from '@shared/components/atoms/button/button';
+import { AppointmentsService, Appointment } from '@core/services/appointments.service';
 import { Subject, takeUntil, debounceTime } from 'rxjs';
 
 @Component({
@@ -14,6 +15,7 @@ import { Subject, takeUntil, debounceTime } from 'rxjs';
 })
 export class AnamnesisTabComponent implements OnInit, OnDestroy {
   @Input() appointmentId: string | null = null;
+  @Input() appointment: Appointment | null = null;
   @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' = 'PROFESSIONAL';
   @Input() readonly = false;
 
@@ -22,7 +24,10 @@ export class AnamnesisTabComponent implements OnInit, OnDestroy {
   lastSaved: Date | null = null;
   private destroy$ = new Subject<void>();
 
-  constructor(private fb: FormBuilder) {
+  constructor(
+    private fb: FormBuilder,
+    private appointmentsService: AppointmentsService
+  ) {
     this.anamnesisForm = this.fb.group({
       // Queixa Principal
       chiefComplaint: [''],
@@ -99,22 +104,38 @@ export class AnamnesisTabComponent implements OnInit, OnDestroy {
   }
 
   loadAnamnesisData() {
-    // TODO: Carregar dados da anamnese do backend
-    // Por enquanto, deixar em branco para preenchimento
+    // Carregar dados da anamnese do appointment
+    if (this.appointment?.anamnesisJson) {
+      try {
+        const anamnesisData = JSON.parse(this.appointment.anamnesisJson);
+        this.anamnesisForm.patchValue(anamnesisData);
+        this.anamnesisForm.markAsPristine();
+      } catch (error) {
+        console.error('Erro ao carregar dados da anamnese:', error);
+      }
+    }
   }
 
   saveAnamnesis() {
-    if (this.anamnesisForm.invalid) return;
+    if (this.anamnesisForm.invalid || !this.appointmentId) return;
 
     this.isSaving = true;
     
-    // TODO: Salvar no backend
-    // Por enquanto, simular salvamento
-    setTimeout(() => {
-      this.isSaving = false;
-      this.lastSaved = new Date();
-      this.anamnesisForm.markAsPristine();
-    }, 1000);
+    const anamnesisJson = JSON.stringify(this.anamnesisForm.value);
+    
+    this.appointmentsService.updateAppointment(this.appointmentId, { anamnesisJson })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.isSaving = false;
+          this.lastSaved = new Date();
+          this.anamnesisForm.markAsPristine();
+        },
+        error: (error) => {
+          console.error('Erro ao salvar anamnese:', error);
+          this.isSaving = false;
+        }
+      });
   }
 
   onManualSave() {

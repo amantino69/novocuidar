@@ -75,6 +75,11 @@ export interface Appointment {
   updatedAt?: string;
   preConsultationJson?: string;
   
+  // Clinical Data (JSON)
+  anamnesisJson?: string;
+  soapJson?: string;
+  specialtyFieldsJson?: string;
+  
   // AI Generated Data
   aiSummary?: string;
   aiSummaryGeneratedAt?: string;
@@ -98,6 +103,11 @@ export interface UpdateAppointmentDto {
   status?: AppointmentStatus;
   observation?: string;
   preConsultationJson?: string;
+  
+  // Clinical Data (JSON)
+  anamnesisJson?: string;
+  soapJson?: string;
+  specialtyFieldsJson?: string;
 }
 
 export interface AppointmentsFilter {

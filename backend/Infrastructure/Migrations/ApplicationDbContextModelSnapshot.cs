@@ -35,6 +35,9 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime?>("AISummaryGeneratedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AnamnesisJson")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("AttachmentsChatJson")
                         .HasColumnType("TEXT");
 
@@ -65,6 +68,12 @@ namespace Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("ProfessionalId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SoapJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SpecialtyFieldsJson")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("SpecialtyId")

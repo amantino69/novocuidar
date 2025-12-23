@@ -360,13 +360,18 @@
         position: absolute;
         right: 12px;
         top: 50%;
-        transform: translateY(-50%);
+        margin-top: -8px;
         width: 16px;
         height: 16px;
-        border: 2px solid var(--border-color);
+        border: 2px solid rgba(0, 0, 0, 0.1);
         border-top-color: var(--primary-color);
         border-radius: 50%;
-        animation: spin 1s linear infinite;
+        animation: search-spin 0.8s linear infinite;
+      }
+
+      @keyframes search-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
       }
 
       .autocomplete-dropdown {
@@ -1227,4 +1232,18 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+// Spinner de busca de medicamentos - definido no root para garantir aplicação
+.search-spinner {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  margin-top: -8px;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(128, 128, 128, 0.3);
+  border-top-color: var(--primary-color, #007bff);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
