@@ -128,13 +128,22 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     order: 11
   },
   {
+    id: 'referral',
+    label: 'Encaminhamento',
+    icon: 'arrow-right',
+    roles: ['PROFESSIONAL', 'ADMIN'],
+    showInTeleconsultation: true,
+    showInDetails: false,
+    order: 12
+  },
+  {
     id: 'conclusion',
     label: 'Concluir',
     icon: 'check',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
     showInDetails: true,
-    order: 12
+    order: 13
   }
 ];
 
@@ -179,6 +188,7 @@ export const TAB_ID_TO_LEGACY_NAME: Record<string, string> = {
   'receita': 'Receita',
   'ai': 'IA',
   'return': 'Retorno',
+  'referral': 'Encaminhamento',
   'conclusion': 'Concluir'
 };
 

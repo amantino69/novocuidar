@@ -6,7 +6,7 @@ import { environment } from '@env/environment';
 const API_BASE_URL = environment.apiUrl;
 
 export type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'InProgress' | 'Completed' | 'Cancelled';
-export type AppointmentType = 'FirstVisit' | 'Return' | 'Routine' | 'Emergency' | 'Common';
+export type AppointmentType = 'FirstVisit' | 'Return' | 'Routine' | 'Emergency' | 'Common' | 'Referral';
 
 export interface PreConsultationForm {
   personalInfo: {

@@ -141,6 +141,15 @@
       </app-return-tab>
     </div>
 
+    <!-- Encaminhamento -->
+    <div class="tab-content" *ngIf="activeTab === 'Encaminhamento'" style="height: 100%">
+      <app-referral-tab
+        [appointmentId]="appointmentId"
+        [appointment]="appointment"
+        [userrole]="userrole">
+      </app-referral-tab>
+    </div>
+
     <!-- Concluir -->
     <div class="tab-content" *ngIf="activeTab === 'Concluir'" style="height: 100%">
       <app-conclusion-tab

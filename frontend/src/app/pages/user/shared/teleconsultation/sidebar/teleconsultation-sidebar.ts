@@ -14,6 +14,7 @@ import { AITabComponent } from '../tabs/ai-tab/ai-tab';
 import { CadsusTabComponent } from '../tabs/cadsus-tab/cadsus-tab';
 import { ReceitaTabComponent } from '../tabs/receita-tab/receita-tab';
 import { ReturnTabComponent } from './../tabs/return-tab/return-tab';
+import { ReferralTabComponent } from './../tabs/referral-tab/referral-tab';
 import { DictationService } from '@core/services/dictation.service';
 import { Appointment } from '@core/services/appointments.service';
 import { Subject, takeUntil } from 'rxjs';
@@ -36,7 +37,8 @@ import { Subject, takeUntil } from 'rxjs';
     AITabComponent,
     CadsusTabComponent,
     ReceitaTabComponent,
-    ReturnTabComponent
+    ReturnTabComponent,
+    ReferralTabComponent
   ],
   templateUrl: './teleconsultation-sidebar.html',
   styleUrls: ['./teleconsultation-sidebar.scss']

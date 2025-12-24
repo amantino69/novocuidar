@@ -161,7 +161,8 @@ export class AppointmentDetailsComponent implements OnInit {
       'Return': 'Retorno',
       'Routine': 'Rotina',
       'Emergency': 'Emergencial',
-      'Common': 'Comum'
+      'Common': 'Comum',
+      'Referral': 'Encaminhamento'
     };
     return labels[appointment.type] || 'Consulta';
   }

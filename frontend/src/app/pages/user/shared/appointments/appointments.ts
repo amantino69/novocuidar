@@ -334,7 +334,8 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
       'Return': 'Retorno',
       'Routine': 'Rotina',
       'Emergency': 'Emergencial',
-      'Common': 'Comum'
+      'Common': 'Comum',
+      'Referral': 'Encaminhamento'
     };
     return labels[type] || 'Consulta';
   }
@@ -345,7 +346,8 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
       'Return': 'info',
       'Routine': 'success',
       'Emergency': 'error',
-      'Common': 'neutral'
+      'Common': 'neutral',
+      'Referral': 'warning'
     };
     return variants[type] || 'neutral';
   }
