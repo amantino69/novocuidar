@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonComponent } from '@shared/components/atoms/button/button';
@@ -43,7 +43,10 @@ export class AITabComponent implements OnInit {
   isLoading = true;
   errorMessage: string = '';
 
-  constructor(private aiService: AIService) {}
+  constructor(
+    private aiService: AIService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
     this.loadExistingData();
@@ -64,10 +67,12 @@ export class AITabComponent implements OnInit {
           this.diagnosisGeneratedAt = data.diagnosisGeneratedAt ? new Date(data.diagnosisGeneratedAt) : null;
         }
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error loading AI data:', err);
         this.isLoading = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -120,11 +125,13 @@ export class AITabComponent implements OnInit {
         this.summary = response.summary;
         this.summaryGeneratedAt = new Date(response.generatedAt);
         this.isGeneratingSummary = false;
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error generating summary:', err);
         this.errorMessage = err.error?.message || 'Erro ao gerar resumo. Verifique a configuração da API de IA.';
         this.isGeneratingSummary = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -147,11 +154,13 @@ export class AITabComponent implements OnInit {
         this.diagnosticHypothesis = response.diagnosticHypothesis;
         this.diagnosisGeneratedAt = new Date(response.generatedAt);
         this.isGeneratingDiagnosis = false;
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error generating diagnosis:', err);
         this.errorMessage = err.error?.message || 'Erro ao gerar hipótese diagnóstica. Verifique a configuração da API de IA.';
         this.isGeneratingDiagnosis = false;
+        this.cdr.detectChanges();
       }
     });
   }

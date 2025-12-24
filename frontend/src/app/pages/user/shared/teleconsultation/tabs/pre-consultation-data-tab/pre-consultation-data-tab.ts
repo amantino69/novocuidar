@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { Appointment, PreConsultationForm } from '@core/services/appointments.service';
@@ -16,6 +16,8 @@ export class PreConsultationDataTabComponent implements OnInit {
   preConsultationData: PreConsultationForm | null = null;
   hasData = false;
 
+  constructor(private cdr: ChangeDetectorRef) {}
+
   ngOnInit() {
     this.loadPreConsultationData();
   }
@@ -25,9 +27,11 @@ export class PreConsultationDataTabComponent implements OnInit {
       try {
         this.preConsultationData = JSON.parse(this.appointment.preConsultationJson);
         this.hasData = true;
+        this.cdr.detectChanges();
       } catch (error) {
         console.error('Erro ao parsear dados da pré-consulta:', error);
         this.hasData = false;
+        this.cdr.detectChanges();
       }
     }
   }

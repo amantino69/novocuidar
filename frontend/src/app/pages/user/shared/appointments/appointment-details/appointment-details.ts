@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
@@ -17,6 +17,8 @@ import { SpecialtyFieldsTabComponent } from '@pages/user/shared/teleconsultation
 import { IotTabComponent } from '@pages/user/shared/teleconsultation/tabs/iot-tab/iot-tab';
 import { AITabComponent } from '@pages/user/shared/teleconsultation/tabs/ai-tab/ai-tab';
 import { ReceitaTabComponent } from '@pages/user/shared/teleconsultation/tabs/receita-tab/receita-tab';
+import { ReferralTabComponent } from '@pages/user/shared/teleconsultation/tabs/referral-tab/referral-tab';
+import { ReturnTabComponent } from '@pages/user/shared/teleconsultation/tabs/return-tab/return-tab';
 import { getAllDetailsTabs, TabConfig } from '@pages/user/shared/teleconsultation/tabs/tab-config';
 
 @Component({
@@ -38,7 +40,9 @@ import { getAllDetailsTabs, TabConfig } from '@pages/user/shared/teleconsultatio
     SpecialtyFieldsTabComponent,
     IotTabComponent,
     AITabComponent,
-    ReceitaTabComponent
+    ReceitaTabComponent,
+    ReferralTabComponent,
+    ReturnTabComponent
   ],
   templateUrl: './appointment-details.html',
   styleUrls: ['./appointment-details.scss']
@@ -57,6 +61,7 @@ export class AppointmentDetailsComponent implements OnInit {
   private authService = inject(AuthService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
 
   ngOnInit(): void {
     this.determineuserrole();
@@ -93,6 +98,7 @@ export class AppointmentDetailsComponent implements OnInit {
       next: (appointment) => {
         this.appointment = appointment;
         this.loading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Erro ao carregar consulta:', error);
@@ -101,6 +107,7 @@ export class AppointmentDetailsComponent implements OnInit {
           return;
         }
         this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }

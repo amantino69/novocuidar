@@ -150,6 +150,7 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
       next: (prescription) => {
         this.prescription = prescription;
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         // 404 é esperado quando não existe receita ainda
@@ -159,6 +160,7 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
           console.error('Erro ao carregar receita:', error);
         }
         this.isLoading = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -172,12 +174,14 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
         this.prescription = prescription;
         this.isSaving = false;
         this.showItemForm = true;
+        this.cdr.detectChanges();
         
         // Notify other participant via SignalR
         this.teleconsultationRealTime.notifyPrescriptionUpdated(this.appointmentId!, prescription);
       },
       error: (error) => {
         this.isSaving = false;
+        this.cdr.detectChanges();
         this.modalService.alert({
           title: 'Erro',
           message: error.error?.message || 'Erro ao criar receita.',
@@ -213,11 +217,12 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
         this.medicamentoResults = results;
         this.showMedicamentoDropdown = results.length > 0;
         this.isSearching = false;
-        this.isSearching = false;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.isSearching = false;
         this.medicamentoResults = [];
+        this.cdr.detectChanges();
       }
     });
   }
@@ -258,6 +263,7 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
         this.medicamentoSearch = '';
         this.isSaving = false;
         this.showItemForm = false;
+        this.cdr.detectChanges();
         
         // Notify other participant via SignalR
         if (this.appointmentId) {
@@ -266,6 +272,7 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         this.isSaving = false;
+        this.cdr.detectChanges();
         this.modalService.alert({
           title: 'Erro',
           message: error.error?.message || 'Erro ao adicionar medicamento.',
@@ -289,6 +296,7 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
         this.prescriptionService.removeItem(this.prescription.id, itemId).subscribe({
           next: (prescription) => {
             this.prescription = prescription;
+            this.cdr.detectChanges();
             
             // Notify other participant via SignalR
             if (this.appointmentId) {
@@ -296,6 +304,7 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
             }
           },
           error: (error) => {
+            this.cdr.detectChanges();
             this.modalService.alert({
               title: 'Erro',
               message: error.error?.message || 'Erro ao remover medicamento.',
@@ -329,6 +338,7 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
           next: () => {
             this.prescription = null;
             this.isSaving = false;
+            this.cdr.detectChanges();
             this.modalService.alert({
               title: 'Sucesso',
               message: 'Receita excluída com sucesso.',
@@ -337,6 +347,7 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
           },
           error: (error) => {
             this.isSaving = false;
+            this.cdr.detectChanges();
             this.modalService.alert({
               title: 'Erro',
               message: error.error?.message || 'Erro ao excluir receita.',

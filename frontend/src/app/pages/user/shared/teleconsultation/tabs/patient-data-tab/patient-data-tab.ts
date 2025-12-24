@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { UsersService, User } from '@core/services/users.service';
@@ -20,7 +20,8 @@ export class PatientDataTabComponent implements OnInit {
 
   constructor(
     private usersService: UsersService,
-    private appointmentsService: AppointmentsService
+    private appointmentsService: AppointmentsService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -34,10 +35,12 @@ export class PatientDataTabComponent implements OnInit {
         next: (user) => {
           this.patientData = user;
           this.loading = false;
+          this.cdr.detectChanges();
         },
         error: (error) => {
           console.error('Erro ao carregar dados do paciente:', error);
           this.loading = false;
+          this.cdr.detectChanges();
         }
       });
     }

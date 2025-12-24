@@ -1,4 +1,4 @@
-import { Component, OnInit, ElementRef, ViewChild, PLATFORM_ID, Inject } from '@angular/core';
+import { Component, OnInit, ElementRef, ViewChild, PLATFORM_ID, Inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '@app/shared/components/atoms/icon/icon';
@@ -53,6 +53,7 @@ export class CertificatesComponent implements OnInit {
   constructor(
     private certificateService: CertificateService,
     private modalService: ModalService,
+    private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) platformId: Object
   ) {
     this.isBrowser = isPlatformBrowser(platformId);
@@ -71,9 +72,11 @@ export class CertificatesComponent implements OnInit {
       next: (certs) => {
         this.certificates = certs;
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.isLoading = false;
+        this.cdr.detectChanges();
         this.modalService.alert({
           title: 'Erro',
           message: 'Não foi possível carregar seus certificados.',

@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
@@ -32,7 +32,10 @@ export class CadsusTabComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private tokenCheckInterval$ = new Subject<void>();
 
-  constructor(private cadsusService: CadsusService) {}
+  constructor(
+    private cadsusService: CadsusService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
     // Carregar status do token ao iniciar
@@ -101,11 +104,13 @@ export class CadsusTabComponent implements OnInit, OnDestroy {
         next: (data) => {
           this.cidadao = data;
           this.loading = false;
+          this.cdr.detectChanges();
         },
         error: (err) => {
           console.error('Erro ao consultar CADSUS:', err);
           this.error = err.error?.message || err.error?.error || 'Erro ao consultar CADSUS. Verifique se o serviço está configurado.';
           this.loading = false;
+          this.cdr.detectChanges();
         }
       });
   }
@@ -119,6 +124,7 @@ export class CadsusTabComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (status) => {
           this.tokenStatus = status;
+          this.cdr.detectChanges();
         },
         error: (err) => {
           console.error('Erro ao verificar status do token:', err);
@@ -144,10 +150,12 @@ export class CadsusTabComponent implements OnInit, OnDestroy {
             expiresInMs: 0
           };
           this.tokenLoading = false;
+          this.cdr.detectChanges();
         },
         error: (err) => {
           console.error('Erro ao renovar token:', err);
           this.tokenLoading = false;
+          this.cdr.detectChanges();
         }
       });
   }

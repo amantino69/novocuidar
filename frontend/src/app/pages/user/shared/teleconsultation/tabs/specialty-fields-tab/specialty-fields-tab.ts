@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
@@ -38,7 +38,8 @@ export class SpecialtyFieldsTabComponent implements OnInit, OnDestroy {
 
   constructor(
     private fb: FormBuilder,
-    private appointmentsService: AppointmentsService
+    private appointmentsService: AppointmentsService,
+    private cdr: ChangeDetectorRef
   ) {
     this.specialtyFieldsForm = this.fb.group({});
   }
@@ -95,6 +96,7 @@ export class SpecialtyFieldsTabComponent implements OnInit, OnDestroy {
           
           // Carregar dados salvos se existirem
           this.loadSavedData();
+          this.cdr.detectChanges();
           return;
         }
       } catch (error) {
@@ -114,6 +116,7 @@ export class SpecialtyFieldsTabComponent implements OnInit, OnDestroy {
 
     // Carregar dados salvos se existirem
     this.loadSavedData();
+    this.cdr.detectChanges();
   }
   
   // Sanitizar nome do campo para usar como ID (público para uso no template)

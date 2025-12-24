@@ -133,7 +133,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     icon: 'calendar',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
-    showInDetails: false,
+    showInDetails: true,
     order: 12
   },
   {
@@ -142,7 +142,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     icon: 'arrow-right',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
-    showInDetails: false,
+    showInDetails: true,
     order: 13
   },
   {

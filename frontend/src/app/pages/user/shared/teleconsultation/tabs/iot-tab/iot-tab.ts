@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
@@ -52,6 +52,8 @@ export class IotTabComponent implements OnInit, OnDestroy, AfterViewInit {
     batteryLevel: 85,
     signalStrength: 4
   };
+
+  constructor(private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     // Inicializar com dados vazios
@@ -386,10 +388,12 @@ export class IotTabComponent implements OnInit, OnDestroy, AfterViewInit {
   connect() {
     this.isConnected = true;
     this.connectionStatus = 'Conectando...';
+    this.cdr.detectChanges();
 
     // Simular delay de conexão
     setTimeout(() => {
       this.connectionStatus = 'Conectado';
+      this.cdr.detectChanges();
       this.startDataSimulation();
     }, 1500);
   }
@@ -397,6 +401,7 @@ export class IotTabComponent implements OnInit, OnDestroy, AfterViewInit {
   disconnect() {
     this.isConnected = false;
     this.connectionStatus = 'Desconectado';
+    this.cdr.detectChanges();
     this.destroy$.next(); // Para todas as subscriptions
   }
 
@@ -434,6 +439,7 @@ export class IotTabComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     this.updateCharts();
+    this.cdr.detectChanges();
   }
 
   simulateHeartRate(): number {

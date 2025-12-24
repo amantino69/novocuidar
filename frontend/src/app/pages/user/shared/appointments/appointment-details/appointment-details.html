@@ -209,6 +209,28 @@
           </div>
         }
 
+        <!-- Encaminhamento Tab -->
+        @if (activeTab === 'encaminhamento') {
+          <div class="tab-panel">
+            <app-referral-tab
+              [appointmentId]="appointmentId"
+              [appointment]="appointment"
+              [userrole]="userrole"
+            />
+          </div>
+        }
+
+        <!-- Retorno Tab -->
+        @if (activeTab === 'retorno') {
+          <div class="tab-panel">
+            <app-return-tab
+              [appointmentId]="appointmentId"
+              [appointment]="appointment"
+              [userrole]="userrole"
+            />
+          </div>
+        }
+
         <!-- AI Tab -->
         @if (activeTab === 'ai') {
           <div class="tab-panel">
