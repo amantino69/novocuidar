@@ -255,113 +255,23 @@ export class JitsiService {
       // Carregar script primeiro
       await this.loadJitsiScript(token.domain);
 
-      // Configurações de interface - SEM LOGO, SEM WATERMARK
-      const interfaceConfigOverwrite: Partial<JitsiInterfaceConfig> = {
-        SHOW_JITSI_WATERMARK: false,
-        SHOW_WATERMARK_FOR_GUESTS: false,
-        SHOW_BRAND_WATERMARK: false,
-        BRAND_WATERMARK_LINK: '',
-        JITSI_WATERMARK_LINK: '',
-        SHOW_POWERED_BY: false,
-        SHOW_PROMOTIONAL_CLOSE_PAGE: false,
-        DEFAULT_LOGO_URL: '',
-        DEFAULT_WELCOME_PAGE_LOGO_URL: '',
-        HIDE_DEEP_LINKING_LOGO: true,
-        DISABLE_JOIN_LEAVE_NOTIFICATIONS: false,
-        DISABLE_PRESENCE_STATUS: false,
-        DISABLE_FOCUS_INDICATOR: false,
-        DISABLE_DOMINANT_SPEAKER_INDICATOR: false,
-        GENERATE_ROOMNAMES_ON_WELCOME_PAGE: false,
-        MOBILE_APP_PROMO: false,
-        HIDE_INVITE_MORE_HEADER: true,
-        LANG_DETECTION: false,
-        filmStripOnly: false,
-        VERTICAL_FILMSTRIP: true,
-        TILE_VIEW_MAX_COLUMNS: 2,
-        TOOLBAR_BUTTONS: [
-          'microphone',
-          'camera',
-          'desktop',
-          'fullscreen',
-          'fodeviceselection',
-          'hangup',
-          'chat',
-          'settings',
-          'videoquality',
-          'filmstrip',
-          'tileview',
-          'select-background',
-          'mute-everyone',
-          'mute-video-everyone'
-        ],
-        SETTINGS_SECTIONS: ['devices', 'language', 'moderator', 'profile'],
-        DEFAULT_LOCAL_DISPLAY_NAME: 'Eu',
-        DEFAULT_REMOTE_DISPLAY_NAME: 'Participante'
-      };
-
-      // Configurações da chamada - PORTUGUÊS e customizado
-      const configOverwrite: Partial<JitsiConfigOptions> = {
-        startWithAudioMuted: false,
-        startWithVideoMuted: false,
-        enableWelcomePage: false,
-        enableClosePage: false,
-        prejoinPageEnabled: false,
-        disableDeepLinking: true,
-        enableNoisyMicDetection: true,
-        enableNoAudioDetection: true,
-        requireDisplayName: false,
-        defaultLanguage: 'ptBR',
-        disableThirdPartyRequests: true,
-        enableLobbyChat: false,
-        hideLobbyButton: true,
-        autoKnockLobby: true,
-        lobby: {
-          autoKnock: true,
-          enableChat: false
-        },
-        hideConferenceSubject: true,
-        hideConferenceTimer: false,
-        hideParticipantsStats: true,
-        disablePolls: true,
-        disableReactions: false,
-        disableProfile: true,
-        disableRemoteMute: !token.isModerator,
-        remoteVideoMenu: {
-          disableKick: !token.isModerator,
-          disableGrantModerator: !token.isModerator
-        },
-        disableLocalVideoFlip: false,
-        disableInviteFunctions: true,
-        doNotStoreRoom: true,
-        disableAddingBackgroundImages: false,
-        notifications: [],
-        connectionIndicators: {
-          disabled: false
-        }
-      };
-
-      // Remover botões de moderador se não for moderador
-      if (!token.isModerator) {
-        interfaceConfigOverwrite.TOOLBAR_BUTTONS = interfaceConfigOverwrite.TOOLBAR_BUTTONS?.filter(
-          btn => !['mute-everyone', 'mute-video-everyone'].includes(btn)
-        );
-      }
-
-      // Criar instância do Jitsi
+      // NOTA: Todas as configurações (config e interfaceConfig) estão definidas
+      // no servidor Jitsi (custom-config.js e custom-interface_config.js).
+      // As informações do usuário (displayName, email, avatar, moderator) já estão
+      // incluídas no JWT (context.user), então não precisamos passar novamente.
+      // 
+      // Isso resulta em uma URL limpa: apenas roomName + jwt
+      
+      // Criar instância do Jitsi - mínimo de parâmetros
+      // O JWT contém: room, context.user (id, name, email, avatar, moderator), features
       this.jitsiApi = new window.JitsiMeetExternalAPI(token.domain, {
         roomName: token.roomName,
         width: options?.width || '100%',
         height: options?.height || '100%',
         parentNode: document.getElementById(containerId),
-        jwt: token.token || undefined,
-        configOverwrite,
-        interfaceConfigOverwrite,
-        userInfo: {
-          displayName: token.displayName,
-          email: token.email,
-          avatarURL: token.avatarUrl
-        },
-        lang: 'ptBR'
+        jwt: token.token || undefined
+        // Não passamos configOverwrite, interfaceConfigOverwrite, userInfo ou lang
+        // pois tudo já está configurado no servidor ou no JWT
       });
 
       // Configurar permissões do iframe para câmera e microfone.

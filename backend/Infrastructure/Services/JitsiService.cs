@@ -6,8 +6,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace Infrastructure.Services;
@@ -87,8 +85,8 @@ public class JitsiService : IJitsiService
         // Profissional e Admin são moderadores, paciente é convidado
         var isModerator = isProfessional || isAdmin;
 
-        // Nome da sala baseado no ID da consulta (único e previsível)
-        var roomName = $"telecuidar-{appointmentId:N}";
+        // Nome da sala: apenas o GUID sem prefixo (mais curto na URL)
+        var roomName = appointmentId.ToString("N");
 
         // Nome de exibição (Nome + Sobrenome)
         var displayName = $"{user.Name} {user.LastName}".Trim();
@@ -158,6 +156,13 @@ public class JitsiService : IJitsiService
     /// <summary>
     /// Gera o token JWT no formato esperado pelo Jitsi Meet
     /// Compatível com prosody-jwt-auth e jitsi-meet-web
+    /// 
+    /// OTIMIZAÇÃO MÁXIMA: Apenas claims obrigatórios do Prosody JWT:
+    /// - iss, aud: autenticação
+    /// - iat, exp: validade
+    /// - room: restrição de sala
+    /// - context.user.name: nome exibido
+    /// - moderator: permissões
     /// </summary>
     private string GenerateJitsiJwt(
         string userId,
@@ -169,60 +174,30 @@ public class JitsiService : IJitsiService
     {
         if (string.IsNullOrEmpty(_appSecret))
         {
-            // Se não há secret configurado, retornar token vazio (Jitsi público)
             return "";
         }
 
         var now = DateTimeOffset.UtcNow;
-        var expires = now.AddMinutes(_tokenExpirationMinutes);
+        var exp = now.AddMinutes(_tokenExpirationMinutes);
 
-        // Claims padrão do Jitsi JWT
-        var claims = new List<Claim>
-        {
-            // Claims de autenticação
-            new Claim(JwtRegisteredClaimNames.Iss, _appId),
-            new Claim(JwtRegisteredClaimNames.Sub, _domain),
-            new Claim(JwtRegisteredClaimNames.Aud, _appId),
-            new Claim(JwtRegisteredClaimNames.Iat, now.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
-            new Claim(JwtRegisteredClaimNames.Exp, expires.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
-            new Claim(JwtRegisteredClaimNames.Nbf, now.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
-            
-            // Room claim - restringe o token a uma sala específica
-            new Claim("room", roomName),
-        };
-
-        // Criar o payload do token com a estrutura do Jitsi
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_appSecret));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-        // Criar payload customizado com context (formato Jitsi)
+        // Payload mínimo do Jitsi JWT
         var header = new JwtHeader(credentials);
         var payload = new JwtPayload
         {
             { "iss", _appId },
-            { "sub", _domain },
             { "aud", _appId },
             { "iat", now.ToUnixTimeSeconds() },
-            { "exp", expires.ToUnixTimeSeconds() },
-            { "nbf", now.ToUnixTimeSeconds() },
+            { "exp", exp.ToUnixTimeSeconds() },
             { "room", roomName },
             { "context", new Dictionary<string, object>
                 {
                     { "user", new Dictionary<string, object>
                         {
-                            { "id", userId },
                             { "name", displayName },
-                            { "email", email },
-                            { "avatar", avatarUrl ?? "" },
                             { "moderator", isModerator }
-                        }
-                    },
-                    { "features", new Dictionary<string, object>
-                        {
-                            { "livestreaming", false },
-                            { "recording", false },
-                            { "transcription", false },
-                            { "outbound-call", false }
                         }
                     }
                 }
@@ -230,7 +205,6 @@ public class JitsiService : IJitsiService
             { "moderator", isModerator }
         };
 
-        var token = new JwtSecurityToken(header, payload);
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        return new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(header, payload));
     }
 }

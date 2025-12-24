@@ -1,5 +1,7 @@
 // TeleCuidar - Configuração Customizada do Jitsi Meet
 // Este arquivo configura o Jitsi para funcionar apenas via autenticação JWT
+// IMPORTANTE: Estas configurações são aplicadas server-side, reduzindo
+// a quantidade de parâmetros passados via URL pelo JitsiMeetExternalAPI
 
 var config = {
     // ========================================
@@ -12,15 +14,48 @@ var config = {
         focus: 'focus.meet.jitsi',
     },
     
+    // ========================================
+    // CONFIGURAÇÕES DE ENTRADA NA SALA
+    // ========================================
     // Desabilitar completamente a página inicial
     enableWelcomePage: false,
     enableClosePage: false,
     
-    // Desabilitar criação de salas aleatórias
+    // Prejoin: desabilitado para entrar direto na sala
+    prejoinPageEnabled: false,
+    
+    // Iniciar com áudio e vídeo ativos
+    startWithAudioMuted: false,
+    startWithVideoMuted: false,
+    
+    // Desabilitar deep linking (apps nativos)
     disableDeepLinking: true,
     
-    // Requer autenticação JWT
-    requireDisplayName: true,
+    // Display name
+    requireDisplayName: false,
+    
+    // ========================================
+    // IDIOMA E LOCALIZAÇÃO
+    // ========================================
+    defaultLanguage: 'ptBR',
+    
+    // ========================================
+    // LOBBY / SALA DE ESPERA
+    // ========================================
+    enableLobbyChat: false,
+    hideLobbyButton: true,
+    autoKnockLobby: true,
+    lobby: {
+        autoKnock: true,
+        enableChat: false
+    },
+    
+    // ========================================
+    // INTERFACE DA CHAMADA
+    // ========================================
+    hideConferenceSubject: true,
+    hideConferenceTimer: false,
+    hideParticipantsStats: true,
     
     // ========================================
     // FUNCIONALIDADES
@@ -28,29 +63,44 @@ var config = {
     // Desabilitar recursos desnecessários
     disableInviteFunctions: true,
     doNotStoreRoom: true,
+    disablePolls: true,
+    disableReactions: false,
+    disableProfile: true,
+    disableLocalVideoFlip: false,
+    disableAddingBackgroundImages: false,
     
-    // Gravação
+    // Gravação e streaming desabilitados
     fileRecordingsEnabled: false,
     liveStreamingEnabled: false,
     
-    // Recursos de moderação
-    disableRemoteMute: false,
-    
     // ========================================
-    // INTERFACE
+    // MODERAÇÃO
     // ========================================
-    // Configurações de localização
-    defaultLanguage: 'pt',
-    
-    // Prejoin page (sala de espera)
-    prejoinConfig: {
-        enabled: true,
-        hideDisplayName: false,
-        hideExtraJoinButtons: ['no-audio', 'by-phone']
+    // Nota: O Jitsi usa o claim "moderator" do JWT para determinar permissões.
+    // Moderadores (profissionais de saúde) têm acesso a mutar/expulsar.
+    // Não-moderadores (pacientes) não têm esses controles.
+    disableRemoteMute: false, // Moderadores podem mutar outros
+    remoteVideoMenu: {
+        disableKick: false, // Moderadores podem expulsar
+        disableGrantModerator: false, // Moderadores podem promover outros
+        disablePrivateChat: false
     },
     
     // Notificações
+    notifications: [],
     disableJoinLeaveSounds: false,
+    
+    // ========================================
+    // DETECÇÃO DE ÁUDIO
+    // ========================================
+    enableNoisyMicDetection: true,
+    enableNoAudioDetection: true,
+    
+    // ========================================
+    // SEGURANÇA E PRIVACIDADE
+    // ========================================
+    // Desabilitar requisições a terceiros
+    disableThirdPartyRequests: true,
     
     // ========================================
     // PERFORMANCE
@@ -69,7 +119,7 @@ var config = {
     // Resolução de vídeo
     resolution: 720,
     
-    // Desabilitar P2P para força uso do servidor
+    // Desabilitar P2P para forçar uso do servidor
     p2p: {
         enabled: false
     },
@@ -82,17 +132,13 @@ var config = {
     defaultWelcomePageLogoUrl: '',
     
     // ========================================
-    // OUTROS
+    // INDICADORES E ESTATÍSTICAS
     // ========================================
-    // Desabilitar analytics
-    disableThirdPartyRequests: true,
-    
-    // Desabilitar feedback
-    feedbackPercentage: 0,
-    
-    // Desabilitar estatísticas de conexão
     connectionIndicators: {
         disabled: false,
         disableDetails: true
-    }
+    },
+    
+    // Desabilitar analytics e feedback
+    feedbackPercentage: 0
 };
