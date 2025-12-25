@@ -94,6 +94,14 @@ docker/ssl/*.pem
 !docker/ssl/README.md
 !jitsi-config/keys/README.md
 
+# Certificados digitais CNS
+certs/
+!certs/.gitkeep
+
+# Backups
+backups/
+!backups/.gitkeep
+
 # Backup files
 *.bak
 *.backup
