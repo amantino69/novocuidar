@@ -252,85 +252,47 @@
       .desktop-actions {
         display: flex;
         flex-direction: column;
-        align-items: center;
+        align-items: stretch;
         gap: $spacing-sm;
+        width: 100%;
 
         .drag-hint {
           font-size: $font-size-sm;
           color: var(--text-secondary);
           margin: 0;
+          text-align: center;
         }
 
         .desktop-buttons {
           display: flex;
+          flex-direction: column;
           gap: $spacing-sm;
           width: 100%;
 
           app-button {
-            flex: 1;
+            display: block;
+            width: 100%;
+
+            button, .btn {
+              width: 100%;
+            }
           }
 
-          .qr-btn {
-            padding: $spacing-md $spacing-lg;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: $spacing-xs;
-            background: var(--background);
-            border: 2px solid var(--border);
-            border-radius: $radius-md;
-            color: var(--text-secondary);
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all 0.2s;
-            font-size: $font-size-base;
-            font-weight: $font-weight-medium;
-            font-family: $font-primary;
-            position: relative;
+          app-mobile-upload-button {
+            width: 100%;
+            display: block;
+          }
+        }
+      }
 
-            .qr-text {
-              display: none;
-            }
+      // When sidebar is full-screen, buttons side by side
+      :host-context(.full-screen) & {
+        .desktop-buttons {
+          flex-direction: row;
 
-            .pulse-indicator {
-              position: absolute;
-              top: -4px;
-              right: -4px;
-              width: 12px;
-              height: 12px;
-              background: var(--green-500);
-              border-radius: 50%;
-              animation: pulse 2s infinite;
-            }
-
-            @keyframes pulse {
-              0% { transform: scale(1); opacity: 1; }
-              50% { transform: scale(1.2); opacity: 0.7; }
-              100% { transform: scale(1); opacity: 1; }
-            }
-
-            &.active {
-              border-color: var(--green-500);
-              color: var(--green-600);
-              background: var(--green-50);
-            }
-
-            @include mobile {
-               padding: $spacing-sm;
-               border-width: 1px;
-            }
-
-            // On Desktop, show text to match size
-            @media (min-width: 769px) {
-               width: auto;
-               .qr-text { display: block; }
-            }
-
-            &:hover {
-              background: var(--neutral-100);
-              color: var(--primary-600);
-              border-color: var(--primary-200);
-            }
+          app-button,
+          app-mobile-upload-button {
+            flex: 1;
           }
         }
       }

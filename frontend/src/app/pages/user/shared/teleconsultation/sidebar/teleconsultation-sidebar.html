@@ -132,6 +132,14 @@
       </app-receita-tab>
     </div>
 
+    <!-- Atestado -->
+    <div class="tab-content" *ngIf="activeTab === 'Atestado'" style="height: 100%">
+      <app-atestado-tab
+        [appointmentId]="appointmentId"
+        [userrole]="userrole">
+      </app-atestado-tab>
+    </div>
+
     <!-- Retorno -->
     <div class="tab-content" *ngIf="activeTab === 'Retorno'" style="height: 100%">
       <app-return-tab

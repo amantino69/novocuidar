@@ -20,6 +20,9 @@
 
         <div class="controls-section">
           <app-theme-toggle />
+          <button class="icon-btn sidebar-btn" (click)="toggleSidebar()" title="Abrir Painel Lateral" *ngIf="!isSidebarOpen">
+            <app-icon name="panel-right" [size]="20" />
+          </button>
           <button class="icon-btn" (click)="toggleHeader()" title="Ocultar Cabeçalho">
             <app-icon name="chevron-up" [size]="20" />
           </button>
@@ -64,10 +67,6 @@
       </div>
     </div>
 
-    <!-- Sidebar Toggle Button (Bottom Right) -->
-    <button class="sidebar-toggle-btn" (click)="toggleSidebar()" *ngIf="!isSidebarOpen">
-      <app-icon name="menu" [size]="24" />
-    </button>
   </div>
 
   <!-- Sidebar -->

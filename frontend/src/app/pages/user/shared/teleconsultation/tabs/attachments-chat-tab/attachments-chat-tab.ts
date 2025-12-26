@@ -4,12 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { ButtonComponent } from '@shared/components/atoms/button/button';
 import { MediaPreviewModalComponent } from '@shared/components/molecules/media-preview-modal/media-preview-modal';
-import { QrCodeModalComponent } from '@pages/user/patient/pre-consultation/qrcode-modal/qrcode-modal';
+import { MobileUploadButtonComponent, MobileUploadReceivedEvent } from '@shared/components/organisms/mobile-upload-button/mobile-upload-button';
 import { AttachmentsChatService, AttachmentMessage } from '@core/services/attachments-chat.service';
-import { TemporaryUploadService } from '@core/services/temporary-upload.service';
 import { ModalService } from '@core/services/modal.service';
 import { DeviceDetectorService } from '@core/services/device-detector.service';
-import { TeleconsultationRealTimeService, AttachmentEvent, MobileUploadEvent } from '@core/services/teleconsultation-realtime.service';
+import { TeleconsultationRealTimeService, AttachmentEvent } from '@core/services/teleconsultation-realtime.service';
 import { Subject, takeUntil } from 'rxjs';
 
 interface PendingFile {
@@ -22,7 +21,7 @@ interface PendingFile {
 @Component({
   selector: 'app-attachments-chat-tab',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent, ButtonComponent, MediaPreviewModalComponent, QrCodeModalComponent],
+  imports: [CommonModule, FormsModule, IconComponent, ButtonComponent, MediaPreviewModalComponent, MobileUploadButtonComponent],
   templateUrl: './attachments-chat-tab.html',
   styleUrls: ['./attachments-chat-tab.scss']
 })
@@ -51,11 +50,6 @@ export class AttachmentsChatTabComponent implements OnInit, OnDestroy {
   // Editing existing message
   editingMessageId: string | null = null;
 
-  // Mobile Upload
-  isQrCodeModalOpen = false;
-  mobileUploadUrl = '';
-  mobileUploadToken = '';
-
   // Preview State
   previewModalOpen = false;
   previewUrl = '';
@@ -68,7 +62,6 @@ export class AttachmentsChatTabComponent implements OnInit, OnDestroy {
 
   constructor(
     private chatService: AttachmentsChatService,
-    private temporaryUploadService: TemporaryUploadService,
     private modalService: ModalService,
     private cdr: ChangeDetectorRef,
     private deviceDetector: DeviceDetectorService,
@@ -100,10 +93,6 @@ export class AttachmentsChatTabComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
-    // Unregister mobile upload token if active
-    if (this.mobileUploadToken) {
-      this.teleconsultationRealTime.unregisterMobileUploadToken(this.mobileUploadToken);
-    }
   }
 
   private setupRealTimeSubscriptions(): void {
@@ -130,13 +119,6 @@ export class AttachmentsChatTabComponent implements OnInit, OnDestroy {
           this.messages = this.messages.filter(m => m.id !== event.attachmentId);
           this.cdr.detectChanges();
         }
-      });
-
-    // Listen for mobile uploads via SignalR
-    this.teleconsultationRealTime.mobileUploadReceived$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((event: MobileUploadEvent) => {
-        this.handleMobileUploadReceived(event);
       });
   }
 
@@ -311,38 +293,11 @@ export class AttachmentsChatTabComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ====== MOBILE UPLOAD ======
-  openMobileUpload() {
-    if (!this.mobileUploadToken) {
-      this.mobileUploadToken = Math.random().toString(36).substring(7);
-      this.mobileUploadUrl = `${window.location.origin}/mobile-upload?token=${this.mobileUploadToken}`;
-      // Register for SignalR notifications in background
-      this.teleconsultationRealTime.registerMobileUploadToken(this.mobileUploadToken);
-    }
-    this.isQrCodeModalOpen = true;
-  }
-
-  async regenerateQrCode() {
-    // Unregister old token
-    if (this.mobileUploadToken) {
-      await this.teleconsultationRealTime.unregisterMobileUploadToken(this.mobileUploadToken);
-    }
-    // Generate new token
-    this.mobileUploadToken = Math.random().toString(36).substring(7);
-    this.mobileUploadUrl = `${window.location.origin}/mobile-upload?token=${this.mobileUploadToken}`;
-    // Register for SignalR notifications
-    await this.teleconsultationRealTime.registerMobileUploadToken(this.mobileUploadToken);
-  }
-
-  closeQrCodeModal() {
-    this.isQrCodeModalOpen = false;
-    // Keep SignalR subscription active even with modal closed
-  }
-
+  // ====== MOBILE UPLOAD (via component) ======
   /**
-   * Handles mobile upload received via SignalR (instant notification)
+   * Handles mobile upload received from MobileUploadButtonComponent
    */
-  private handleMobileUploadReceived(event: MobileUploadEvent) {
+  onMobileUploadReceived(event: MobileUploadReceivedEvent) {
     if (!this.appointmentId) return;
 
     // Create message from the received upload
@@ -363,14 +318,6 @@ export class AttachmentsChatTabComponent implements OnInit, OnDestroy {
       next: () => {
         // Notify other participant via SignalR
         this.teleconsultationRealTime.notifyAttachmentAdded(this.appointmentId!, newMessage);
-        
-        // Show notification
-        this.modalService.alert({
-          title: 'Upload Recebido',
-          message: `Arquivo "${event.title}" enviado! Você pode enviar mais arquivos.`,
-          variant: 'success'
-        }).subscribe();
-        
         this.cdr.detectChanges();
       },
       error: (err) => {

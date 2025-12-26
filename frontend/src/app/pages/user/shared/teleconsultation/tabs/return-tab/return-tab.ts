@@ -48,15 +48,20 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   @Input() appointment: Appointment | null = null;
   @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' = 'PROFESSIONAL';
 
+  // View mode: 'list' to show existing returns, 'scheduling' to create new
+  viewMode: 'list' | 'scheduling' = 'list';
+  existingReturns: Appointment[] = [];
+  isLoadingReturns: boolean = false;
+
   currentStep: Step = 'date';
   
   steps: { id: Step, label: string }[] = [
     { id: 'date', label: 'Data' },
-    { id: 'time', label: 'HorÃ¡rio' },
-    { id: 'confirmation', label: 'ConfirmaÃ§Ã£o' }
+    { id: 'time', label: 'Horário' },
+    { id: 'confirmation', label: 'Confirmação' }
   ];
 
-  weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'SÃ¡b'];
+  weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
   // Step 1: Date Selection
   currentMonth: Date = new Date();
@@ -93,7 +98,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   constructor() {
     afterNextRender(() => {
       this.initializeSignalR();
-      this.generateCalendar();
+      this.loadExistingReturns();
       
       // Monitorar expiração de reserva
       this.slotReservationService.getReservationExpired$().subscribe(() => {
@@ -121,7 +126,64 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
     if (changes['appointment'] && this.appointment) {
       this.releaseCurrentReservation();
       this.updateSignalRGroup();
+      this.loadExistingReturns();
     }
+  }
+
+  /**
+   * Carrega os retornos já agendados para este paciente/profissional
+   */
+  loadExistingReturns(): void {
+    if (!this.appointment) return;
+
+    this.isLoadingReturns = true;
+    
+    // Buscar agendamentos do tipo Return para o mesmo paciente e profissional
+    // que foram agendados após a data desta consulta
+    this.appointmentsService.getAppointments({
+      patientId: this.appointment.patientId,
+      professionalId: this.appointment.professionalId,
+      specialtyId: this.appointment.specialtyId
+    }, 1, 50).subscribe({
+      next: (response) => {
+        // Filtrar apenas retornos agendados após esta consulta
+        const currentDate = new Date(this.appointment!.date);
+        this.existingReturns = response.data.filter(apt => 
+          apt.type === 'Return' && 
+          apt.id !== this.appointment!.id &&
+          new Date(apt.date) >= currentDate &&
+          apt.status !== 'Cancelled'
+        ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        
+        this.isLoadingReturns = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Erro ao carregar retornos:', err);
+        this.existingReturns = [];
+        this.isLoadingReturns = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /**
+   * Inicia o fluxo de agendamento de novo retorno
+   */
+  startNewReturn(): void {
+    this.viewMode = 'scheduling';
+    this.generateCalendar();
+  }
+
+  /**
+   * Volta para a lista de retornos
+   */
+  backToList(): void {
+    this.viewMode = 'list';
+    this.currentStep = 'date';
+    this.selectedDate = null;
+    this.selectedSlot = null;
+    this.releaseCurrentReservation();
   }
 
   ngOnDestroy(): void {
@@ -129,11 +191,12 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
     this.releaseCurrentReservation();
     this.pendingReservation = null;
 
-    // Clean up SignalR subscriptions and connection
+    // Clean up SignalR subscriptions
     this.signalRSubscriptions.forEach(sub => sub.unsubscribe());
-    if (this.currentProfessionalGroup) {
-      this.schedulingSignalR.leaveProfessionalGroup(this.currentProfessionalGroup);
-    }
+    
+    // Apenas desconectar - não precisa chamar leaveProfessionalGroup antes
+    // pois o disconnect já limpa tudo e evita race condition
+    this.currentProfessionalGroup = null;
     this.schedulingSignalR.disconnect();
   }
 
@@ -250,8 +313,13 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
         currentReservation.professionalId === notification.professionalId &&
         currentReservation.time === notification.time;
     
-    if ((isPendingReservation || isCurrentReservation) && !notification.isAvailable) {
-      console.log('[SignalR] Ignorando notificação - é nossa própria reserva');
+    // Também verificar se é o slot selecionado no step de confirmação (reserva em andamento)
+    const isSelectedSlotBeingReserved = this.selectedSlot?.time === notification.time &&
+        this.currentStep === 'confirmation' &&
+        this.appointment.professionalId === notification.professionalId;
+    
+    if ((isPendingReservation || isCurrentReservation || isSelectedSlotBeingReserved) && !notification.isAvailable) {
+      console.log('[SignalR] Ignorando notificação - é nossa própria reserva ou slot selecionado');
       return;
     }
 
@@ -316,6 +384,23 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
     // Para return-tab, não precisamos tratar profissionais pois é fixo
     // Mas podemos usar para atualizar a disponibilidade do slot
     if (!this.appointment || !this.selectedDate) {
+      return;
+    }
+
+    // Ignorar se é nossa própria reserva
+    const currentReservation = this.slotReservationService.getCurrentReservation();
+    const isPendingReservation = this.pendingReservation &&
+        this.pendingReservation.professionalId === notification.professionalId &&
+        this.pendingReservation.time === notification.time;
+    const isCurrentReservation = currentReservation && 
+        currentReservation.professionalId === notification.professionalId &&
+        currentReservation.time === notification.time;
+    const isSelectedSlotBeingReserved = this.selectedSlot?.time === notification.time &&
+        this.currentStep === 'confirmation' &&
+        this.appointment.professionalId === notification.professionalId;
+    
+    if ((isPendingReservation || isCurrentReservation || isSelectedSlotBeingReserved) && !notification.isAvailable) {
+      console.log('[SignalR] Ignorando slotProfessionalsUpdate - é nossa própria reserva');
       return;
     }
 
@@ -671,16 +756,38 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   scheduleAnother() {
     this.returnScheduled = false;
     this.scheduledAppointment = null;
+    this.viewMode = 'list';
     this.currentStep = 'date';
     this.selectedDate = null;
     this.selectedSlot = null;
     this.observation = '';
-    this.generateCalendar();
+    this.loadExistingReturns();
   }
 
   formatDate(dateString: string): string {
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR');
   }
-}
 
+  getStatusLabel(status: string): string {
+    const statusLabels: Record<string, string> = {
+      'Scheduled': 'Agendado',
+      'Confirmed': 'Confirmado',
+      'InProgress': 'Em andamento',
+      'Completed': 'Concluído',
+      'Cancelled': 'Cancelado'
+    };
+    return statusLabels[status] || status;
+  }
+
+  getStatusClass(status: string): string {
+    const statusClasses: Record<string, string> = {
+      'Scheduled': 'status-scheduled',
+      'Confirmed': 'status-confirmed',
+      'InProgress': 'status-in-progress',
+      'Completed': 'status-completed',
+      'Cancelled': 'status-cancelled'
+    };
+    return statusClasses[status] || '';
+  }
+}

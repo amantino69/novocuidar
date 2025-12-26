@@ -110,13 +110,22 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     order: 9
   },
   {
+    id: 'atestado',
+    label: 'Atestado',
+    icon: 'file',
+    roles: ['PROFESSIONAL', 'ADMIN'],
+    showInTeleconsultation: true,
+    showInDetails: true,
+    order: 10
+  },
+  {
     id: 'ai',
     label: 'IA',
     icon: 'activity',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
     showInDetails: true,
-    order: 10
+    order: 11
   },
   {
     id: 'cns',
@@ -125,7 +134,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
     showInDetails: true,
-    order: 11
+    order: 12
   },
   {
     id: 'return',
@@ -134,7 +143,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
     showInDetails: true,
-    order: 12
+    order: 13
   },
   {
     id: 'referral',
@@ -143,7 +152,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
     showInDetails: true,
-    order: 13
+    order: 14
   },
   {
     id: 'conclusion',
@@ -152,7 +161,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
     showInDetails: true,
-    order: 14
+    order: 15
   }
 ];
 
@@ -195,6 +204,7 @@ export const TAB_ID_TO_LEGACY_NAME: Record<string, string> = {
   'attachments': 'Chat Anexos',
   'soap': 'SOAP',
   'receita': 'Receita',
+  'atestado': 'Atestado',
   'ai': 'IA',
   'cns': 'CNS',
   'return': 'Retorno',

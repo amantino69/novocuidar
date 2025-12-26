@@ -176,16 +176,17 @@
       <div class="desktop-actions" *ngIf="!isMobile">
         <p class="drag-hint">Arraste arquivos aqui ou</p>
         <div class="desktop-buttons">
-          <app-button variant="outline" (click)="triggerFileInput()">
+          <app-button variant="outline" [fullWidth]="true" (click)="triggerFileInput()">
             <app-icon name="upload-cloud" [size]="20" />
             Adicionar Anexo
           </app-button>
           
-          <button class="qr-btn" [class.active]="mobileUploadToken" (click)="openMobileUpload()" title="Enviar pelo celular">
-            <span class="pulse-indicator" *ngIf="mobileUploadToken"></span>
-            <app-icon name="smartphone" [size]="20" />
-            <span class="qr-text">{{ mobileUploadToken ? 'Link Ativo' : 'Usar Celular' }}</span>
-          </button>
+          <app-mobile-upload-button
+            variant="button"
+            buttonText="Usar Celular"
+            activeText="Link Ativo - Ver QR Code"
+            (uploadReceived)="onMobileUploadReceived($event)">
+          </app-mobile-upload-button>
         </div>
       </div>
     </div>
@@ -193,10 +194,4 @@
   }
 </div>
 
-<!-- QR Code Modal -->
-<app-qrcode-modal
-  [isOpen]="isQrCodeModalOpen"
-  [uploadUrl]="mobileUploadUrl"
-  (close)="closeQrCodeModal()"
-  (regenerate)="regenerateQrCode()">
-</app-qrcode-modal>
+<!-- QR Code Modal is now inside MobileUploadButtonComponent -->

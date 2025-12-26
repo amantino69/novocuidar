@@ -8,6 +8,10 @@
 
   .header {
     margin-bottom: $spacing-lg;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: $spacing-md;
 
     .header-content {
       display: flex;
@@ -37,10 +41,103 @@
         }
       }
     }
+
+    .header-actions {
+      flex-shrink: 0;
+    }
   }
 
   .step-content {
     animation: fadeIn 0.3s ease;
+  }
+}
+
+// Referrals List
+.referrals-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+
+  .referral-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: $border-radius-lg;
+    padding: $spacing-md;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: var(--primary-300);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .referral-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: $spacing-sm;
+
+      .referral-specialty {
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
+        font-weight: 600;
+        color: var(--text-primary);
+
+        app-icon {
+          color: var(--primary-500);
+        }
+      }
+
+      .status-badge {
+        padding: $spacing-xs $spacing-sm;
+        border-radius: $border-radius-sm;
+        font-size: $font-size-xs;
+        font-weight: 500;
+
+        &.status-scheduled {
+          background: var(--blue-100);
+          color: var(--blue-700);
+        }
+
+        &.status-confirmed {
+          background: var(--green-100);
+          color: var(--green-700);
+        }
+
+        &.status-in-progress {
+          background: var(--yellow-100);
+          color: var(--yellow-700);
+        }
+
+        &.status-completed {
+          background: var(--green-100);
+          color: var(--green-700);
+        }
+
+        &.status-cancelled {
+          background: var(--red-100);
+          color: var(--red-700);
+        }
+      }
+    }
+
+    .referral-details {
+      display: flex;
+      flex-direction: column;
+      gap: $spacing-xs;
+
+      .detail-item {
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
+        font-size: $font-size-sm;
+        color: var(--text-secondary);
+
+        app-icon {
+          color: var(--text-muted);
+        }
+      }
+    }
   }
 }
 
@@ -334,6 +431,7 @@
       background: var(--bg-base);
       min-height: 40px;
       gap: 2px;
+      border: 1px solid var(--border-color);
 
       .day-number {
         font-size: 0.75rem;
@@ -361,13 +459,34 @@
         }
       }
 
-      &:hover:not(.disabled) {
-        background: var(--primary-50);
-        border-color: var(--primary-300);
+      // Dias disponíveis com estilo verde
+      &:not(.disabled):not(.selected) {
+        background-color: var(--green-50);
+        border-color: var(--green-200);
+
+        .day-number {
+          color: var(--green-900);
+        }
+
+        .day-info .slots {
+          color: var(--green-700);
+        }
+
+        .day-info .pros {
+          color: var(--green-600);
+        }
+
+        &:hover {
+          background-color: var(--green-100);
+          border-color: var(--green-300);
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-sm);
+        }
       }
 
       &.selected {
         background: var(--primary-500);
+        border-color: var(--primary-500);
         
         .day-number, .day-info .slots, .day-info .pros {
           color: white;
@@ -378,6 +497,7 @@
         opacity: 0.4;
         cursor: not-allowed;
         background: var(--bg-muted);
+        border: none;
       }
     }
   }

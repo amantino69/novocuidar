@@ -58,8 +58,8 @@
 
         &.subjective .letter { background-color: var(--blue-500); }
         &.objective .letter { background-color: var(--green-500); }
-        &.assessment .letter { background-color: var(--yellow-500); }
-        &.plan .letter { background-color: var(--purple-500); }
+        &.assessment .letter { background-color: var(--amber-500); }
+        &.plan .letter { background-color: var(--primary-700); }
       }
 
       textarea {

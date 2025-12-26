@@ -27,16 +27,83 @@
     </div>
 
     <app-button variant="outline" (click)="scheduleAnother()">
-      <app-icon name="plus" [size]="16"></app-icon>
-      Fazer Outro Encaminhamento
+      <app-icon name="check" [size]="16"></app-icon>
+      Concluir
     </app-button>
   </div>
 
-  <!-- Scheduling Flow -->
-  <ng-container *ngIf="!referralScheduled">
+  <!-- List View - Show existing referrals -->
+  <ng-container *ngIf="!referralScheduled && viewMode === 'list'">
     <div class="header">
       <div class="header-content">
-        <app-button *ngIf="currentStep !== 'specialty'" variant="ghost" size="sm" (click)="goBack()">
+        <div class="title-section">
+          <app-icon name="arrow-right" [size]="24" />
+          <div>
+            <h2>Encaminhamentos</h2>
+            <p class="subtitle">Paciente: {{ appointment?.patientName }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <app-button variant="primary" size="sm" (click)="startNewReferral()">
+          <app-icon name="plus" [size]="16"></app-icon>
+          Novo Encaminhamento
+        </app-button>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading-state" *ngIf="isLoadingReferrals">
+      <app-icon name="clock" [size]="32"></app-icon>
+      <p>Carregando encaminhamentos...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="!isLoadingReferrals && existingReferrals.length === 0">
+      <app-icon name="arrow-right" [size]="48"></app-icon>
+      <h4>Nenhum encaminhamento agendado</h4>
+      <p>Clique em "Novo Encaminhamento" para encaminhar o paciente para outra especialidade.</p>
+    </div>
+
+    <!-- Referrals List -->
+    <div class="referrals-list" *ngIf="!isLoadingReferrals && existingReferrals.length > 0">
+      <div class="referral-card" *ngFor="let ref of existingReferrals">
+        <div class="referral-header">
+          <div class="referral-specialty">
+            <app-icon name="activity" [size]="18"></app-icon>
+            <span>{{ ref.specialtyName }}</span>
+          </div>
+          <span class="status-badge" [ngClass]="getStatusClass(ref.status)">
+            {{ getStatusLabel(ref.status) }}
+          </span>
+        </div>
+        <div class="referral-details">
+          <div class="detail-item">
+            <app-icon name="user" [size]="16"></app-icon>
+            <span>{{ ref.professionalName }}</span>
+          </div>
+          <div class="detail-item">
+            <app-icon name="calendar" [size]="16"></app-icon>
+            <span>{{ ref.date | date:'fullDate':'':'pt-BR' }}</span>
+          </div>
+          <div class="detail-item">
+            <app-icon name="clock" [size]="16"></app-icon>
+            <span>{{ ref.time }}</span>
+          </div>
+          <div class="detail-item" *ngIf="ref.observation">
+            <app-icon name="file" [size]="16"></app-icon>
+            <span>{{ ref.observation }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- Scheduling Flow -->
+  <ng-container *ngIf="!referralScheduled && viewMode === 'scheduling'">
+    <div class="header">
+      <div class="header-content">
+        <app-button variant="ghost" size="sm" (click)="backToList()">
           <app-icon name="arrow-left" [size]="16"></app-icon>
           Voltar
         </app-button>

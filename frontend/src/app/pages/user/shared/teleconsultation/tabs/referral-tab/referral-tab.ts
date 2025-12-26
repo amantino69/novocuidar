@@ -55,6 +55,11 @@ export class ReferralTabComponent implements OnDestroy, OnChanges {
   @Input() appointment: Appointment | null = null;
   @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' = 'PROFESSIONAL';
 
+  // View mode: 'list' to show existing referrals, 'scheduling' to create new
+  viewMode: 'list' | 'scheduling' = 'list';
+  existingReferrals: Appointment[] = [];
+  isLoadingReferrals: boolean = false;
+
   currentStep: Step = 'specialty';
   
   steps: { id: Step, label: string }[] = [
@@ -112,6 +117,7 @@ export class ReferralTabComponent implements OnDestroy, OnChanges {
     afterNextRender(() => {
       this.initializeSignalR();
       this.loadSpecialties();
+      this.loadExistingReferrals();
       
       // Monitorar expiração de reserva
       this.slotReservationService.getReservationExpired$().subscribe(() => {
@@ -139,6 +145,7 @@ export class ReferralTabComponent implements OnDestroy, OnChanges {
       // Reset when appointment changes
       this.releaseCurrentReservation();
       this.resetAll();
+      this.loadExistingReferrals();
     }
   }
 
@@ -147,12 +154,63 @@ export class ReferralTabComponent implements OnDestroy, OnChanges {
     this.releaseCurrentReservation();
     this.pendingReservation = null;
 
-    // Clean up SignalR subscriptions and connection
+    // Clean up SignalR subscriptions
     this.signalRSubscriptions.forEach(sub => sub.unsubscribe());
-    if (this.currentSpecialtyGroup) {
-      this.schedulingSignalR.leaveSpecialtyGroup(this.currentSpecialtyGroup);
-    }
+    
+    // Apenas desconectar - não precisa chamar leaveSpecialtyGroup antes
+    // pois o disconnect já limpa tudo e evita race condition
+    this.currentSpecialtyGroup = null;
     this.schedulingSignalR.disconnect();
+  }
+
+  /**
+   * Carrega os encaminhamentos já agendados para este paciente
+   */
+  loadExistingReferrals(): void {
+    if (!this.appointment) return;
+
+    this.isLoadingReferrals = true;
+    
+    // Buscar agendamentos do tipo Referral para o mesmo paciente
+    this.appointmentsService.getAppointments({
+      patientId: this.appointment.patientId
+    }, 1, 50).subscribe({
+      next: (response) => {
+        // Filtrar apenas encaminhamentos agendados após esta consulta
+        const currentDate = new Date(this.appointment!.date);
+        this.existingReferrals = response.data.filter(apt => 
+          apt.type === 'Referral' && 
+          apt.id !== this.appointment!.id &&
+          new Date(apt.date) >= currentDate &&
+          apt.status !== 'Cancelled'
+        ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        
+        this.isLoadingReferrals = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Erro ao carregar encaminhamentos:', err);
+        this.existingReferrals = [];
+        this.isLoadingReferrals = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /**
+   * Inicia o fluxo de agendamento de novo encaminhamento
+   */
+  startNewReferral(): void {
+    this.viewMode = 'scheduling';
+  }
+
+  /**
+   * Volta para a lista de encaminhamentos
+   */
+  backToList(): void {
+    this.viewMode = 'list';
+    this.resetAll();
+    this.releaseCurrentReservation();
   }
 
   /**
@@ -920,7 +978,9 @@ export class ReferralTabComponent implements OnDestroy, OnChanges {
   scheduleAnother() {
     this.referralScheduled = false;
     this.scheduledAppointment = null;
+    this.viewMode = 'list';
     this.resetAll();
+    this.loadExistingReferrals();
   }
 
   resetAll() {
@@ -937,5 +997,27 @@ export class ReferralTabComponent implements OnDestroy, OnChanges {
   formatDate(dateString: string): string {
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR');
+  }
+
+  getStatusLabel(status: string): string {
+    const statusLabels: Record<string, string> = {
+      'Scheduled': 'Agendado',
+      'Confirmed': 'Confirmado',
+      'InProgress': 'Em andamento',
+      'Completed': 'Concluído',
+      'Cancelled': 'Cancelado'
+    };
+    return statusLabels[status] || status;
+  }
+
+  getStatusClass(status: string): string {
+    const statusClasses: Record<string, string> = {
+      'Scheduled': 'status-scheduled',
+      'Confirmed': 'status-confirmed',
+      'InProgress': 'status-in-progress',
+      'Completed': 'status-completed',
+      'Cancelled': 'status-cancelled'
+    };
+    return statusClasses[status] || '';
   }
 }

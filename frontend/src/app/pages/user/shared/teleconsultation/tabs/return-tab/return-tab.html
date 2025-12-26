@@ -23,16 +23,75 @@
     </div>
 
     <app-button variant="outline" (click)="scheduleAnother()">
-      <app-icon name="plus" [size]="16"></app-icon>
-      Agendar Outro Retorno
+      <app-icon name="check" [size]="16"></app-icon>
+      Concluir
     </app-button>
   </div>
 
-  <!-- Scheduling Flow -->
-  <ng-container *ngIf="!returnScheduled">
+  <!-- List View - Show existing returns -->
+  <ng-container *ngIf="!returnScheduled && viewMode === 'list'">
     <div class="header">
       <div class="header-content">
-        <app-button *ngIf="currentStep !== 'date'" variant="ghost" size="sm" (click)="goBack()">
+        <div class="title-section">
+          <app-icon name="calendar" [size]="24" />
+          <div>
+            <h2>Retornos</h2>
+            <p class="subtitle">{{ appointment?.specialtyName }} - {{ appointment?.professionalName }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <app-button variant="primary" size="sm" (click)="startNewReturn()">
+          <app-icon name="plus" [size]="16"></app-icon>
+          Novo Retorno
+        </app-button>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading-state" *ngIf="isLoadingReturns">
+      <app-icon name="clock" [size]="32"></app-icon>
+      <p>Carregando retornos...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="!isLoadingReturns && existingReturns.length === 0">
+      <app-icon name="calendar" [size]="48"></app-icon>
+      <h4>Nenhum retorno agendado</h4>
+      <p>Clique em "Novo Retorno" para agendar um retorno para esta consulta.</p>
+    </div>
+
+    <!-- Returns List -->
+    <div class="returns-list" *ngIf="!isLoadingReturns && existingReturns.length > 0">
+      <div class="return-card" *ngFor="let ret of existingReturns">
+        <div class="return-header">
+          <div class="return-date">
+            <app-icon name="calendar" [size]="18"></app-icon>
+            <span>{{ ret.date | date:'fullDate':'':'pt-BR' }}</span>
+          </div>
+          <span class="status-badge" [ngClass]="getStatusClass(ret.status)">
+            {{ getStatusLabel(ret.status) }}
+          </span>
+        </div>
+        <div class="return-details">
+          <div class="detail-item">
+            <app-icon name="clock" [size]="16"></app-icon>
+            <span>{{ ret.time }}</span>
+          </div>
+          <div class="detail-item" *ngIf="ret.observation">
+            <app-icon name="file" [size]="16"></app-icon>
+            <span>{{ ret.observation }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- Scheduling Flow -->
+  <ng-container *ngIf="!returnScheduled && viewMode === 'scheduling'">
+    <div class="header">
+      <div class="header-content">
+        <app-button variant="ghost" size="sm" (click)="backToList()">
           <app-icon name="arrow-left" [size]="16"></app-icon>
           Voltar
         </app-button>

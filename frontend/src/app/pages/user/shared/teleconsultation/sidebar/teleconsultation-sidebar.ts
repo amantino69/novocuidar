@@ -13,6 +13,7 @@ import { IotTabComponent } from '../tabs/iot-tab/iot-tab';
 import { AITabComponent } from '../tabs/ai-tab/ai-tab';
 import { CnsTabComponent } from '../tabs/cns-tab/cns-tab';
 import { ReceitaTabComponent } from '../tabs/receita-tab/receita-tab';
+import { AtestadoTabComponent } from '../tabs/atestado-tab/atestado-tab';
 import { ReturnTabComponent } from './../tabs/return-tab/return-tab';
 import { ReferralTabComponent } from './../tabs/referral-tab/referral-tab';
 import { DictationService } from '@core/services/dictation.service';
@@ -37,6 +38,7 @@ import { Subject, takeUntil } from 'rxjs';
     AITabComponent,
     CnsTabComponent,
     ReceitaTabComponent,
+    AtestadoTabComponent,
     ReturnTabComponent,
     ReferralTabComponent
   ],
