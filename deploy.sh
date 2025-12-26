@@ -54,20 +54,11 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Verificar se é Ubuntu
-if ! grep -q "Ubuntu" /etc/os-release 2>/dev/null; then
-    log_warning "Este script foi testado apenas no Ubuntu. Continuando mesmo assim..."
-fi
-
-# Verificar versão do Ubuntu
-UBUNTU_VERSION=$(lsb_release -rs 2>/dev/null || echo "unknown")
-log_info "Ubuntu versão: $UBUNTU_VERSION"
-
 # ========================================
 # VARIÁVEIS DE CONFIGURAÇÃO
 # ========================================
-# Diretório de instalação (onde o script está sendo executado)
-INSTALL_DIR=$(pwd)
+# Diretório de instalação
+INSTALL_DIR="/opt/telecuidar"
 ENV_FILE="$INSTALL_DIR/.env"
 ENV_PROD_FILE="$INSTALL_DIR/.env.prod"
 
@@ -85,6 +76,50 @@ JITSI_KEYS_DIR="$INSTALL_DIR/jitsi-config/keys"
 
 # Email para Let's Encrypt (será solicitado)
 CERTBOT_EMAIL=""
+
+# ========================================
+# CLONAR REPOSITÓRIO DO GITHUB
+# ========================================
+log_step "CLONANDO REPOSITÓRIO DO GITHUB"
+
+REPO_URL="https://github.com/guilhermevieirao/telecuidar.git"
+
+# Criar diretório de instalação se não existir
+mkdir -p "$INSTALL_DIR"
+
+# Se o diretório já contém arquivos, perguntar se deseja limpar
+if [ "$(ls -A $INSTALL_DIR 2>/dev/null)" ]; then
+    log_warning "Diretório $INSTALL_DIR já contém arquivos"
+    echo -e "${YELLOW}Deseja limpar e clonar novamente? (s/n):${NC}"
+    read -r CLEAN_DIR
+    if [ "$CLEAN_DIR" = "s" ] || [ "$CLEAN_DIR" = "S" ]; then
+        rm -rf "$INSTALL_DIR"/*
+        rm -rf "$INSTALL_DIR"/.[!.]* 2>/dev/null || true
+    else
+        log_info "Mantendo arquivos existentes..."
+    fi
+fi
+
+# Clonar repositório diretamente no diretório de instalação
+if [ ! -f "$INSTALL_DIR/docker-compose.yml" ]; then
+    log_info "Clonando repositório de $REPO_URL..."
+    git clone "$REPO_URL" "$INSTALL_DIR"
+    log_success "Repositório clonado em $INSTALL_DIR"
+else
+    log_info "Repositório já existe em $INSTALL_DIR"
+fi
+
+# Entrar no diretório de instalação
+cd "$INSTALL_DIR"
+
+# Verificar se é Ubuntu
+if ! grep -q "Ubuntu" /etc/os-release 2>/dev/null; then
+    log_warning "Este script foi testado apenas no Ubuntu. Continuando mesmo assim..."
+fi
+
+# Verificar versão do Ubuntu
+UBUNTU_VERSION=$(lsb_release -rs 2>/dev/null || echo "unknown")
+log_info "Ubuntu versão: $UBUNTU_VERSION"
 
 # ========================================
 # SOLICITAR INFORMAÇÕES
