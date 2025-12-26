@@ -12,14 +12,16 @@ public interface IJitsiService
     /// </summary>
     /// <param name="userId">ID do usuário</param>
     /// <param name="appointmentId">ID da consulta</param>
+    /// <param name="requestHost">Host da requisição (para domínio dinâmico em dev)</param>
     /// <returns>Token e configurações para acesso à sala</returns>
-    Task<JitsiTokenResponseDto?> GenerateTokenAsync(Guid userId, Guid appointmentId);
+    Task<JitsiTokenResponseDto?> GenerateTokenAsync(Guid userId, Guid appointmentId, string? requestHost = null);
     
     /// <summary>
     /// Obtém as configurações do Jitsi
     /// </summary>
+    /// <param name="requestHost">Host da requisição (para domínio dinâmico em dev)</param>
     /// <returns>Configurações do Jitsi</returns>
-    JitsiConfigDto GetConfig();
+    JitsiConfigDto GetConfig(string? requestHost = null);
     
     /// <summary>
     /// Valida se um usuário tem acesso a uma sala específica

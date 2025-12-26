@@ -34,7 +34,8 @@ public class JitsiController : ControllerBase
     [HttpGet("config")]
     public ActionResult<JitsiConfigDto> GetConfig()
     {
-        var config = _jitsiService.GetConfig();
+        var requestHost = Request.Host.Value;
+        var config = _jitsiService.GetConfig(requestHost);
         return Ok(config);
     }
 
@@ -51,8 +52,9 @@ public class JitsiController : ControllerBase
         if (userId == null)
             return Unauthorized(new { message = "Usuário não autenticado" });
 
-        // Gerar token
-        var tokenResponse = await _jitsiService.GenerateTokenAsync(userId.Value, appointmentId);
+        // Gerar token com host da requisição para domínio dinâmico
+        var requestHost = Request.Host.Value;
+        var tokenResponse = await _jitsiService.GenerateTokenAsync(userId.Value, appointmentId, requestHost);
         
         if (tokenResponse == null)
             return NotFound(new { message = "Consulta não encontrada ou você não tem permissão para acessar esta sala" });

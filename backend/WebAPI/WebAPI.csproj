@@ -19,6 +19,13 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
   </ItemGroup>
 
+  <!-- Arquivo CSV da base de medicamentos ANVISA -->
+  <ItemGroup>
+    <None Include="Data\medicamentos-anvisa.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Domain\Domain.csproj" />
     <ProjectReference Include="..\Application\Application.csproj" />

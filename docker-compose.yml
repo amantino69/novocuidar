@@ -268,6 +268,7 @@ services:
       - backend-data:/app/data
       - backend-uploads:/app/uploads
       - backend-logs:/app/logs
+      - backend-avatars:/app/wwwroot/avatars
       # Certificado digital CNS (A1) - coloque o .pfx na pasta ./certs/
       - ./certs:/app/certs:ro
     expose:
@@ -322,6 +323,8 @@ volumes:
     name: telecuidar-backend-uploads
   backend-logs:
     name: telecuidar-backend-logs
+  backend-avatars:
+    name: telecuidar-backend-avatars
   nginx-logs:
     name: telecuidar-nginx-logs
   # Jitsi Volumes

@@ -72,7 +72,12 @@ builder.Services.AddScoped<Application.Interfaces.IAttachmentService, Infrastruc
 builder.Services.AddScoped<Application.Interfaces.IInviteService, Infrastructure.Services.InviteService>();
 builder.Services.AddScoped<Application.Interfaces.IAIService, Infrastructure.Services.AIService>();
 builder.Services.AddScoped<Application.Interfaces.IPrescriptionService, Infrastructure.Services.PrescriptionService>();
+builder.Services.AddScoped<Application.Interfaces.IMedicalCertificateService, Infrastructure.Services.MedicalCertificateService>();
 builder.Services.AddScoped<Application.Interfaces.ICertificateStorageService, Infrastructure.Services.CertificateStorageService>();
+builder.Services.AddSingleton<Application.Interfaces.IMedicamentoAnvisaService, Infrastructure.Services.MedicamentoAnvisaService>();
+
+// HttpClient for external API calls (OpenFDA, etc.)
+builder.Services.AddHttpClient();
 
 builder.Services.AddSingleton<Application.Interfaces.ICnsService, Infrastructure.Services.CnsService>();
 builder.Services.AddScoped<Application.Interfaces.IJitsiService, Infrastructure.Services.JitsiService>();
@@ -126,6 +131,7 @@ builder.Services.AddMemoryCache();
 // CORS Configuration
 var corsOrigins = Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS")
     ?? "http://localhost:4200,http://192.168.15.2:4200";
+var allowAnyOrigin = corsOrigins.Trim() == "*";
 var allowedOrigins = corsOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries)
     .Select(o => o.Trim())
     .ToArray();
@@ -134,19 +140,39 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        if (allowAnyOrigin)
+        {
+            policy.SetIsOriginAllowed(_ => true)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+        else
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
     });
     
     // SignalR specific CORS policy
     options.AddPolicy("SignalRPolicy", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        if (allowAnyOrigin)
+        {
+            policy.SetIsOriginAllowed(_ => true)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
+        else
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        }
     });
 });
 

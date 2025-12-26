@@ -39,7 +39,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && \
 RUN useradd --create-home --shell /bin/bash appuser
 
 # Criar diretórios necessários
-RUN mkdir -p /app/uploads /app/data /app/logs && \
+RUN mkdir -p /app/uploads /app/data /app/logs /app/wwwroot/avatars && \
     chown -R appuser:appuser /app
 
 # Copiar aplicação publicada

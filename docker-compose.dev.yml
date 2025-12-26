@@ -73,6 +73,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./uploads:/app/uploads
+      - ./avatars:/app/wwwroot/avatars
     expose:
       - "${BACKEND_INTERNAL_PORT:-5000}"
     networks:

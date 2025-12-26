@@ -21,10 +21,10 @@ var config = {
     enableWelcomePage: false,
     enableClosePage: false,
     
-    // Prejoin: desabilitado para entrar direto na sala
-    prejoinPageEnabled: false,
+    // Prejoin: habilitado para configurar microfone, câmera e nome antes de entrar
+    prejoinPageEnabled: true,
     
-    // Iniciar com áudio e vídeo ativos
+    // Iniciar com áudio e vídeo ativos (após prejoin)
     startWithAudioMuted: false,
     startWithVideoMuted: false,
     

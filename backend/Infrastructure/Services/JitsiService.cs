@@ -26,6 +26,8 @@ public class JitsiService : IJitsiService
     private readonly string _appSecret;
     private readonly int _tokenExpirationMinutes;
     private readonly bool _requiresAuth;
+    private readonly bool _dynamicDomain;
+    private readonly int _jitsiPort;
 
     public JitsiService(ApplicationDbContext context, IConfiguration configuration)
     {
@@ -41,6 +43,11 @@ public class JitsiService : IJitsiService
             GetConfigValue("JITSI_TOKEN_EXPIRATION_MINUTES", "JitsiSettings:TokenExpirationMinutes", "120"),
             out var expMin) ? expMin : 120;
         _requiresAuth = GetConfigValue("JITSI_REQUIRES_AUTH", "JitsiSettings:RequiresAuth", "true").ToLower() == "true";
+        _dynamicDomain = GetConfigValue("JITSI_DYNAMIC_DOMAIN", "JitsiSettings:DynamicDomain", "false").ToLower() == "true";
+        
+        // Extrair porta do domínio configurado (ex: localhost:8443 -> 8443)
+        var domainParts = _domain.Split(':');
+        _jitsiPort = domainParts.Length > 1 && int.TryParse(domainParts[1], out var port) ? port : 8443;
     }
 
     private string GetConfigValue(string envKey, string configKey, string defaultValue)
@@ -51,10 +58,26 @@ public class JitsiService : IJitsiService
     }
 
     /// <summary>
+    /// Resolve o domínio do Jitsi baseado no host da requisição (para dev) ou configuração fixa (para prod)
+    /// </summary>
+    private string ResolveDomain(string? requestHost)
+    {
+        // Se domínio dinâmico está desabilitado ou não tem host, usa configuração fixa
+        if (!_dynamicDomain || string.IsNullOrEmpty(requestHost))
+            return _domain;
+
+        // Extrair apenas o hostname (sem porta) do request host
+        var hostOnly = requestHost.Split(':')[0];
+        
+        // Retorna o host da requisição com a porta do Jitsi
+        return $"{hostOnly}:{_jitsiPort}";
+    }
+
+    /// <summary>
     /// Gera um token JWT para autenticação no Jitsi Meet
     /// O token inclui informações do usuário e permissões baseadas no papel
     /// </summary>
-    public async Task<JitsiTokenResponseDto?> GenerateTokenAsync(Guid userId, Guid appointmentId)
+    public async Task<JitsiTokenResponseDto?> GenerateTokenAsync(Guid userId, Guid appointmentId, string? requestHost = null)
     {
         if (!_enabled)
             return null;
@@ -106,11 +129,14 @@ public class JitsiService : IJitsiService
 
         var expiresAt = DateTimeOffset.UtcNow.AddMinutes(_tokenExpirationMinutes).ToUnixTimeSeconds();
 
+        // Resolver domínio dinamicamente baseado no host da requisição
+        var resolvedDomain = ResolveDomain(requestHost);
+
         return new JitsiTokenResponseDto
         {
             Token = token,
             RoomName = roomName,
-            Domain = _domain,
+            Domain = resolvedDomain,
             DisplayName = displayName,
             Email = user.Email,
             AvatarUrl = avatarUrl,
@@ -122,12 +148,12 @@ public class JitsiService : IJitsiService
     /// <summary>
     /// Obtém as configurações do Jitsi para o frontend
     /// </summary>
-    public JitsiConfigDto GetConfig()
+    public JitsiConfigDto GetConfig(string? requestHost = null)
     {
         return new JitsiConfigDto
         {
             Enabled = _enabled,
-            Domain = _domain,
+            Domain = ResolveDomain(requestHost),
             RequiresAuth = _requiresAuth
         };
     }
