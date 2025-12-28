@@ -52,30 +52,6 @@ export class CnsTabComponent implements OnInit, OnDestroy {
     interval(60000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.checkTokenStatus());
-      
-    // Se temos um appointment com paciente, carregar o CPF do paciente
-    this.loadPatientCpf();
-  }
-
-  /**
-   * Carrega o CPF do paciente associado ao appointment
-   */
-  private loadPatientCpf() {
-    if (this.appointment?.patientId) {
-      this.usersService.getUserById(this.appointment.patientId)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: (user) => {
-            if (user?.cpf) {
-              this.cpf = this.formatCpfInput(user.cpf);
-              this.cdr.detectChanges();
-            }
-          },
-          error: (err) => {
-            console.error('Erro ao carregar CPF do paciente:', err);
-          }
-        });
-    }
   }
 
   ngOnDestroy() {

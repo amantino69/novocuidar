@@ -40,7 +40,6 @@ export class TitleService {
     // Professional routes
     '/bloqueios-agenda': 'Bloqueios de Agenda',
     '/minha-agenda': 'Minha Agenda',
-    '/certificados': 'Certificados Digitais',
     
     // Patient routes
     '/agendar': 'Agendar Consulta',

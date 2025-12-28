@@ -207,8 +207,13 @@ export class SpecialtyFieldsTabComponent implements OnInit, OnDestroy {
           this.isSaving = false;
           this.lastSaved = new Date();
           this.specialtyFieldsForm.markAsPristine();
-          // Limpar cache após salvar com sucesso
-          this.clearLocalCache();
+          // Atualizar o appointment localmente para que os dados mais recentes
+          // sejam usados quando o componente for recriado (ao mudar de aba)
+          if (this.appointment) {
+            this.appointment = { ...this.appointment, specialtyFieldsJson };
+          }
+          // MANTER cache para quando trocar de aba e voltar - os dados já salvos estarão disponíveis
+          this.saveToLocalCache();
           this.cdr.detectChanges();
         },
         error: (error) => {

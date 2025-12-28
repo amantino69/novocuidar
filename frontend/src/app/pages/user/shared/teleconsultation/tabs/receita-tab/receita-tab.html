@@ -283,23 +283,30 @@
                       <button class="action-btn delete" (click)="deletePrescription(prescription)" title="Excluir">
                         <app-icon name="trash" [size]="16" />
                       </button>
-                    }
-                    @if (hasItems(prescription)) {
-                      <button 
-                        class="action-btn pdf" 
-                        (click)="generatePdf(prescription)" 
-                        [disabled]="isGeneratingPdf"
-                        title="Gerar PDF">
-                        <app-icon name="download" [size]="16" />
-                      </button>
-                      @if (!prescription.isSigned) {
+                      @if (hasItems(prescription)) {
                         <button 
                           class="action-btn sign" 
-                          (click)="openSignatureOptions(prescription)"
-                          [disabled]="isSigning"
-                          title="Assinar digitalmente">
+                          (click)="openSignModal(prescription)"
+                          title="Assinar Digitalmente">
                           <app-icon name="edit" [size]="16" />
-                          Assinar
+                        </button>
+                      }
+                    }
+                    @if (hasItems(prescription)) {
+                      @if (prescription.isSigned) {
+                        <button 
+                          class="action-btn pdf signed" 
+                          (click)="downloadSignedPdf(prescription)" 
+                          title="Baixar PDF Assinado (validável em validar.iti.gov.br)">
+                          <app-icon name="download" [size]="16" />
+                        </button>
+                      } @else {
+                        <button 
+                          class="action-btn pdf" 
+                          (click)="generatePdf(prescription)" 
+                          [disabled]="isGeneratingPdf"
+                          title="Gerar PDF">
+                          <app-icon name="download" [size]="16" />
                         </button>
                       }
                     }
@@ -314,12 +321,11 @@
   }
 </div>
 
-<!-- Componente de Assinatura Digital -->
-<app-digital-signature
-  #digitalSignature
-  documentTitle="Receita"
-  signButtonText="Assinar Receita"
-  [isSigning]="isSigning"
-  (sign)="onSign($event)"
-  (cancel)="onSignatureCancel()"
-  (certificateSaved)="onCertificateSaved()" />
+<!-- Modal de Assinatura Digital -->
+<app-sign-document-modal
+  [isOpen]="showSignModal"
+  [documentType]="'prescription'"
+  [documentId]="signingPrescriptionId || ''"
+  (close)="closeSignModal()"
+  (signed)="onDocumentSigned($event)"
+/>

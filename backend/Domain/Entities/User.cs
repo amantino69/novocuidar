@@ -55,4 +55,5 @@ public class User : BaseEntity
     public ICollection<Schedule> Schedules { get; set; } = new List<Schedule>();
     public ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
     public ICollection<ScheduleBlock> ScheduleBlocks { get; set; } = new List<ScheduleBlock>();
+    public ICollection<DigitalCertificate> DigitalCertificates { get; set; } = new List<DigitalCertificate>();
 }

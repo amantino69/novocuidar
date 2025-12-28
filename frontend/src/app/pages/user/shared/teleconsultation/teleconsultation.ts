@@ -240,6 +240,32 @@ export class TeleconsultationComponent implements OnInit, OnDestroy {
 
   setActiveTab(tab: string) {
     this.activeTab = tab;
+    
+    // Quando mudar para a aba de IA, recarregar o appointment para pegar os dados mais recentes
+    // das outras abas (SOAP, Anamnese, Campos da Especialidade, etc.)
+    if (tab === 'IA' && this.appointmentId) {
+      this.refreshDataForAI();
+    }
+  }
+
+  /**
+   * Recarrega os dados do appointment e recoletar dados para a IA
+   * Chamado quando o usuário muda para a aba de IA para garantir dados atualizados
+   */
+  private refreshDataForAI(): void {
+    if (!this.appointmentId) return;
+    
+    this.appointmentsService.getAppointmentById(this.appointmentId).subscribe({
+      next: (appt) => {
+        if (appt) {
+          this.appointment = appt;
+          this.collectDataFromAllTabs(this.appointmentId!);
+        }
+      },
+      error: (error) => {
+        console.error('[Teleconsultation] Erro ao atualizar dados para IA:', error);
+      }
+    });
   }
 
   onFinishConsultation(observations: string) {

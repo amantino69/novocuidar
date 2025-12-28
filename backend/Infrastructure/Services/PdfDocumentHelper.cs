@@ -1,4 +1,5 @@
 using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Action;
 using iText.Layout;
 using iText.Layout.Element;
 using iText.Layout.Properties;
@@ -28,9 +29,11 @@ public static class PdfDocumentHelper
     
     // Informações do estabelecimento
     private const string PLATFORM_NAME = "TeleCuidar";
-    private const string PLATFORM_DESCRIPTION = "Plataforma de Telemedicina";
+    private const string PLATFORM_SUBTITLE = "Plataforma de Telemedicina";
     private const string CNPJ = "00.000.000/0001-00";
-    private const string ADDRESS = "Rua Exemplo, 123 - Centro - Cidade/UF - CEP: 00000-000";
+    private const string ADDRESS = "Rua Exemplo, 123 - Centro";
+    private const string CITY_STATE = "Cidade/UF";
+    private const string CEP = "CEP: 00000-000";
     private const string PHONE = "(00) 0000-0000";
     private const string EMAIL = "contato@telecuidar.com.br";
     private const string WEBSITE = "www.telecuidar.com.br";
@@ -211,7 +214,7 @@ public static class PdfDocumentHelper
             .SetFontColor(PrimaryColor)
             .SetMarginTop(5)
             .SetMarginBottom(0));
-        logoCell.Add(new Paragraph(PLATFORM_DESCRIPTION)
+        logoCell.Add(new Paragraph(PLATFORM_SUBTITLE)
             .SetFont(regularFont)
             .SetFontSize(9)
             .SetFontColor(GrayColor)
@@ -222,22 +225,27 @@ public static class PdfDocumentHelper
         // Informações do estabelecimento (direita)
         var infoCell = new Cell().SetBorder(iText.Layout.Borders.Border.NO_BORDER).SetTextAlignment(TextAlignment.RIGHT).SetVerticalAlignment(VerticalAlignment.MIDDLE);
         infoCell.Add(new Paragraph($"CNPJ: {CNPJ}")
+            .SetFont(boldFont)
+            .SetFontSize(8)
+            .SetFontColor(DarkText)
+            .SetMarginBottom(2));
+        infoCell.Add(new Paragraph($"{ADDRESS} - {CITY_STATE}")
+            .SetFont(regularFont)
+            .SetFontSize(8)
+            .SetFontColor(GrayColor)
+            .SetMarginBottom(1));
+        infoCell.Add(new Paragraph(CEP)
             .SetFont(regularFont)
             .SetFontSize(8)
             .SetFontColor(GrayColor)
             .SetMarginBottom(2));
-        infoCell.Add(new Paragraph(ADDRESS)
-            .SetFont(regularFont)
-            .SetFontSize(8)
-            .SetFontColor(GrayColor)
-            .SetMarginBottom(2));
-        infoCell.Add(new Paragraph($"Tel: {PHONE} | {EMAIL}")
+        infoCell.Add(new Paragraph($"Tel: {PHONE} | E-mail: {EMAIL}")
             .SetFont(regularFont)
             .SetFontSize(8)
             .SetFontColor(GrayColor)
             .SetMarginBottom(2));
         infoCell.Add(new Paragraph(WEBSITE)
-            .SetFont(regularFont)
+            .SetFont(boldFont)
             .SetFontSize(8)
             .SetFontColor(PrimaryColor)
             .SetMarginBottom(0));
@@ -587,29 +595,29 @@ public static class PdfDocumentHelper
             .SetPadding(10)
             .SetVerticalAlignment(VerticalAlignment.MIDDLE);
         
-        validationCell.Add(new Paragraph("VALIDAÇÃO DO DOCUMENTO")
+        validationCell.Add(new Paragraph("Validação do Documento")
             .SetFont(boldFont)
             .SetFontSize(10)
             .SetFontColor(PrimaryColor)
             .SetMarginBottom(5));
         
-        validationCell.Add(new Paragraph($"Hash de Validação: {documentHash}")
+        validationCell.Add(new Paragraph($"Hash: {documentHash}")
             .SetFont(regularFont)
             .SetFontSize(8)
             .SetFontColor(GrayColor)
             .SetMarginBottom(3));
         
-        validationCell.Add(new Paragraph($"Escaneie o QR Code ou acesse {VALIDATION_URL}")
-            .SetFont(regularFont)
-            .SetFontSize(8)
-            .SetFontColor(GrayColor)
-            .SetMarginBottom(2));
-        
-        validationCell.Add(new Paragraph("para validar a assinatura digital deste documento.")
-            .SetFont(regularFont)
-            .SetFontSize(8)
-            .SetFontColor(GrayColor)
-            .SetMarginBottom(5));
+        // Texto com link clicável
+        var validationText = new Paragraph()
+            .Add(new Text("Escaneie o QR Code ou acesse ").SetFont(regularFont).SetFontSize(8).SetFontColor(GrayColor))
+            .Add(new Link("validar.iti.gov.br", PdfAction.CreateURI(VALIDATION_URL))
+                .SetFont(boldFont)
+                .SetFontSize(8)
+                .SetFontColor(PrimaryColor)
+                .SetUnderline())
+            .Add(new Text(" para validar").SetFont(regularFont).SetFontSize(8).SetFontColor(GrayColor))
+            .SetMarginBottom(5);
+        validationCell.Add(validationText);
         
         var generatedAtLocal = TimeZoneInfo.ConvertTimeFromUtc(generatedAt, 
             TimeZoneInfo.FindSystemTimeZoneById("E. South America Standard Time"));

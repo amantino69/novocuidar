@@ -59,24 +59,6 @@ public class UpdateMedicalCertificateDto
 }
 
 /// <summary>
-/// DTO para assinatura com certificado salvo
-/// </summary>
-public class SignMedicalCertificateDto
-{
-    public Guid SavedCertificateId { get; set; }
-    public string? Password { get; set; }
-}
-
-/// <summary>
-/// DTO para assinatura com arquivo PFX enviado como Base64
-/// </summary>
-public class SignMedicalCertificateWithPfxDto
-{
-    public string PfxBase64 { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-}
-
-/// <summary>
 /// DTO para PDF gerado
 /// </summary>
 public class MedicalCertificatePdfDto

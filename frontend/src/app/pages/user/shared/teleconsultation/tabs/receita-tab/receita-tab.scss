@@ -576,6 +576,17 @@
             color: var(--blue-600);
           }
 
+          &.pdf.signed {
+            background: var(--green-50);
+            color: var(--green-600);
+            font-weight: $font-weight-medium;
+
+            &:hover {
+              background: var(--green-100);
+              color: var(--green-700);
+            }
+          }
+
           &.sign {
             background: var(--primary-50);
             color: var(--primary-600);

@@ -22,8 +22,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<Invite> Invites { get; set; }
     public DbSet<ScheduleBlock> ScheduleBlocks { get; set; }
     public DbSet<Prescription> Prescriptions { get; set; }
-    public DbSet<SavedCertificate> SavedCertificates { get; set; }
     public DbSet<MedicalCertificate> MedicalCertificates { get; set; }
+    public DbSet<DigitalCertificate> DigitalCertificates { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -271,6 +271,27 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.PatientId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+        
+        // DigitalCertificate Configuration
+        modelBuilder.Entity<DigitalCertificate>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Subject).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Issuer).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Thumbprint).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.CpfFromCertificate).HasMaxLength(14);
+            entity.Property(e => e.NameFromCertificate).HasMaxLength(300);
+            entity.Property(e => e.EncryptedPfxBase64).IsRequired();
+            entity.Property(e => e.EncryptionIV).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.Thumbprint);
+            
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.DigitalCertificates)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

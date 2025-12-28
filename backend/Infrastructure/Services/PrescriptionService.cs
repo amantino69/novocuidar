@@ -5,7 +5,6 @@ using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using iText.Kernel.Pdf;
@@ -15,12 +14,7 @@ using iText.Layout.Properties;
 using iText.Kernel.Colors;
 using iText.Kernel.Font;
 using iText.IO.Font.Constants;
-using iText.Signatures;
-using iText.Bouncycastle.Crypto;
-using iText.Bouncycastle.X509;
-using iText.Commons.Bouncycastle.Cert;
 using iText.IO.Image;
-using Org.BouncyCastle.Pkcs;
 using QRCoder;
 
 namespace Infrastructure.Services;
@@ -30,7 +24,9 @@ public class PrescriptionService : IPrescriptionService
     private readonly ApplicationDbContext _context;
     private readonly ILogger<PrescriptionService> _logger;
 
-    public PrescriptionService(ApplicationDbContext context, ILogger<PrescriptionService> logger)
+    public PrescriptionService(
+        ApplicationDbContext context, 
+        ILogger<PrescriptionService> logger)
     {
         _context = context;
         _logger = logger;
@@ -497,110 +493,4 @@ public class PrescriptionService : IPrescriptionService
             .SetPadding(2);
     }
     
-    public async Task<PrescriptionPdfDto> GenerateSignedPdfAsync(Guid prescriptionId, byte[] pfxBytes, string pfxPassword)
-    {
-        var prescription = await _context.Prescriptions
-            .Include(p => p.Professional)
-                .ThenInclude(u => u.ProfessionalProfile)
-            .Include(p => p.Patient)
-                .ThenInclude(u => u.PatientProfile)
-            .Include(p => p.Appointment)
-                .ThenInclude(a => a.Specialty)
-            .FirstOrDefaultAsync(p => p.Id == prescriptionId);
-
-        if (prescription == null)
-            throw new InvalidOperationException("Receita nao encontrada.");
-
-        var items = JsonSerializer.Deserialize<List<PrescriptionItem>>(prescription.ItemsJson) ?? new List<PrescriptionItem>();
-        
-        // Extrair informações do certificado primeiro para incluir no PDF
-        using var cert = X509CertificateLoader.LoadPkcs12(pfxBytes, pfxPassword);
-        var certificateSubject = cert.Subject;
-        var certificateThumbprint = cert.Thumbprint;
-        var signedAt = DateTime.UtcNow;
-        
-        // Atualizar a prescrição temporariamente para gerar o PDF com as informações de assinatura
-        prescription.CertificateSubject = certificateSubject;
-        prescription.CertificateThumbprint = certificateThumbprint;
-        prescription.SignedAt = signedAt;
-        
-        // Generate PDF with signature info (isSigned = true para incluir o card verde)
-        var pdfWithSignatureInfo = GeneratePrescriptionPdf(prescription, items, true);
-        
-        // Sign the PDF with the provided certificate
-        var signedPdfBytes = SignPdfWithCertificate(pdfWithSignatureInfo, pfxBytes, pfxPassword, prescription);
-        
-        var pdfBase64 = Convert.ToBase64String(signedPdfBytes);
-        var documentHash = GenerateDocumentHash(prescription, items);
-        
-        // Persistir as informações de assinatura
-        prescription.DigitalSignature = Convert.ToBase64String(cert.GetCertHash());
-        prescription.DocumentHash = documentHash;
-        prescription.SignedPdfBase64 = pdfBase64;
-        prescription.UpdatedAt = DateTime.UtcNow;
-        
-        await _context.SaveChangesAsync();
-
-        var patientName = prescription.Patient != null 
-            ? $"{prescription.Patient.Name} {prescription.Patient.LastName}" 
-            : "Paciente";
-        
-        return new PrescriptionPdfDto
-        {
-            PdfBase64 = pdfBase64,
-            FileName = PdfDocumentHelper.GenerateFileName(
-                "Receita",
-                patientName,
-                prescription.CreatedAt,
-                "Assinada"),
-            DocumentHash = documentHash,
-            IsSigned = true
-        };
-    }
-    
-    private byte[] SignPdfWithCertificate(byte[] pdfBytes, byte[] pfxBytes, string password, Prescription prescription)
-    {
-        using var inputStream = new MemoryStream(pdfBytes);
-        using var outputStream = new MemoryStream();
-        
-        // Load the PKCS12 store
-        var pkcs12Store = new Pkcs12StoreBuilder().Build();
-        pkcs12Store.Load(new MemoryStream(pfxBytes), password.ToCharArray());
-        
-        // Find the alias with a private key
-        string? alias = null;
-        foreach (var a in pkcs12Store.Aliases)
-        {
-            if (pkcs12Store.IsKeyEntry(a))
-            {
-                alias = a;
-                break;
-            }
-        }
-        
-        if (alias == null)
-            throw new InvalidOperationException("Certificado nao contem chave privada.");
-        
-        var privateKey = pkcs12Store.GetKey(alias).Key;
-        var certificateChain = pkcs12Store.GetCertificateChain(alias);
-        
-        var bcCertificates = certificateChain
-            .Select(c => new X509CertificateBC(c.Certificate))
-            .Cast<IX509Certificate>()
-            .ToArray();
-        
-        var reader = new PdfReader(inputStream);
-        var signer = new PdfSigner(reader, outputStream, new StampingProperties());
-        
-        // Set signature metadata (using PdfSigner methods instead of deprecated PdfSignatureAppearance)
-        signer.SetReason("Receita medica assinada digitalmente");
-        signer.SetLocation("TeleCuidar - Plataforma de Telemedicina");
-        signer.SetContact(prescription.Professional?.Email ?? "");
-        
-        // Sign the document
-        var pks = new PrivateKeySignature(new PrivateKeyBC(privateKey), DigestAlgorithms.SHA256);
-        signer.SignDetached(pks, bcCertificates, null, null, null, 0, PdfSigner.CryptoStandard.CADES);
-        
-        return outputStream.ToArray();
-    }
 }

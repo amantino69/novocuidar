@@ -14,7 +14,6 @@ public interface IPrescriptionService
     Task<PrescriptionDto?> UpdateItemAsync(Guid prescriptionId, string itemId, UpdatePrescriptionItemDto dto);
     Task<PrescriptionDto?> RemoveItemAsync(Guid prescriptionId, string itemId);
     Task<PrescriptionPdfDto> GeneratePdfAsync(Guid prescriptionId);
-    Task<PrescriptionPdfDto> GenerateSignedPdfAsync(Guid prescriptionId, byte[] pfxBytes, string pfxPassword);
     Task<PrescriptionDto?> SignPrescriptionAsync(Guid prescriptionId, SignPrescriptionDto dto);
     Task<bool> ValidateDocumentHashAsync(string documentHash);
     Task DeletePrescriptionAsync(Guid id);

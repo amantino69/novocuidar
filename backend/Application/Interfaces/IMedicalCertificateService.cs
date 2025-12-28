@@ -45,16 +45,6 @@ public interface IMedicalCertificateService
     Task<MedicalCertificatePdfDto> GeneratePdfAsync(Guid id);
     
     /// <summary>
-    /// Assina o atestado com certificado salvo na plataforma
-    /// </summary>
-    Task<MedicalCertificateDto?> SignWithSavedCertificateAsync(Guid id, Guid savedCertificateId, string? password);
-    
-    /// <summary>
-    /// Assina o atestado com arquivo PFX enviado
-    /// </summary>
-    Task<MedicalCertificateDto?> SignWithPfxAsync(Guid id, byte[] pfxBytes, string password);
-    
-    /// <summary>
     /// Valida hash do documento
     /// </summary>
     Task<bool> ValidateDocumentHashAsync(string documentHash);

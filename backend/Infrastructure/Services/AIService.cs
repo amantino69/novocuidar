@@ -248,8 +248,76 @@ IMPORTANTE:
                 sb.AppendLine($"Queixa Principal: {request.AnamnesisData.ChiefComplaint}");
             if (!string.IsNullOrEmpty(request.AnamnesisData.PresentIllnessHistory))
                 sb.AppendLine($"História da Doença Atual: {request.AnamnesisData.PresentIllnessHistory}");
+            
+            // Antecedentes Pessoais
+            if (request.AnamnesisData.PersonalHistory != null)
+            {
+                var ph = request.AnamnesisData.PersonalHistory;
+                sb.AppendLine("Antecedentes Pessoais:");
+                if (!string.IsNullOrEmpty(ph.PreviousDiseases))
+                    sb.AppendLine($"  - Doenças Anteriores: {ph.PreviousDiseases}");
+                if (!string.IsNullOrEmpty(ph.Surgeries))
+                    sb.AppendLine($"  - Cirurgias: {ph.Surgeries}");
+                if (!string.IsNullOrEmpty(ph.Hospitalizations))
+                    sb.AppendLine($"  - Internações: {ph.Hospitalizations}");
+                if (!string.IsNullOrEmpty(ph.Allergies))
+                    sb.AppendLine($"  - Alergias: {ph.Allergies}");
+                if (!string.IsNullOrEmpty(ph.CurrentMedications))
+                    sb.AppendLine($"  - Medicações em Uso: {ph.CurrentMedications}");
+                if (!string.IsNullOrEmpty(ph.Vaccinations))
+                    sb.AppendLine($"  - Vacinação: {ph.Vaccinations}");
+            }
+            
             if (!string.IsNullOrEmpty(request.AnamnesisData.FamilyHistory))
                 sb.AppendLine($"Histórico Familiar: {request.AnamnesisData.FamilyHistory}");
+            
+            // Hábitos de Vida
+            if (request.AnamnesisData.Lifestyle != null)
+            {
+                var ls = request.AnamnesisData.Lifestyle;
+                sb.AppendLine("Hábitos de Vida:");
+                if (!string.IsNullOrEmpty(ls.Diet))
+                    sb.AppendLine($"  - Alimentação: {ls.Diet}");
+                if (!string.IsNullOrEmpty(ls.PhysicalActivity))
+                    sb.AppendLine($"  - Atividade Física: {ls.PhysicalActivity}");
+                if (!string.IsNullOrEmpty(ls.Smoking))
+                    sb.AppendLine($"  - Tabagismo: {ls.Smoking}");
+                if (!string.IsNullOrEmpty(ls.Alcohol))
+                    sb.AppendLine($"  - Etilismo: {ls.Alcohol}");
+                if (!string.IsNullOrEmpty(ls.Drugs))
+                    sb.AppendLine($"  - Uso de Drogas: {ls.Drugs}");
+                if (!string.IsNullOrEmpty(ls.Sleep))
+                    sb.AppendLine($"  - Sono: {ls.Sleep}");
+            }
+            
+            // Revisão de Sistemas
+            if (request.AnamnesisData.SystemsReview != null)
+            {
+                var sr = request.AnamnesisData.SystemsReview;
+                sb.AppendLine("Revisão de Sistemas:");
+                if (!string.IsNullOrEmpty(sr.Cardiovascular))
+                    sb.AppendLine($"  - Cardiovascular: {sr.Cardiovascular}");
+                if (!string.IsNullOrEmpty(sr.Respiratory))
+                    sb.AppendLine($"  - Respiratório: {sr.Respiratory}");
+                if (!string.IsNullOrEmpty(sr.Gastrointestinal))
+                    sb.AppendLine($"  - Gastrointestinal: {sr.Gastrointestinal}");
+                if (!string.IsNullOrEmpty(sr.Genitourinary))
+                    sb.AppendLine($"  - Geniturinário: {sr.Genitourinary}");
+                if (!string.IsNullOrEmpty(sr.Musculoskeletal))
+                    sb.AppendLine($"  - Musculoesquelético: {sr.Musculoskeletal}");
+                if (!string.IsNullOrEmpty(sr.Neurological))
+                    sb.AppendLine($"  - Neurológico: {sr.Neurological}");
+                if (!string.IsNullOrEmpty(sr.Psychiatric))
+                    sb.AppendLine($"  - Psiquiátrico: {sr.Psychiatric}");
+                if (!string.IsNullOrEmpty(sr.Endocrine))
+                    sb.AppendLine($"  - Endócrino: {sr.Endocrine}");
+                if (!string.IsNullOrEmpty(sr.Hematologic))
+                    sb.AppendLine($"  - Hematológico: {sr.Hematologic}");
+            }
+            
+            if (!string.IsNullOrEmpty(request.AnamnesisData.AdditionalNotes))
+                sb.AppendLine($"Observações Adicionais: {request.AnamnesisData.AdditionalNotes}");
+                
             sb.AppendLine();
         }
 
@@ -347,6 +415,47 @@ IMPORTANTE:
                 sb.AppendLine($"Queixa Principal: {request.AnamnesisData.ChiefComplaint}");
             if (!string.IsNullOrEmpty(request.AnamnesisData.PresentIllnessHistory))
                 sb.AppendLine($"História da Doença Atual: {request.AnamnesisData.PresentIllnessHistory}");
+            
+            // Antecedentes Pessoais (relevantes para diagnóstico)
+            if (request.AnamnesisData.PersonalHistory != null)
+            {
+                var ph = request.AnamnesisData.PersonalHistory;
+                if (!string.IsNullOrEmpty(ph.PreviousDiseases))
+                    sb.AppendLine($"Doenças Anteriores: {ph.PreviousDiseases}");
+                if (!string.IsNullOrEmpty(ph.Allergies))
+                    sb.AppendLine($"Alergias: {ph.Allergies}");
+                if (!string.IsNullOrEmpty(ph.CurrentMedications))
+                    sb.AppendLine($"Medicações em Uso: {ph.CurrentMedications}");
+            }
+            
+            if (!string.IsNullOrEmpty(request.AnamnesisData.FamilyHistory))
+                sb.AppendLine($"Histórico Familiar: {request.AnamnesisData.FamilyHistory}");
+            
+            // Revisão de Sistemas (importante para diagnóstico diferencial)
+            if (request.AnamnesisData.SystemsReview != null)
+            {
+                var sr = request.AnamnesisData.SystemsReview;
+                var hasSystemsData = !string.IsNullOrEmpty(sr.Cardiovascular) || !string.IsNullOrEmpty(sr.Respiratory) ||
+                                     !string.IsNullOrEmpty(sr.Gastrointestinal) || !string.IsNullOrEmpty(sr.Neurological);
+                if (hasSystemsData)
+                {
+                    sb.AppendLine("Revisão de Sistemas:");
+                    if (!string.IsNullOrEmpty(sr.Cardiovascular))
+                        sb.AppendLine($"  - Cardiovascular: {sr.Cardiovascular}");
+                    if (!string.IsNullOrEmpty(sr.Respiratory))
+                        sb.AppendLine($"  - Respiratório: {sr.Respiratory}");
+                    if (!string.IsNullOrEmpty(sr.Gastrointestinal))
+                        sb.AppendLine($"  - Gastrointestinal: {sr.Gastrointestinal}");
+                    if (!string.IsNullOrEmpty(sr.Genitourinary))
+                        sb.AppendLine($"  - Geniturinário: {sr.Genitourinary}");
+                    if (!string.IsNullOrEmpty(sr.Musculoskeletal))
+                        sb.AppendLine($"  - Musculoesquelético: {sr.Musculoskeletal}");
+                    if (!string.IsNullOrEmpty(sr.Neurological))
+                        sb.AppendLine($"  - Neurológico: {sr.Neurological}");
+                    if (!string.IsNullOrEmpty(sr.Psychiatric))
+                        sb.AppendLine($"  - Psiquiátrico: {sr.Psychiatric}");
+                }
+            }
             sb.AppendLine();
         }
 
@@ -362,10 +471,28 @@ IMPORTANTE:
             sb.AppendLine();
         }
 
-        if (request.SoapData != null && !string.IsNullOrEmpty(request.SoapData.Assessment))
+        if (request.SoapData != null)
         {
-            sb.AppendLine("=== AVALIAÇÃO SOAP ===");
-            sb.AppendLine(request.SoapData.Assessment);
+            sb.AppendLine("=== NOTAS SOAP ===");
+            if (!string.IsNullOrEmpty(request.SoapData.Subjective))
+                sb.AppendLine($"Subjetivo: {request.SoapData.Subjective}");
+            if (!string.IsNullOrEmpty(request.SoapData.Objective))
+                sb.AppendLine($"Objetivo: {request.SoapData.Objective}");
+            if (!string.IsNullOrEmpty(request.SoapData.Assessment))
+                sb.AppendLine($"Avaliação: {request.SoapData.Assessment}");
+            if (!string.IsNullOrEmpty(request.SoapData.Plan))
+                sb.AppendLine($"Plano: {request.SoapData.Plan}");
+            sb.AppendLine();
+        }
+
+        if (request.SpecialtyFieldsData != null && request.SpecialtyFieldsData.CustomFields != null && request.SpecialtyFieldsData.CustomFields.Count > 0)
+        {
+            sb.AppendLine($"=== CAMPOS DA ESPECIALIDADE ({request.SpecialtyFieldsData.SpecialtyName ?? "N/A"}) ===");
+            foreach (var field in request.SpecialtyFieldsData.CustomFields)
+            {
+                if (!string.IsNullOrEmpty(field.Value))
+                    sb.AppendLine($"{field.Key}: {field.Value}");
+            }
             sb.AppendLine();
         }
 

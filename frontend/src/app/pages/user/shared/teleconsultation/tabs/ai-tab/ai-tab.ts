@@ -1,5 +1,5 @@
-import { Component, Input, OnInit, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Input, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MarkdownModule } from 'ngx-markdown';
 import { ButtonComponent } from '@shared/components/atoms/button/button';
@@ -43,11 +43,15 @@ export class AITabComponent implements OnInit {
   isSaving = false;
   isLoading = true;
   errorMessage: string = '';
+  private isBrowser: boolean;
 
   constructor(
     private aiService: AIService,
-    private cdr: ChangeDetectorRef
-  ) {}
+    private cdr: ChangeDetectorRef,
+    @Inject(PLATFORM_ID) platformId: Object
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
+  }
 
   ngOnInit() {
     this.loadExistingData();
@@ -78,8 +82,24 @@ export class AITabComponent implements OnInit {
     });
   }
 
+  /**
+   * Tenta carregar dados do cache local (sessionStorage)
+   * Retorna null se não houver cache ou se não estiver no browser
+   */
+  private getFromLocalCache(key: string): any {
+    if (!this.isBrowser) return null;
+    try {
+      const cached = sessionStorage.getItem(key);
+      return cached ? JSON.parse(cached) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   collectAllData(): { patientData: any; preConsultationData: any; anamnesisData: any; biometricsData: any; soapData: any; specialtyFieldsData: any } {
-    // Try to extract data from the appointment object if not provided via inputs
+    // Prioridade: 1) Cache local (mais recente) 2) Dados via Input 3) Dados do appointment
+    
+    // Pré-consulta (não tem cache local, vem do appointment)
     let preConsultation = this.preConsultationData;
     if (!preConsultation && this.appointment?.preConsultationJson) {
       try {
@@ -89,22 +109,81 @@ export class AITabComponent implements OnInit {
       }
     }
 
-    // Construct patient data from appointment
+    // Dados do paciente
     const patientData = this.patientData || {
       name: this.appointment?.patientName,
     };
 
-    // Construct specialty data
-    const specialtyFieldsData = this.specialtyFieldsData || {
-      specialtyName: this.appointment?.specialtyName,
-    };
+    // SOAP - verificar cache local primeiro (dados mais recentes que podem não ter sido salvos)
+    let soapData = this.getFromLocalCache(`soap_${this.appointmentId}`);
+    if (!soapData) {
+      soapData = this.soapData;
+    }
+    if (!soapData && this.appointment?.soapJson) {
+      try {
+        soapData = JSON.parse(this.appointment.soapJson);
+      } catch (e) {
+        console.warn('Could not parse soapJson');
+      }
+    }
+
+    // Anamnese - verificar cache local primeiro
+    let anamnesisData = this.getFromLocalCache(`anamnesis_${this.appointmentId}`);
+    if (!anamnesisData) {
+      anamnesisData = this.anamnesisData;
+    }
+    if (!anamnesisData && this.appointment?.anamnesisJson) {
+      try {
+        anamnesisData = JSON.parse(this.appointment.anamnesisJson);
+      } catch (e) {
+        console.warn('Could not parse anamnesisJson');
+      }
+    }
+
+    // Campos da especialidade - verificar cache local primeiro
+    let specialtyFieldsCustom = this.getFromLocalCache(`specialtyFields_${this.appointmentId}`);
+    let specialtyFieldsData: any;
+    if (specialtyFieldsCustom) {
+      specialtyFieldsData = {
+        specialtyName: this.appointment?.specialtyName,
+        customFields: specialtyFieldsCustom
+      };
+    } else if (this.specialtyFieldsData) {
+      specialtyFieldsData = this.specialtyFieldsData;
+    } else if (this.appointment?.specialtyFieldsJson) {
+      try {
+        const customFields = JSON.parse(this.appointment.specialtyFieldsJson);
+        specialtyFieldsData = {
+          specialtyName: this.appointment?.specialtyName,
+          customFields
+        };
+      } catch (e) {
+        console.warn('Could not parse specialtyFieldsJson');
+        specialtyFieldsData = { specialtyName: this.appointment?.specialtyName };
+      }
+    } else {
+      specialtyFieldsData = { specialtyName: this.appointment?.specialtyName };
+    }
+
+    // Biométricos (vem do Input, já que é carregado via API)
+    const biometricsData = this.biometricsData;
+
+    // Log para debug
+    console.log('[AI Tab] Dados coletados para IA:', {
+      patientData,
+      preConsultationData: preConsultation,
+      anamnesisData,
+      biometricsData,
+      soapData,
+      specialtyFieldsData
+    });
 
     return {
       patientData,
       preConsultationData: preConsultation,
-      anamnesisData: this.anamnesisData,
-      biometricsData: this.biometricsData,
-      soapData: this.soapData,
+      anamnesisData,
+      biometricsData,
+      soapData,
       specialtyFieldsData
     };
   }
@@ -120,6 +199,8 @@ export class AITabComponent implements OnInit {
       appointmentId: this.appointmentId,
       ...collectedData
     };
+
+    console.log('[AI Tab] Enviando requisição para gerar resumo:', request);
 
     this.aiService.generateSummary(request).subscribe({
       next: (response) => {
@@ -149,6 +230,8 @@ export class AITabComponent implements OnInit {
       additionalContext: this.additionalContext,
       ...collectedData
     };
+
+    console.log('[AI Tab] Enviando requisição para gerar hipótese diagnóstica:', request);
 
     this.aiService.generateDiagnosis(request).subscribe({
       next: (response) => {

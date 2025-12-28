@@ -64,12 +64,6 @@ export interface UpdatePrescriptionItemDto {
   observacoes?: string;
 }
 
-export interface SignPrescriptionDto {
-  certificateThumbprint: string;
-  signature: string;
-  certificateSubject: string;
-}
-
 export interface PrescriptionPdf {
   pdfBase64: string;
   fileName: string;
@@ -138,24 +132,6 @@ export class PrescriptionService {
 
   generatePdf(prescriptionId: string): Observable<PrescriptionPdf> {
     return this.http.get<PrescriptionPdf>(`${API_BASE_URL}/prescriptions/${prescriptionId}/pdf`);
-  }
-
-  generateSignedPdf(prescriptionId: string, pfxBase64: string, pfxPassword: string): Observable<PrescriptionPdf> {
-    return this.http.post<PrescriptionPdf>(`${API_BASE_URL}/prescriptions/${prescriptionId}/pdf/signed`, {
-      pfxBase64,
-      pfxPassword
-    });
-  }
-
-  signWithSavedCert(prescriptionId: string, certificateId: string, password?: string): Observable<PrescriptionPdf> {
-    return this.http.post<PrescriptionPdf>(`${API_BASE_URL}/prescriptions/${prescriptionId}/pdf/sign-saved`, {
-      certificateId,
-      password
-    });
-  }
-
-  signPrescription(prescriptionId: string, dto: SignPrescriptionDto): Observable<Prescription> {
-    return this.http.post<Prescription>(`${API_BASE_URL}/prescriptions/${prescriptionId}/sign`, dto);
   }
 
   validateDocument(documentHash: string): Observable<{ isValid: boolean; documentHash: string }> {

@@ -5,7 +5,6 @@ using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using iText.Kernel.Pdf;
 using iText.Layout;
@@ -22,16 +21,13 @@ namespace Infrastructure.Services;
 public class MedicalCertificateService : IMedicalCertificateService
 {
     private readonly ApplicationDbContext _context;
-    private readonly ICertificateStorageService _certificateStorageService;
     private readonly ILogger<MedicalCertificateService> _logger;
 
     public MedicalCertificateService(
         ApplicationDbContext context,
-        ICertificateStorageService certificateStorageService,
         ILogger<MedicalCertificateService> logger)
     {
         _context = context;
-        _certificateStorageService = certificateStorageService;
         _logger = logger;
     }
 
@@ -206,85 +202,6 @@ public class MedicalCertificateService : IMedicalCertificateService
             DocumentHash = documentHash,
             IsSigned = certificate.IsSigned
         };
-    }
-
-    public async Task<MedicalCertificateDto?> SignWithSavedCertificateAsync(Guid id, Guid savedCertificateId, string? password)
-    {
-        var certificate = await _context.MedicalCertificates
-            .Include(c => c.Professional)
-                .ThenInclude(u => u.ProfessionalProfile)
-            .Include(c => c.Patient)
-                .ThenInclude(u => u.PatientProfile)
-            .Include(c => c.Appointment)
-                .ThenInclude(a => a.Specialty)
-            .FirstOrDefaultAsync(c => c.Id == id);
-
-        if (certificate == null) return null;
-
-        if (certificate.IsSigned)
-            throw new InvalidOperationException("Atestado já foi assinado.");
-
-        // Get the saved certificate
-        var (pfxBytes, certPassword) = await _certificateStorageService.GetCertificateForSigningAsync(certificate.ProfessionalId, savedCertificateId, password);
-        if (pfxBytes == null)
-            throw new InvalidOperationException("Certificado não encontrado ou senha incorreta.");
-
-        return await SignCertificateAsync(certificate, pfxBytes, certPassword);
-    }
-
-    public async Task<MedicalCertificateDto?> SignWithPfxAsync(Guid id, byte[] pfxBytes, string password)
-    {
-        var certificate = await _context.MedicalCertificates
-            .Include(c => c.Professional)
-                .ThenInclude(u => u.ProfessionalProfile)
-            .Include(c => c.Patient)
-                .ThenInclude(u => u.PatientProfile)
-            .Include(c => c.Appointment)
-                .ThenInclude(a => a.Specialty)
-            .FirstOrDefaultAsync(c => c.Id == id);
-
-        if (certificate == null) return null;
-
-        if (certificate.IsSigned)
-            throw new InvalidOperationException("Atestado já foi assinado.");
-
-        return await SignCertificateAsync(certificate, pfxBytes, password);
-    }
-
-    private async Task<MedicalCertificateDto?> SignCertificateAsync(MedicalCertificate certificate, byte[] pfxBytes, string password)
-    {
-        try
-        {
-            using var x509 = X509CertificateLoader.LoadPkcs12(pfxBytes, password, X509KeyStorageFlags.Exportable);
-            
-            certificate.CertificateThumbprint = x509.Thumbprint;
-            certificate.CertificateSubject = x509.GetNameInfo(X509NameType.SimpleName, false);
-            certificate.SignedAt = DateTime.UtcNow;
-            certificate.DocumentHash = GenerateDocumentHash(certificate);
-            
-            // Generate signature
-            var dataToSign = Encoding.UTF8.GetBytes(certificate.DocumentHash);
-            using var rsa = x509.GetRSAPrivateKey();
-            if (rsa != null)
-            {
-                var signature = rsa.SignData(dataToSign, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
-                certificate.DigitalSignature = Convert.ToBase64String(signature);
-            }
-
-            // Generate signed PDF
-            var pdfBytes = GenerateCertificatePdf(certificate, true);
-            certificate.SignedPdfBase64 = Convert.ToBase64String(pdfBytes);
-
-            certificate.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            return await GetByIdAsync(certificate.Id);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Erro ao assinar atestado {Id}", certificate.Id);
-            throw new InvalidOperationException("Erro ao assinar o atestado. Verifique a senha do certificado.");
-        }
     }
 
     public async Task<bool> ValidateDocumentHashAsync(string documentHash)

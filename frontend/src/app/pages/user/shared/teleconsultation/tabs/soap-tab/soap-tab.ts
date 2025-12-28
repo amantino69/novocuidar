@@ -113,6 +113,8 @@ export class SoapTabComponent implements OnInit, OnDestroy, OnChanges {
           // Update form with received data
           this.soapForm.patchValue(event.data, { emitEvent: false });
           this.soapForm.markAsPristine();
+          // Salvar no cache local para persistir entre trocas de aba
+          this.saveToLocalCache();
           this.cdr.detectChanges();
           
           // Liberar flag após um pequeno delay
@@ -194,8 +196,13 @@ export class SoapTabComponent implements OnInit, OnDestroy, OnChanges {
           this.isSaving = false;
           this.lastSaved = new Date();
           this.soapForm.markAsPristine();
-          // Limpar cache após salvar com sucesso
-          this.clearLocalCache();
+          // Atualizar o appointment localmente para que os dados mais recentes
+          // sejam usados quando o componente for recriado (ao mudar de aba)
+          if (this.appointment) {
+            this.appointment = { ...this.appointment, soapJson };
+          }
+          // MANTER cache para quando trocar de aba e voltar - os dados já salvos estarão disponíveis
+          this.saveToLocalCache();
           this.cdr.detectChanges();
         },
         error: (error) => {

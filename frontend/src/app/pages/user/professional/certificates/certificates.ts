@@ -1,366 +1,338 @@
-import { Component, OnInit, ElementRef, ViewChild, PLATFORM_ID, Inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, PLATFORM_ID, inject } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IconComponent } from '@app/shared/components/atoms/icon/icon';
+import { IconComponent } from '@shared/components/atoms/icon/icon';
+import { BadgeComponent } from '@shared/components/atoms/badge/badge';
 import { ModalService } from '@core/services/modal.service';
-import { CertificateService, SavedCertificate, PfxCertificateInfo } from '@core/services/certificate.service';
+import { 
+  DigitalCertificateService, 
+  DigitalCertificate,
+  CertificateValidationResult,
+  SaveCertificateDto,
+  UpdateCertificateDto
+} from '@core/services/digital-certificate.service';
+
+type ViewState = 'list' | 'add' | 'edit';
+
+interface CertificateFormData {
+  file: File | null;
+  password: string;
+  displayName: string;
+  quickUseEnabled: boolean;
+  validation: CertificateValidationResult | null;
+}
 
 @Component({
   selector: 'app-certificates',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [CommonModule, FormsModule, IconComponent, BadgeComponent],
   templateUrl: './certificates.html',
-  styleUrl: './certificates.scss'
+  styleUrls: ['./certificates.scss']
 })
 export class CertificatesComponent implements OnInit {
-  @ViewChild('pfxFileInput') pfxFileInput!: ElementRef<HTMLInputElement>;
-
-  // Estado
-  certificates: SavedCertificate[] = [];
-  isLoading = false;
-
-  // Modal de adicionar certificado
-  showAddModal = false;
-  addStep: 'select' | 'validate' | 'configure' = 'select';
-  pfxFile: File | null = null;
-  pfxPassword = '';
+  certificates: DigitalCertificate[] = [];
+  isLoading = true;
+  viewState: ViewState = 'list';
+  
+  // Form data
+  formData: CertificateFormData = {
+    file: null,
+    password: '',
+    displayName: '',
+    quickUseEnabled: false,
+    validation: null
+  };
+  
+  // Edit mode
+  editingCertificate: DigitalCertificate | null = null;
+  editForm = {
+    displayName: '',
+    quickUseEnabled: false,
+    password: ''
+  };
+  
+  // State flags
   isValidating = false;
-  certInfo: PfxCertificateInfo | null = null;
-  certName = '';
-  requirePasswordOnUse = true;
   isSaving = false;
-
-  // Modal de editar certificado
-  showEditModal = false;
-  editingCert: SavedCertificate | null = null;
-  editName = '';
-  editRequirePassword = true;
-  isUpdating = false;
-
-  // Modal de confirmar exclusão
-  showDeleteModal = false;
-  deletingCert: SavedCertificate | null = null;
   isDeleting = false;
-
-  // Modal de confirmar desativar senha
-  showConfirmNoPasswordModal = false;
-  confirmPassword = '';
-  pendingRequirePasswordChange = false;
-  validatedPasswordForDisable = ''; // Senha validada para ser enviada no update
-
-  private isBrowser: boolean;
+  
+  // Toast
+  showToast = false;
+  toastMessage = '';
+  toastType: 'success' | 'error' = 'success';
+  private toastTimeout: any;
+  private platformId = inject(PLATFORM_ID);
 
   constructor(
-    private certificateService: CertificateService,
+    private certificateService: DigitalCertificateService,
     private modalService: ModalService,
-    private cdr: ChangeDetectorRef,
-    @Inject(PLATFORM_ID) platformId: Object
-  ) {
-    this.isBrowser = isPlatformBrowser(platformId);
-  }
+    private cdr: ChangeDetectorRef
+  ) {}
 
-  ngOnInit(): void {
-    // Só carregar certificados no browser (não no SSR)
-    if (this.isBrowser) {
+  ngOnInit() {
+    // Só carrega certificados no navegador (evita erro 401 no SSR)
+    if (isPlatformBrowser(this.platformId)) {
       this.loadCertificates();
+    } else {
+      this.isLoading = false;
     }
   }
 
-  loadCertificates(): void {
+  loadCertificates() {
     this.isLoading = true;
-    this.certificateService.loadSavedCertificates().subscribe({
+    this.certificateService.getMyCertificates().subscribe({
       next: (certs) => {
         this.certificates = certs;
         this.isLoading = false;
         this.cdr.detectChanges();
       },
-      error: () => {
+      error: (err) => {
+        console.error('Erro ao carregar certificados:', err);
+        this.certificates = [];
         this.isLoading = false;
         this.cdr.detectChanges();
-        this.modalService.alert({
-          title: 'Erro',
-          message: 'Não foi possível carregar seus certificados.',
-          variant: 'danger'
-        }).subscribe();
       }
     });
   }
 
-  // === Adicionar Certificado ===
-
-  openAddModal(): void {
-    this.showAddModal = true;
-    this.addStep = 'select';
-    this.pfxFile = null;
-    this.pfxPassword = '';
-    this.certInfo = null;
-    this.certName = '';
-    this.requirePasswordOnUse = true;
+  startAddCertificate() {
+    this.viewState = 'add';
+    this.resetForm();
   }
 
-  closeAddModal(): void {
-    this.showAddModal = false;
-    this.pfxFile = null;
-    this.pfxPassword = '';
-    this.certInfo = null;
+  cancelForm() {
+    this.viewState = 'list';
+    this.resetForm();
+    this.editingCertificate = null;
   }
 
-  triggerFileSelect(): void {
-    this.pfxFileInput?.nativeElement.click();
+  private resetForm() {
+    this.formData = {
+      file: null,
+      password: '',
+      displayName: '',
+      quickUseEnabled: false,
+      validation: null
+    };
+    this.editForm = {
+      displayName: '',
+      quickUseEnabled: false,
+      password: ''
+    };
   }
 
-  onFileSelected(event: Event): void {
+  onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      this.pfxFile = input.files[0];
-      this.addStep = 'validate';
+      const file = input.files[0];
+      if (!file.name.toLowerCase().endsWith('.pfx') && !file.name.toLowerCase().endsWith('.p12')) {
+        this.showToastMessage('Selecione um arquivo .pfx ou .p12', 'error');
+        return;
+      }
+      this.formData.file = file;
+      this.formData.validation = null;
     }
-    input.value = '';
   }
 
-  async validatePfx(): Promise<void> {
-    if (!this.pfxFile || !this.pfxPassword) return;
+  async validateCertificate() {
+    if (!this.formData.file || !this.formData.password) {
+      this.showToastMessage('Selecione o arquivo e informe a senha', 'error');
+      return;
+    }
 
     this.isValidating = true;
     try {
-      const base64 = await this.certificateService.fileToBase64(this.pfxFile);
-      this.certificateService.validatePfx(base64, this.pfxPassword).subscribe({
-        next: (info) => {
-          this.isValidating = false;
-          if (info.isValid) {
-            this.certInfo = info;
-            this.certName = this.certificateService.formatSubjectName(info.subjectName);
-            this.addStep = 'configure';
-          } else {
-            this.modalService.alert({
-              title: 'Certificado Inválido',
-              message: info.errorMessage || 'O certificado não é válido ou a senha está incorreta.',
-              variant: 'danger'
-            }).subscribe();
+      const pfxBase64 = await this.certificateService.fileToBase64(this.formData.file);
+      
+      this.certificateService.validateCertificate({
+        pfxBase64,
+        password: this.formData.password
+      }).subscribe({
+        next: (result) => {
+          this.formData.validation = result;
+          if (result.isValid && result.nameFromCertificate && !this.formData.displayName) {
+            this.formData.displayName = result.nameFromCertificate;
           }
+          this.isValidating = false;
+          this.cdr.detectChanges();
         },
         error: (err) => {
+          console.error('Erro ao validar:', err);
+          this.showToastMessage('Erro ao validar certificado', 'error');
           this.isValidating = false;
-          this.modalService.alert({
-            title: 'Erro',
-            message: err.error?.message || 'Não foi possível validar o certificado. Verifique a senha.',
-            variant: 'danger'
-          }).subscribe();
+          this.cdr.detectChanges();
         }
       });
-    } catch {
+    } catch (err) {
+      console.error('Erro ao ler arquivo:', err);
+      this.showToastMessage('Erro ao ler arquivo', 'error');
       this.isValidating = false;
-      this.modalService.alert({
-        title: 'Erro',
-        message: 'Erro ao ler o arquivo.',
-        variant: 'danger'
-      }).subscribe();
     }
   }
 
-  async saveCertificate(): Promise<void> {
-    if (!this.pfxFile || !this.certInfo) return;
+  async saveCertificate() {
+    if (!this.formData.file || !this.formData.password || !this.formData.validation?.isValid) {
+      this.showToastMessage('Valide o certificado primeiro', 'error');
+      return;
+    }
+
+    if (!this.formData.displayName.trim()) {
+      this.showToastMessage('Informe um nome para o certificado', 'error');
+      return;
+    }
 
     this.isSaving = true;
     try {
-      const base64 = await this.certificateService.fileToBase64(this.pfxFile);
-      this.certificateService.saveCertificate({
-        name: this.certName || this.certificateService.formatSubjectName(this.certInfo.subjectName),
-        pfxBase64: base64,
-        password: this.pfxPassword,
-        requirePasswordOnUse: this.requirePasswordOnUse
-      }).subscribe({
+      const pfxBase64 = await this.certificateService.fileToBase64(this.formData.file);
+      
+      const dto: SaveCertificateDto = {
+        pfxBase64,
+        password: this.formData.password,
+        displayName: this.formData.displayName.trim(),
+        quickUseEnabled: this.formData.quickUseEnabled
+      };
+
+      this.certificateService.saveCertificate(dto).subscribe({
         next: () => {
-          this.isSaving = false;
-          this.closeAddModal();
+          this.showToastMessage('Certificado salvo com sucesso!', 'success');
+          this.viewState = 'list';
+          this.resetForm();
           this.loadCertificates();
-          this.modalService.alert({
-            title: 'Sucesso',
-            message: 'Certificado salvo com sucesso!',
-            variant: 'success'
-          }).subscribe();
+          this.isSaving = false;
+          this.cdr.detectChanges();
         },
         error: (err) => {
+          console.error('Erro ao salvar:', err);
+          const msg = err?.error?.message || 'Erro ao salvar certificado';
+          this.showToastMessage(msg, 'error');
           this.isSaving = false;
-          this.modalService.alert({
-            title: 'Erro',
-            message: err.error?.message || 'Não foi possível salvar o certificado.',
-            variant: 'danger'
-          }).subscribe();
+          this.cdr.detectChanges();
         }
       });
-    } catch {
+    } catch (err) {
+      console.error('Erro:', err);
+      this.showToastMessage('Erro ao processar certificado', 'error');
       this.isSaving = false;
     }
   }
 
-  // === Editar Certificado ===
-
-  openEditModal(cert: SavedCertificate): void {
-    this.editingCert = cert;
-    this.editName = cert.name;
-    this.editRequirePassword = cert.requirePasswordOnUse;
-    this.showEditModal = true;
-  }
-
-  closeEditModal(): void {
-    this.showEditModal = false;
-    this.editingCert = null;
-    this.validatedPasswordForDisable = ''; // Limpar senha validada
-  }
-
-  onRequirePasswordChange(value: boolean): void {
-    if (!value && this.editingCert?.requirePasswordOnUse) {
-      // Está tentando desativar a exigência de senha - precisa confirmar
-      this.pendingRequirePasswordChange = true;
-      this.confirmPassword = '';
-      this.showConfirmNoPasswordModal = true;
-    } else {
-      this.editRequirePassword = value;
-    }
-  }
-
-  closeConfirmNoPasswordModal(): void {
-    this.showConfirmNoPasswordModal = false;
-    this.confirmPassword = '';
-    this.pendingRequirePasswordChange = false;
-  }
-
-  async confirmDisablePassword(): Promise<void> {
-    if (!this.confirmPassword || !this.editingCert) return;
-
-    // Validar a senha antes de permitir desativar
-    this.isValidating = true;
-    
-    this.certificateService.validateSavedCertificatePassword(this.editingCert.id, this.confirmPassword).subscribe({
-      next: (result) => {
-        this.isValidating = false;
-        if (result.isValid) {
-          this.validatedPasswordForDisable = this.confirmPassword; // Guardar a senha para enviar no update
-          this.editRequirePassword = false;
-          this.showConfirmNoPasswordModal = false;
-          this.confirmPassword = '';
-          this.pendingRequirePasswordChange = false;
-        } else {
-          this.modalService.alert({
-            title: 'Senha Incorreta',
-            message: 'A senha informada está incorreta. Tente novamente.',
-            variant: 'danger'
-          }).subscribe();
-        }
-      },
-      error: () => {
-        this.isValidating = false;
-        this.modalService.alert({
-          title: 'Erro',
-          message: 'Não foi possível validar a senha. Tente novamente.',
-          variant: 'danger'
-        }).subscribe();
-      }
-    });
-  }
-
-  updateCertificate(): void {
-    if (!this.editingCert) return;
-
-    this.isUpdating = true;
-    
-    // Se está desativando a exigência de senha, enviar a senha validada
-    const updates: { name?: string; requirePasswordOnUse?: boolean; password?: string } = {
-      name: this.editName,
-      requirePasswordOnUse: this.editRequirePassword
+  startEditCertificate(cert: DigitalCertificate) {
+    this.editingCertificate = cert;
+    this.editForm = {
+      displayName: cert.displayName,
+      quickUseEnabled: cert.quickUseEnabled,
+      password: ''
     };
-    
-    // Adicionar senha se estiver mudando de exigir senha para não exigir
-    if (!this.editRequirePassword && this.editingCert.requirePasswordOnUse && this.validatedPasswordForDisable) {
-      updates.password = this.validatedPasswordForDisable;
+    this.viewState = 'edit';
+  }
+
+  async updateCertificate() {
+    if (!this.editingCertificate) return;
+
+    if (!this.editForm.displayName.trim()) {
+      this.showToastMessage('Informe um nome para o certificado', 'error');
+      return;
     }
-    
-    this.certificateService.updateCertificate(this.editingCert.id, updates).subscribe({
+
+    // Se está ativando QuickUse, precisa da senha
+    if (this.editForm.quickUseEnabled && !this.editingCertificate.quickUseEnabled && !this.editForm.password) {
+      this.showToastMessage('Informe a senha para ativar uso rápido', 'error');
+      return;
+    }
+
+    this.isSaving = true;
+    const dto: UpdateCertificateDto = {
+      displayName: this.editForm.displayName.trim(),
+      quickUseEnabled: this.editForm.quickUseEnabled
+    };
+
+    if (this.editForm.quickUseEnabled && !this.editingCertificate.quickUseEnabled) {
+      dto.password = this.editForm.password;
+    }
+
+    this.certificateService.updateCertificate(this.editingCertificate.id, dto).subscribe({
       next: () => {
-        this.isUpdating = false;
-        this.closeEditModal();
+        this.showToastMessage('Certificado atualizado!', 'success');
+        this.viewState = 'list';
+        this.editingCertificate = null;
+        this.resetForm();
         this.loadCertificates();
-        this.modalService.alert({
-          title: 'Sucesso',
-          message: 'Certificado atualizado com sucesso!',
-          variant: 'success'
-        }).subscribe();
+        this.isSaving = false;
+        this.cdr.detectChanges();
       },
       error: (err) => {
-        this.isUpdating = false;
-        this.modalService.alert({
-          title: 'Erro',
-          message: err.error?.message || 'Não foi possível atualizar o certificado.',
-          variant: 'danger'
-        }).subscribe();
+        console.error('Erro ao atualizar:', err);
+        const msg = err?.error?.message || 'Erro ao atualizar certificado';
+        this.showToastMessage(msg, 'error');
+        this.isSaving = false;
+        this.cdr.detectChanges();
       }
     });
   }
 
-  // === Excluir Certificado ===
+  async deleteCertificate(cert: DigitalCertificate) {
+    const confirmed = await this.modalService.confirm({
+      title: 'Excluir Certificado',
+      message: `Tem certeza que deseja excluir o certificado "${cert.displayName}"? Esta ação não pode ser desfeita.`,
+      confirmText: 'Excluir',
+      cancelText: 'Cancelar',
+      variant: 'danger'
+    });
 
-  openDeleteModal(cert: SavedCertificate): void {
-    this.deletingCert = cert;
-    this.showDeleteModal = true;
-  }
-
-  closeDeleteModal(): void {
-    this.showDeleteModal = false;
-    this.deletingCert = null;
-  }
-
-  deleteCertificate(): void {
-    if (!this.deletingCert) return;
+    if (!confirmed) return;
 
     this.isDeleting = true;
-    this.certificateService.deleteCertificate(this.deletingCert.id).subscribe({
+    this.certificateService.deleteCertificate(cert.id).subscribe({
       next: () => {
-        this.isDeleting = false;
-        this.closeDeleteModal();
+        this.showToastMessage('Certificado excluído!', 'success');
         this.loadCertificates();
-        this.modalService.alert({
-          title: 'Sucesso',
-          message: 'Certificado excluído com sucesso!',
-          variant: 'success'
-        }).subscribe();
+        this.isDeleting = false;
+        this.cdr.detectChanges();
       },
       error: (err) => {
+        console.error('Erro ao excluir:', err);
+        this.showToastMessage('Erro ao excluir certificado', 'error');
         this.isDeleting = false;
-        this.modalService.alert({
-          title: 'Erro',
-          message: err.error?.message || 'Não foi possível excluir o certificado.',
-          variant: 'danger'
-        }).subscribe();
+        this.cdr.detectChanges();
       }
     });
   }
 
-  // === Helpers ===
-
-  isCertificateValid(cert: SavedCertificate): boolean {
-    return this.certificateService.isCertificateValid(cert);
+  formatDate(dateString: string): string {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('pt-BR');
   }
 
-  formatSubjectName(name: string): string {
-    return this.certificateService.formatSubjectName(name);
+  getExpirationBadgeVariant(cert: DigitalCertificate): 'success' | 'warning' | 'error' {
+    if (cert.isExpired) return 'error';
+    if (cert.daysUntilExpiration <= 30) return 'warning';
+    return 'success';
   }
 
-  formatDate(date: Date | string): string {
-    return new Date(date).toLocaleDateString('pt-BR');
+  getExpirationLabel(cert: DigitalCertificate): string {
+    if (cert.isExpired) return 'Expirado';
+    if (cert.daysUntilExpiration <= 30) return `Expira em ${cert.daysUntilExpiration} dias`;
+    return 'Válido';
   }
 
-  getDaysUntilExpiry(validTo: Date | string): number {
-    const now = new Date();
-    const expiry = new Date(validTo);
-    const diff = expiry.getTime() - now.getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  private showToastMessage(message: string, type: 'success' | 'error') {
+    if (this.toastTimeout) {
+      clearTimeout(this.toastTimeout);
+    }
+    this.toastMessage = message;
+    this.toastType = type;
+    this.showToast = true;
+    this.toastTimeout = setTimeout(() => {
+      this.showToast = false;
+      this.cdr.detectChanges();
+    }, 4000);
   }
 
-  getExpiryStatus(cert: SavedCertificate): 'valid' | 'warning' | 'expired' {
-    const days = this.getDaysUntilExpiry(cert.validTo);
-    if (days < 0) return 'expired';
-    if (days < 30) return 'warning';
-    return 'valid';
+  hideToast() {
+    this.showToast = false;
+    if (this.toastTimeout) {
+      clearTimeout(this.toastTimeout);
+    }
   }
 }

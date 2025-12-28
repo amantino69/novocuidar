@@ -1,11 +1,12 @@
-import { Component, Input, OnInit, OnDestroy, ViewChild, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { ButtonComponent } from '@shared/components/atoms/button/button';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
-import { DigitalSignatureComponent, DigitalSignatureResult } from '@shared/components/molecules/digital-signature/digital-signature';
 import { ModalService } from '@core/services/modal.service';
+import { SignDocumentModalComponent, SignDocumentEvent } from '@shared/components/molecules/sign-document-modal/sign-document-modal';
+import { DigitalCertificateService } from '@core/services/digital-certificate.service';
 import { 
   PrescriptionService, 
   Prescription, 
@@ -19,7 +20,7 @@ import {
 @Component({
   selector: 'app-receita-tab',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, ButtonComponent, IconComponent, DigitalSignatureComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, ButtonComponent, IconComponent, SignDocumentModalComponent],
   templateUrl: './receita-tab.html',
   styleUrls: ['./receita-tab.scss']
 })
@@ -27,8 +28,6 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
   @Input() appointmentId: string | null = null;
   @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' = 'PATIENT';
   @Input() readonly = false;
-  
-  @ViewChild('digitalSignature') digitalSignature!: DigitalSignatureComponent;
 
   prescriptions: Prescription[] = [];
   isLoading = true;
@@ -47,10 +46,6 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
   medicamentoResults: MedicamentoAnvisa[] = [];
   showMedicamentoDropdown = false;
   isSearching = false;
-  
-  // Assinatura digital
-  isSigning = false;
-  signingPrescriptionId: string | null = null;
 
   // Toast de sucesso
   showSuccessToast = false;
@@ -61,6 +56,10 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
   isEditMode = false;
   editingItemId: string | null = null;
 
+  // Modal de assinatura
+  showSignModal = false;
+  signingPrescriptionId: string | null = null;
+
   private destroy$ = new Subject<void>();
   private searchSubject = new Subject<string>();
 
@@ -68,6 +67,7 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private modalService: ModalService,
     private prescriptionService: PrescriptionService,
+    private digitalCertificateService: DigitalCertificateService,
     private cdr: ChangeDetectorRef
   ) {
     this.itemForm = this.fb.group({
@@ -462,74 +462,11 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
     });
   }
 
-  // === Assinatura Digital ===
+  // === Download PDF Assinado ===
 
-  openSignatureOptions(prescription: Prescription) {
-    this.signingPrescriptionId = prescription.id;
-    this.digitalSignature.open();
-  }
-
-  onSign(result: DigitalSignatureResult) {
-    console.log('onSign chamado com resultado:', result);
-    
-    if (!this.signingPrescriptionId) {
-      console.error('signingPrescriptionId é null!');
-      return;
-    }
-
-    this.isSigning = true;
-
-    if (result.type === 'saved-cert') {
-      this.prescriptionService.signWithSavedCert(
-        this.signingPrescriptionId, 
-        result.certificateId!.toString(),
-        result.password
-      ).subscribe({
-        next: () => this.handleSignatureSuccess(),
-        error: (err) => this.handleSignatureError(err)
-      });
-    } else {
-      this.prescriptionService.generateSignedPdf(
-        this.signingPrescriptionId,
-        result.pfxBase64!,
-        result.password!
-      ).subscribe({
-        next: () => this.handleSignatureSuccess(),
-        error: (err) => this.handleSignatureError(err)
-      });
-    }
-  }
-
-  private handleSignatureSuccess() {
-    this.isSigning = false;
-    this.signingPrescriptionId = null;
-    this.loadPrescriptions();
-    this.cdr.detectChanges();
-    this.modalService.alert({ 
-      title: 'Sucesso', 
-      message: 'Receita assinada com sucesso!', 
-      variant: 'success' 
-    });
-  }
-
-  private handleSignatureError(err: any) {
-    console.error('Erro ao assinar receita:', err);
-    this.isSigning = false;
-    this.cdr.detectChanges();
-    this.modalService.alert({ 
-      title: 'Erro', 
-      message: err.error?.message || 'Não foi possível assinar a receita.', 
-      variant: 'danger' 
-    });
-  }
-
-  onSignatureCancel() {
-    this.isSigning = false;
-    this.signingPrescriptionId = null;
-  }
-
-  onCertificateSaved() {
-    // Não faz nada - deixa o modal aberto para o auto-apply do certificado
+  downloadSignedPdf(prescription: Prescription) {
+    if (!prescription.isSigned) return;
+    this.digitalCertificateService.downloadSignedPrescriptionPdf(prescription.id);
   }
 
   // === Helpers ===
@@ -542,5 +479,43 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
 
   hasItems(prescription: Prescription): boolean {
     return prescription.items && prescription.items.length > 0;
+  }
+
+  // === Assinatura Digital ===
+
+  openSignModal(prescription: Prescription) {
+    if (prescription.isSigned) {
+      this.modalService.alert({ 
+        title: 'Aviso', 
+        message: 'Esta receita já está assinada.', 
+        variant: 'warning' 
+      });
+      return;
+    }
+
+    if (!this.hasItems(prescription)) {
+      this.modalService.alert({ 
+        title: 'Aviso', 
+        message: 'Adicione pelo menos um medicamento antes de assinar.', 
+        variant: 'warning' 
+      });
+      return;
+    }
+
+    this.signingPrescriptionId = prescription.id;
+    this.showSignModal = true;
+  }
+
+  closeSignModal() {
+    this.showSignModal = false;
+    this.signingPrescriptionId = null;
+  }
+
+  onDocumentSigned(event: SignDocumentEvent) {
+    if (event.success) {
+      this.showToast('Receita assinada com sucesso!');
+      this.loadPrescriptions();
+    }
+    this.closeSignModal();
   }
 }

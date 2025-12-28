@@ -14,16 +14,13 @@ public class PrescriptionsController : ControllerBase
 {
     private readonly IPrescriptionService _prescriptionService;
     private readonly IAuditLogService _auditLogService;
-    private readonly ICertificateStorageService _certificateStorageService;
 
     public PrescriptionsController(
         IPrescriptionService prescriptionService, 
-        IAuditLogService auditLogService,
-        ICertificateStorageService certificateStorageService)
+        IAuditLogService auditLogService)
     {
         _prescriptionService = prescriptionService;
         _auditLogService = auditLogService;
-        _certificateStorageService = certificateStorageService;
     }
 
     private Guid? GetCurrentUserId()
@@ -185,81 +182,6 @@ public class PrescriptionsController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    [HttpPost("{id}/pdf/signed")]
-    public async Task<ActionResult<PrescriptionPdfDto>> GenerateSignedPdf(Guid id, [FromBody] GenerateSignedPdfDto dto)
-    {
-        try
-        {
-            var pfxBytes = Convert.FromBase64String(dto.PfxBase64);
-            var pdf = await _prescriptionService.GenerateSignedPdfAsync(id, pfxBytes, dto.PfxPassword);
-            
-            // Audit log
-            await _auditLogService.CreateAuditLogAsync(
-                GetCurrentUserId(),
-                "sign_pdf",
-                "Prescription",
-                id.ToString(),
-                null,
-                HttpContextExtensions.SerializeToJson(new { SignedAt = DateTime.UtcNow }),
-                HttpContext.GetIpAddress(),
-                HttpContext.GetUserAgent()
-            );
-            
-            return Ok(pdf);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = $"Erro ao assinar PDF: {ex.Message}" });
-        }
-    }
-
-    [HttpPost("{id}/pdf/sign-saved")]
-    public async Task<ActionResult<PrescriptionPdfDto>> SignWithSavedCert(Guid id, [FromBody] SignWithSavedCertDto dto)
-    {
-        try
-        {
-            var userId = GetCurrentUserId();
-            if (userId == null)
-                return Unauthorized();
-
-            // Obter certificado para assinatura
-            var (pfxBytes, password) = await _certificateStorageService.GetCertificateForSigningAsync(
-                userId.Value,
-                dto.CertificateId,
-                dto.Password
-            );
-
-            // Usar o serviço existente com os bytes do certificado
-            var pdf = await _prescriptionService.GenerateSignedPdfAsync(id, pfxBytes, password);
-            
-            // Audit log
-            await _auditLogService.CreateAuditLogAsync(
-                userId,
-                "sign_pdf_saved_cert",
-                "Prescription",
-                id.ToString(),
-                null,
-                HttpContextExtensions.SerializeToJson(new { CertificateId = dto.CertificateId, SignedAt = DateTime.UtcNow }),
-                HttpContext.GetIpAddress(),
-                HttpContext.GetUserAgent()
-            );
-            
-            return Ok(pdf);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = $"Erro ao gerar PDF assinado: {ex.Message}" });
         }
     }
 

@@ -73,7 +73,7 @@ builder.Services.AddScoped<Application.Interfaces.IInviteService, Infrastructure
 builder.Services.AddScoped<Application.Interfaces.IAIService, Infrastructure.Services.AIService>();
 builder.Services.AddScoped<Application.Interfaces.IPrescriptionService, Infrastructure.Services.PrescriptionService>();
 builder.Services.AddScoped<Application.Interfaces.IMedicalCertificateService, Infrastructure.Services.MedicalCertificateService>();
-builder.Services.AddScoped<Application.Interfaces.ICertificateStorageService, Infrastructure.Services.CertificateStorageService>();
+builder.Services.AddScoped<Application.Interfaces.IDigitalCertificateService, Infrastructure.Services.DigitalCertificateService>();
 builder.Services.AddSingleton<Application.Interfaces.IMedicamentoAnvisaService, Infrastructure.Services.MedicamentoAnvisaService>();
 
 // HttpClient for external API calls (OpenFDA, etc.)
@@ -147,14 +147,16 @@ builder.Services.AddCors(options =>
             policy.SetIsOriginAllowed(_ => true)
                   .AllowAnyHeader()
                   .AllowAnyMethod()
-                  .AllowCredentials();
+                  .AllowCredentials()
+                  .WithExposedHeaders("Content-Disposition");
         }
         else
         {
             policy.WithOrigins(allowedOrigins)
                   .AllowAnyHeader()
                   .AllowAnyMethod()
-                  .AllowCredentials();
+                  .AllowCredentials()
+                  .WithExposedHeaders("Content-Disposition");
         }
     });
     

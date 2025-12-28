@@ -3,6 +3,7 @@ using System;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251228000418_RemoveSavedCertificates")]
+    partial class RemoveSavedCertificates
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.1");
@@ -194,85 +197,6 @@ namespace Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("AuditLogs");
-                });
-
-            modelBuilder.Entity("Domain.Entities.DigitalCertificate", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CpfFromCertificate")
-                        .HasMaxLength(14)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("EncryptedPassword")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("EncryptedPfxBase64")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("EncryptionIV")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("ExpirationDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("IssuedDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Issuer")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("LastUsedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("NameFromCertificate")
-                        .HasMaxLength(300)
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("QuickUseEnabled")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Subject")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Thumbprint")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Thumbprint");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("DigitalCertificates");
                 });
 
             modelBuilder.Entity("Domain.Entities.Invite", b =>
@@ -910,17 +834,6 @@ namespace Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Domain.Entities.DigitalCertificate", b =>
-                {
-                    b.HasOne("Domain.Entities.User", "User")
-                        .WithMany("DigitalCertificates")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Domain.Entities.Invite", b =>
                 {
                     b.HasOne("Domain.Entities.User", "CreatedByUser")
@@ -1074,8 +987,6 @@ namespace Infrastructure.Migrations
                     b.Navigation("AppointmentsAsProfessional");
 
                     b.Navigation("AuditLogs");
-
-                    b.Navigation("DigitalCertificates");
 
                     b.Navigation("Notifications");
 

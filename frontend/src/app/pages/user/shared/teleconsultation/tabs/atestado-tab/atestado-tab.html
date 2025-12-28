@@ -202,21 +202,29 @@
                         <app-icon name="trash" [size]="16" />
                       </button>
                     }
-                    <button 
-                      class="action-btn pdf" 
-                      (click)="generatePdf(cert)" 
-                      [disabled]="isGeneratingPdf"
-                      title="Gerar PDF">
-                      <app-icon name="download" [size]="16" />
-                    </button>
                     @if (!cert.isSigned) {
                       <button 
                         class="action-btn sign" 
-                        (click)="openSignatureOptions(cert)"
-                        [disabled]="isSigning"
-                        title="Assinar digitalmente">
-                        <app-icon name="edit" [size]="16" />
-                        Assinar
+                        type="button"
+                        (click)="openSignModal(cert); $event.stopPropagation()" 
+                        title="Assinar Digitalmente">
+                        <app-icon name="shield" [size]="16" />
+                      </button>
+                    }
+                    @if (cert.isSigned) {
+                      <button 
+                        class="action-btn pdf signed" 
+                        (click)="downloadSignedPdf(cert)"
+                        title="Baixar PDF Assinado (validável em validar.iti.gov.br)">
+                        <app-icon name="download" [size]="16" />
+                      </button>
+                    } @else {
+                      <button 
+                        class="action-btn pdf" 
+                        (click)="generatePdf(cert)" 
+                        [disabled]="isGeneratingPdf"
+                        title="Gerar PDF">
+                        <app-icon name="download" [size]="16" />
                       </button>
                     }
                   </div>
@@ -230,12 +238,11 @@
   }
 </div>
 
-<!-- Componente de Assinatura Digital -->
-<app-digital-signature
-  #digitalSignature
-  documentTitle="Atestado"
-  signButtonText="Assinar Atestado"
-  [isSigning]="isSigning"
-  (sign)="onSign($event)"
-  (cancel)="onSignatureCancel()"
-  (certificateSaved)="onCertificateSaved()" />
+<!-- Modal de Assinatura Digital -->
+<app-sign-document-modal
+  [isOpen]="showSignModal"
+  [documentType]="'certificate'"
+  [documentId]="signingCertificateId || ''"
+  (close)="closeSignModal()"
+  (signed)="onDocumentSigned($event)"
+/>

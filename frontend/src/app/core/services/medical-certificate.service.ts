@@ -124,26 +124,6 @@ export class MedicalCertificateService {
   }
 
   /**
-   * Assina o atestado com certificado salvo na plataforma
-   */
-  signWithSavedCert(id: string, savedCertificateId: string, password?: string): Observable<MedicalCertificate> {
-    return this.http.post<MedicalCertificate>(`${API_BASE_URL}/${id}/sign`, {
-      savedCertificateId,
-      password
-    });
-  }
-
-  /**
-   * Assina o atestado com arquivo PFX
-   */
-  signWithPfx(id: string, pfxBase64: string, password: string): Observable<MedicalCertificate> {
-    return this.http.post<MedicalCertificate>(`${API_BASE_URL}/${id}/sign-with-pfx`, {
-      pfxBase64,
-      password
-    });
-  }
-
-  /**
    * Valida hash de documento
    */
   validateDocument(documentHash: string): Observable<{ valid: boolean; hash: string }> {

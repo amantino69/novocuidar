@@ -79,18 +79,6 @@ public class PrescriptionPdfDto
     public bool IsSigned { get; set; }
 }
 
-public class GenerateSignedPdfDto
-{
-    public string PfxBase64 { get; set; } = string.Empty;
-    public string PfxPassword { get; set; } = string.Empty;
-}
-
-public class SignWithSavedCertDto
-{
-    public Guid CertificateId { get; set; }
-    public string? Password { get; set; }
-}
-
 public class MedicamentoAnvisaDto
 {
     public string Codigo { get; set; } = string.Empty;

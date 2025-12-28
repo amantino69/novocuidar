@@ -1,11 +1,12 @@
-import { Component, Input, OnInit, OnDestroy, ViewChild, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { ButtonComponent } from '@shared/components/atoms/button/button';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
-import { DigitalSignatureComponent, DigitalSignatureResult } from '@shared/components/molecules/digital-signature/digital-signature';
 import { ModalService } from '@core/services/modal.service';
+import { SignDocumentModalComponent, SignDocumentEvent } from '@shared/components/molecules/sign-document-modal/sign-document-modal';
+import { DigitalCertificateService } from '@core/services/digital-certificate.service';
 import { 
   MedicalCertificateService, 
   MedicalCertificate, 
@@ -17,7 +18,7 @@ import {
 @Component({
   selector: 'app-atestado-tab',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, ButtonComponent, IconComponent, DigitalSignatureComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, ButtonComponent, IconComponent, SignDocumentModalComponent],
   templateUrl: './atestado-tab.html',
   styleUrls: ['./atestado-tab.scss']
 })
@@ -25,8 +26,6 @@ export class AtestadoTabComponent implements OnInit, OnDestroy {
   @Input() appointmentId: string | null = null;
   @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' = 'PATIENT';
   @Input() readonly = false;
-  
-  @ViewChild('digitalSignature') digitalSignature!: DigitalSignatureComponent;
 
   certificates: MedicalCertificate[] = [];
   isLoading = true;
@@ -46,9 +45,9 @@ export class AtestadoTabComponent implements OnInit, OnDestroy {
     { value: 'acompanhante', label: 'Atestado de Acompanhante' },
     { value: 'outro', label: 'Outro' }
   ];
-  
-  // Assinatura digital
-  isSigning = false;
+
+  // Modal de assinatura
+  showSignModal = false;
   signingCertificateId: string | null = null;
 
   private destroy$ = new Subject<void>();
@@ -57,6 +56,7 @@ export class AtestadoTabComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private modalService: ModalService,
     private certificateService: MedicalCertificateService,
+    private digitalCertificateService: DigitalCertificateService,
     private cdr: ChangeDetectorRef
   ) {
     this.certificateForm = this.fb.group({
@@ -293,79 +293,11 @@ export class AtestadoTabComponent implements OnInit, OnDestroy {
     });
   }
 
-  // === Assinatura Digital ===
+  // === Download PDF Assinado ===
 
-  openSignatureOptions(cert: MedicalCertificate) {
-    this.signingCertificateId = cert.id;
-    this.digitalSignature.open();
-  }
-
-  onSign(result: DigitalSignatureResult) {
-    if (!this.signingCertificateId) return;
-
-    this.isSigning = true;
-
-    if (result.type === 'saved-cert') {
-      // Assinar com certificado salvo
-      this.certificateService.signWithSavedCert(
-        this.signingCertificateId, 
-        result.certificateId!.toString(),
-        result.password
-      ).subscribe({
-        next: () => {
-          this.handleSignatureSuccess();
-        },
-        error: (err) => {
-          this.handleSignatureError(err);
-        }
-      });
-    } else {
-      // Assinar com arquivo PFX
-      this.certificateService.signWithPfx(
-        this.signingCertificateId,
-        result.pfxBase64!,
-        result.password!
-      ).subscribe({
-        next: () => {
-          this.handleSignatureSuccess();
-        },
-        error: (err) => {
-          this.handleSignatureError(err);
-        }
-      });
-    }
-  }
-
-  private handleSignatureSuccess() {
-    this.isSigning = false;
-    this.signingCertificateId = null;
-    this.loadCertificates();
-    this.cdr.detectChanges();
-    this.modalService.alert({ 
-      title: 'Sucesso', 
-      message: 'Atestado assinado com sucesso!', 
-      variant: 'success' 
-    });
-  }
-
-  private handleSignatureError(err: any) {
-    console.error('Erro ao assinar atestado:', err);
-    this.isSigning = false;
-    this.cdr.detectChanges();
-    this.modalService.alert({ 
-      title: 'Erro', 
-      message: err.error?.message || 'Não foi possível assinar o atestado.', 
-      variant: 'danger' 
-    });
-  }
-
-  onSignatureCancel() {
-    this.isSigning = false;
-    this.signingCertificateId = null;
-  }
-
-  onCertificateSaved() {
-    // Não faz nada - deixa o modal aberto para o auto-apply do certificado
+  downloadSignedPdf(cert: MedicalCertificate) {
+    if (!cert.isSigned) return;
+    this.digitalCertificateService.downloadSignedCertificatePdf(cert.id);
   }
 
   getTipoLabel(tipo: string): string {
@@ -377,5 +309,39 @@ export class AtestadoTabComponent implements OnInit, OnDestroy {
     if (!dateStr) return '';
     const date = new Date(dateStr);
     return date.toLocaleDateString('pt-BR');
+  }
+
+  // === Assinatura Digital ===
+
+  openSignModal(cert: MedicalCertificate) {
+    if (cert.isSigned) {
+      this.modalService.alert({ 
+        title: 'Aviso', 
+        message: 'Este atestado já está assinado.', 
+        variant: 'warning' 
+      });
+      return;
+    }
+
+    this.signingCertificateId = cert.id;
+    this.showSignModal = true;
+    this.cdr.detectChanges();
+  }
+
+  closeSignModal() {
+    this.showSignModal = false;
+    this.signingCertificateId = null;
+  }
+
+  onDocumentSigned(event: SignDocumentEvent) {
+    if (event.success) {
+      this.modalService.alert({ 
+        title: 'Sucesso', 
+        message: 'Atestado assinado com sucesso!', 
+        variant: 'success' 
+      });
+      this.loadCertificates();
+    }
+    this.closeSignModal();
   }
 }
