@@ -172,8 +172,8 @@ public class AuthService : IAuthService
 
         if (user == null)
         {
-            // Por segurança, retorna true mesmo se usuário não existe
-            return true;
+            // Retorna false para indicar que o e-mail não foi encontrado
+            return false;
         }
 
         user.PasswordResetToken = Guid.NewGuid().ToString();

@@ -49,18 +49,16 @@ export const routes: Routes = [
   { path: 'entrar', component: LoginComponent, canActivate: [guestGuard] },
   { path: 'registrar', component: RegisterComponent, canActivate: [guestGuard] },
   { path: 'esqueci-senha', component: ForgotPasswordComponent },
-  { path: 'reset-password', component: ResetPasswordComponent },
-  { path: 'verify-email', component: VerifyEmailComponent },
-  {
-    path: 'auth',
-    children: [
-      { path: 'forgot-password', component: ForgotPasswordComponent },
-      { path: 'reset-password', component: ResetPasswordComponent },
-      { path: 'verify-email', component: VerifyEmailComponent },
-      { path: 'verify-email-change', component: VerifyEmailChangeComponent },
-      { path: '', redirectTo: '/entrar', pathMatch: 'full' }
-    ]
-  },
+  { path: 'redefinir-senha', component: ResetPasswordComponent },
+  { path: 'verificar-email', component: VerifyEmailComponent },
+  { path: 'verificar-alteracao-email', component: VerifyEmailChangeComponent },
+  // Rotas legadas para compatibilidade
+  { path: 'reset-password', redirectTo: '/redefinir-senha', pathMatch: 'full' },
+  { path: 'auth/verify-email', redirectTo: '/verificar-email', pathMatch: 'full' },
+  { path: 'auth/verify-email-change', redirectTo: '/verificar-alteracao-email', pathMatch: 'full' },
+  { path: 'auth/reset-password', redirectTo: '/redefinir-senha', pathMatch: 'full' },
+  { path: 'auth/forgot-password', redirectTo: '/esqueci-senha', pathMatch: 'full' },
+  { path: 'auth', redirectTo: '/entrar', pathMatch: 'full' },
   {
     path: 'mobile-upload',
     component: MobileUploadComponent

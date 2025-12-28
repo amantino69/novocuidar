@@ -16,9 +16,10 @@ export class TitleService {
     // Auth
     '/entrar': 'Login',
     '/registrar': 'Cadastro',
-    '/auth/forgot-password': 'Recuperar Senha',
-    '/auth/reset-password': 'Redefinir Senha',
-    '/auth/verify-email': 'Verificar Email',
+    '/esqueci-senha': 'Recuperar Senha',
+    '/redefinir-senha': 'Redefinir Senha',
+    '/verificar-email': 'Verificar Email',
+    '/verificar-alteracao-email': 'Verificar Alteração de Email',
     
     // Mobile Upload
     '/mobile-upload': 'Upload de Documentos',

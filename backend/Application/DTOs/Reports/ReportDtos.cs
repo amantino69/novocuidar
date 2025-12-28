@@ -35,6 +35,17 @@ public class DashboardStatsDto
     public List<SpecialtyStatsDto> TopSpecialties { get; set; } = new();
     public int TotalNotifications { get; set; }
     public int UnreadNotifications { get; set; }
+    
+    // Novos campos para dashboard
+    public int TodayAppointments { get; set; }
+    public int AverageConsultationTime { get; set; } // em minutos
+    public List<MonthlyAppointmentsDto> AppointmentsByMonth { get; set; } = new();
+}
+
+public class MonthlyAppointmentsDto
+{
+    public string Month { get; set; } = string.Empty;
+    public int Appointments { get; set; }
 }
 
 public class AppointmentsByPeriodDto

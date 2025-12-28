@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -25,6 +25,7 @@ export class ForgotPasswordComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
 
   forgotPasswordForm: FormGroup;
   isLoading = false;
@@ -62,10 +63,12 @@ export class ForgotPasswordComponent {
         this.isLoading = false;
         this.emailSent = true;
         this.successMessage = 'Enviamos um link de recuperação para seu e-mail. Verifique sua caixa de entrada.';
+        this.cdr.detectChanges();
       },
       error: (error) => {
         this.isLoading = false;
         this.errorMessage = error.error?.message || 'Erro ao enviar e-mail. Tente novamente.';
+        this.cdr.detectChanges();
       }
     });
   }

@@ -215,6 +215,26 @@ public class UserService : IUserService
         if (!string.IsNullOrEmpty(dto.LastName))
             user.LastName = dto.LastName;
 
+        if (!string.IsNullOrEmpty(dto.Email))
+        {
+            // Validar se o email já está em uso por outro usuário
+            if (await _context.Users.AnyAsync(u => u.Email == dto.Email && u.Id != id))
+            {
+                throw new InvalidOperationException("Email already in use");
+            }
+            user.Email = dto.Email;
+        }
+
+        if (!string.IsNullOrEmpty(dto.Cpf))
+        {
+            // Validar se o CPF já está em uso por outro usuário
+            if (await _context.Users.AnyAsync(u => u.Cpf == dto.Cpf && u.Id != id))
+            {
+                throw new InvalidOperationException("CPF already in use");
+            }
+            user.Cpf = dto.Cpf;
+        }
+
         if (dto.Phone != null)
         {
             // Validar se o telefone já está em uso por outro usuário

@@ -99,122 +99,134 @@
 
         <div class="modal__body">
           <p class="modal__description">
-            Preencha os dados do novo usuário. Todos os campos são opcionais.
+            Preencha os dados do novo usuário. Todos os campos são obrigatórios.
           </p>
 
-          <form class="user-form">
+          <form [formGroup]="userForm" class="user-form">
             <div class="user-form__row">
               <div class="user-form__field">
-                <label for="create-user-name" class="user-form__label">Nome</label>
+                <label for="create-user-name" class="user-form__label">Nome *</label>
                 <input
                   id="create-user-name"
                   type="text"
                   class="user-form__input"
-                  [(ngModel)]="userData.name"
-                  name="name"
+                  [class.user-form__input--error]="userForm.get('name')?.invalid && userForm.get('name')?.touched"
+                  formControlName="name"
                   placeholder="Digite o nome"
                 />
+                @if (getErrorMessage('name')) {
+                  <span class="user-form__error">{{ getErrorMessage('name') }}</span>
+                }
               </div>
 
               <div class="user-form__field">
-                <label for="create-user-lastname" class="user-form__label">Sobrenome</label>
+                <label for="create-user-lastname" class="user-form__label">Sobrenome *</label>
                 <input
                   id="create-user-lastname"
                   type="text"
                   class="user-form__input"
-                  [(ngModel)]="userData.lastName"
-                  name="lastName"
+                  [class.user-form__input--error]="userForm.get('lastName')?.invalid && userForm.get('lastName')?.touched"
+                  formControlName="lastName"
                   placeholder="Digite o sobrenome"
                 />
+                @if (getErrorMessage('lastName')) {
+                  <span class="user-form__error">{{ getErrorMessage('lastName') }}</span>
+                }
               </div>
             </div>
 
             <div class="user-form__field">
               <label for="create-user-email" class="user-form__label">
-                E-mail
-                @if (userData.email?.trim()) {
-                  <span class="user-form__label-badge">Habilita envio por email</span>
-                }
+                E-mail *
               </label>
               <input
                 id="create-user-email"
                 type="email"
                 class="user-form__input"
-                [(ngModel)]="userData.email"
-                name="email"
+                [class.user-form__input--error]="userForm.get('email')?.invalid && userForm.get('email')?.touched"
+                formControlName="email"
                 placeholder="Digite o e-mail"
-                appEmailValidator
               />
+              @if (getErrorMessage('email')) {
+                <span class="user-form__error">{{ getErrorMessage('email') }}</span>
+              }
             </div>
 
             <div class="user-form__row">
               <div class="user-form__field">
-                <label for="create-user-cpf" class="user-form__label">CPF</label>
+                <label for="create-user-cpf" class="user-form__label">CPF *</label>
                 <input
                   id="create-user-cpf"
                   type="text"
                   class="user-form__input"
-                  [(ngModel)]="userData.cpf"
-                  name="cpf"
+                  [class.user-form__input--error]="userForm.get('cpf')?.invalid && userForm.get('cpf')?.touched"
+                  formControlName="cpf"
                   placeholder="000.000.000-00"
                   appCpfMask
                 />
+                @if (getErrorMessage('cpf')) {
+                  <span class="user-form__error">{{ getErrorMessage('cpf') }}</span>
+                }
               </div>
 
               <div class="user-form__field">
-                <label for="create-user-phone" class="user-form__label">Telefone</label>
+                <label for="create-user-phone" class="user-form__label">Telefone *</label>
                 <input
                   id="create-user-phone"
                   type="tel"
                   class="user-form__input"
-                  [(ngModel)]="userData.phone"
-                  name="phone"
+                  [class.user-form__input--error]="userForm.get('phone')?.invalid && userForm.get('phone')?.touched"
+                  formControlName="phone"
                   placeholder="(00) 00000-0000"
                   appPhoneMask
                 />
+                @if (getErrorMessage('phone')) {
+                  <span class="user-form__error">{{ getErrorMessage('phone') }}</span>
+                }
               </div>
             </div>
 
             <div class="user-form__row">
               <div class="user-form__field">
                 <label for="create-user-password" class="user-form__label">
-                  Senha
+                  Senha *
                 </label>
                 <input
                   id="create-user-password"
                   type="password"
                   class="user-form__input"
-                  [(ngModel)]="password"
-                  name="password"
+                  [class.user-form__input--error]="userForm.get('password')?.invalid && userForm.get('password')?.touched"
+                  formControlName="password"
                   placeholder="Digite a senha"
                 />
-                @if (password) {
-                  <app-password-strength [password]="password" />
+                @if (getErrorMessage('password')) {
+                  <span class="user-form__error">{{ getErrorMessage('password') }}</span>
                 }
               </div>
 
               <div class="user-form__field">
                 <label for="create-user-confirm-password" class="user-form__label">
-                  Confirmar Senha
-                  @if (confirmPassword && !passwordsMatch()) {
-                    <span class="user-form__label-error">Senhas não coincidem</span>
-                  }
-                  @if (confirmPassword && passwordsMatch()) {
-                    <span class="user-form__label-success">Senhas coincidem ✓</span>
-                  }
+                  Confirmar Senha *
                 </label>
                 <input
                   id="create-user-confirm-password"
                   type="password"
                   class="user-form__input"
-                  [class.user-form__input--error]="confirmPassword && !passwordsMatch()"
-                  [class.user-form__input--success]="confirmPassword && passwordsMatch()"
-                  [(ngModel)]="confirmPassword"
-                  name="confirmPassword"
+                  [class.user-form__input--error]="userForm.get('confirmPassword')?.invalid && userForm.get('confirmPassword')?.touched"
+                  formControlName="confirmPassword"
                   placeholder="Confirme a senha"
                 />
+                @if (getErrorMessage('confirmPassword')) {
+                  <span class="user-form__error">{{ getErrorMessage('confirmPassword') }}</span>
+                }
               </div>
             </div>
+
+            @if (userForm.get('password')?.value) {
+              <div class="user-form__password-strength">
+                <app-password-strength [password]="userForm.get('password')?.value" />
+              </div>
+            }
 
             <!-- Switch de Modo de Criação -->
             <div class="user-form__mode-switch">

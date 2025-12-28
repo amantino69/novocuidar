@@ -243,6 +243,22 @@
     font-weight: $font-weight-medium;
   }
 
+  &__contact {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__contact-email {
+    font-size: $font-size-sm;
+    color: var(--text-primary);
+  }
+
+  &__contact-phone {
+    font-size: $font-size-xs;
+    color: var(--text-secondary);
+  }
+
   &__actions {
     display: flex;
     align-items: center;

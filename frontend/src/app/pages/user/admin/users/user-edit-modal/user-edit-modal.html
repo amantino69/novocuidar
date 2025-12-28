@@ -25,78 +25,87 @@
           />
         </div>
 
-        <form class="user-form">
+        <form [formGroup]="userForm" class="user-form">
           <div class="user-form__row">
             <div class="user-form__field">
-              <label for="user-name" class="user-form__label">Nome</label>
+              <label for="user-name" class="user-form__label">Nome *</label>
               <input
                 id="user-name"
                 type="text"
                 class="user-form__input"
-                [(ngModel)]="editedUser.name"
-                name="name"
+                [class.user-form__input--error]="userForm.get('name')?.invalid && userForm.get('name')?.touched"
+                formControlName="name"
                 placeholder="Digite o nome"
-                required
               />
+              @if (getErrorMessage('name')) {
+                <span class="user-form__error">{{ getErrorMessage('name') }}</span>
+              }
             </div>
 
             <div class="user-form__field">
-              <label for="user-lastname" class="user-form__label">Sobrenome</label>
+              <label for="user-lastname" class="user-form__label">Sobrenome *</label>
               <input
                 id="user-lastname"
                 type="text"
                 class="user-form__input"
-                [(ngModel)]="editedUser.lastName"
-                name="lastName"
+                [class.user-form__input--error]="userForm.get('lastName')?.invalid && userForm.get('lastName')?.touched"
+                formControlName="lastName"
                 placeholder="Digite o sobrenome"
-                required
               />
+              @if (getErrorMessage('lastName')) {
+                <span class="user-form__error">{{ getErrorMessage('lastName') }}</span>
+              }
             </div>
           </div>
 
           <div class="user-form__row">
             <div class="user-form__field">
-              <label for="user-email" class="user-form__label">E-mail</label>
+              <label for="user-email" class="user-form__label">E-mail *</label>
               <input
                 id="user-email"
                 type="email"
                 class="user-form__input"
-                [(ngModel)]="editedUser.email"
-                name="email"
+                [class.user-form__input--error]="userForm.get('email')?.invalid && userForm.get('email')?.touched"
+                formControlName="email"
                 placeholder="Digite o e-mail"
-                appEmailValidator
-                required
               />
+              @if (getErrorMessage('email')) {
+                <span class="user-form__error">{{ getErrorMessage('email') }}</span>
+              }
             </div>
           </div>
 
           <div class="user-form__row user-form__row--two-cols">
             <div class="user-form__field">
-              <label for="user-cpf" class="user-form__label">CPF</label>
+              <label for="user-cpf" class="user-form__label">CPF *</label>
               <input
                 id="user-cpf"
                 type="text"
                 class="user-form__input"
-                [(ngModel)]="editedUser.cpf"
-                name="cpf"
+                [class.user-form__input--error]="userForm.get('cpf')?.invalid && userForm.get('cpf')?.touched"
+                formControlName="cpf"
                 placeholder="000.000.000-00"
                 appCpfMask
-                required
               />
+              @if (getErrorMessage('cpf')) {
+                <span class="user-form__error">{{ getErrorMessage('cpf') }}</span>
+              }
             </div>
 
             <div class="user-form__field">
-              <label for="user-phone" class="user-form__label">Telefone</label>
+              <label for="user-phone" class="user-form__label">Telefone *</label>
               <input
                 id="user-phone"
                 type="tel"
                 class="user-form__input"
-                [(ngModel)]="editedUser.phone"
-                name="phone"
+                [class.user-form__input--error]="userForm.get('phone')?.invalid && userForm.get('phone')?.touched"
+                formControlName="phone"
                 placeholder="(00) 00000-0000"
                 appPhoneMask
-                required
               />
+              @if (getErrorMessage('phone')) {
+                <span class="user-form__error">{{ getErrorMessage('phone') }}</span>
+              }
             </div>
           </div>
 
@@ -106,9 +115,7 @@
               <select
                 id="user-role"
                 class="user-form__select"
-                [(ngModel)]="editedUser.role"
-                name="role"
-                required
+                formControlName="role"
               >
                 <option value="PATIENT">Paciente</option>
                 <option value="PROFESSIONAL">Profissional</option>
@@ -121,9 +128,7 @@
               <select
                 id="user-status"
                 class="user-form__select"
-                [(ngModel)]="editedUser.status"
-                name="status"
-                required
+                formControlName="status"
               >
                 <option value="Active">Ativo</option>
                 <option value="Inactive">Inativo</option>
@@ -131,18 +136,16 @@
             </div>
           </div>
 
-          @if (editedUser.role === 'PROFESSIONAL') {
+          @if (userForm.get('role')?.value === 'PROFESSIONAL') {
             <div class="user-form__row">
               <div class="user-form__field">
                 <label for="user-specialty" class="user-form__label">Especialidade</label>
                 <select
                   id="user-specialty"
                   class="user-form__select"
-                  [ngModel]="editedUser.professionalProfile?.specialtyId"
-                  (ngModelChange)="onSpecialtyChange($event)"
-                  name="specialtyId"
+                  formControlName="specialtyId"
                 >
-                  <option [value]="undefined">Selecione uma especialidade</option>
+                  <option value="">Selecione uma especialidade</option>
                   @for (specialty of specialties; track specialty.id) {
                     <option [value]="specialty.id">{{ specialty.name }}</option>
                   }

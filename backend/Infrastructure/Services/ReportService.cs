@@ -78,13 +78,54 @@ public class ReportService : IReportService
         var totalNotifications = notificationStats.Sum(n => n.Count);
         var unreadNotifications = notificationStats.FirstOrDefault(n => !n.IsRead)?.Count ?? 0;
 
+        // Calcular consultas de hoje
+        var today = DateTime.UtcNow.Date;
+        var todayAppointments = await appointmentsQuery
+            .CountAsync(a => a.Date.Date == today);
+
+        // Calcular tempo médio de consulta (baseado em consultas concluídas com horário de fim registrado)
+        var completedAppointmentsWithEndTime = await appointmentsQuery
+            .Where(a => a.Status == AppointmentStatus.Completed && a.EndTime.HasValue)
+            .Select(a => (a.EndTime!.Value - a.Time).TotalMinutes)
+            .ToListAsync();
+        var averageConsultationTime = completedAppointmentsWithEndTime.Count > 0 
+            ? (int)Math.Round(completedAppointmentsWithEndTime.Average()) 
+            : 30; // valor padrão de 30 minutos
+
+        // Calcular consultas por mês (últimos 6 meses)
+        var sixMonthsAgo = DateTime.UtcNow.AddMonths(-6);
+        var monthlyAppointments = await _context.Appointments
+            .Where(a => a.Date >= sixMonthsAgo)
+            .GroupBy(a => new { a.Date.Year, a.Date.Month })
+            .Select(g => new 
+            { 
+                Year = g.Key.Year, 
+                Month = g.Key.Month, 
+                Count = g.Count() 
+            })
+            .OrderBy(x => x.Year)
+            .ThenBy(x => x.Month)
+            .ToListAsync();
+
+        var monthNames = new[] { "", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez" };
+        var appointmentsByMonth = monthlyAppointments
+            .Select(m => new MonthlyAppointmentsDto
+            {
+                Month = monthNames[m.Month],
+                Appointments = m.Count
+            })
+            .ToList();
+
         return new DashboardStatsDto
         {
             Appointments = appointmentStats,
             Users = userStats,
             TopSpecialties = topSpecialties,
             TotalNotifications = totalNotifications,
-            UnreadNotifications = unreadNotifications
+            UnreadNotifications = unreadNotifications,
+            TodayAppointments = todayAppointments,
+            AverageConsultationTime = averageConsultationTime,
+            AppointmentsByMonth = appointmentsByMonth
         };
     }
 

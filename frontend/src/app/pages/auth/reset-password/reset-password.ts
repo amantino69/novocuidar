@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
@@ -32,6 +32,7 @@ export class ResetPasswordComponent implements OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private cdr = inject(ChangeDetectorRef);
 
   resetPasswordForm: FormGroup;
   isLoading = false;
@@ -88,15 +89,17 @@ export class ResetPasswordComponent implements OnInit {
         this.isLoading = false;
         this.passwordReset = true;
         this.successMessage = 'Senha redefinida com sucesso!';
+        this.cdr.detectChanges();
         
         // Redirect to login after 3 seconds
         setTimeout(() => {
-          this.router.navigate(['/auth/login']);
+          this.router.navigate(['/entrar']);
         }, 3000);
       },
       error: (error) => {
         this.isLoading = false;
         this.errorMessage = error.error?.message || 'Erro ao redefinir senha. O token pode estar expirado.';
+        this.cdr.detectChanges();
       }
     });
   }
@@ -129,7 +132,7 @@ export class ResetPasswordComponent implements OnInit {
   }
 
   goToLogin(): void {
-    this.router.navigate(['/auth/login']);
+    this.router.navigate(['/entrar']);
   }
 
   goToHome(): void {

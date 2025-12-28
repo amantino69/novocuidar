@@ -63,21 +63,6 @@
           {{ isLoading ? 'Entrando...' : 'Entrar' }}
         </app-button>
 
-        <div class="auth-divider">
-          <span>ou</span>
-        </div>
-
-        <app-button
-          type="button"
-          variant="outline"
-          size="lg"
-          [fullWidth]="true"
-          (click)="loginWithGoogle()"
-        >
-          <app-icon name="user" [size]="20"></app-icon>
-          Continuar com Google
-        </app-button>
-
         <div class="auth-footer">
           <p class="auth-footer__text">
             Não tem uma conta?

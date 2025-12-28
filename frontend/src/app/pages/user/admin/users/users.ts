@@ -10,6 +10,8 @@ import { FilterSelectComponent, FilterOption } from '@app/shared/components/atom
 import { TableHeaderComponent } from '@app/shared/components/atoms/table-header/table-header';
 import { UserRolePipe } from '@app/core/pipes/user-role.pipe';
 import { UserStatusPipe } from '@app/core/pipes/user-status.pipe';
+import { CpfMaskPipe } from '@app/core/pipes/cpf-mask.pipe';
+import { PhoneMaskPipe } from '@app/core/pipes/phone-mask.pipe';
 import { UserEditModalComponent } from '@pages/user/admin/users/user-edit-modal/user-edit-modal';
 import { UserCreateModalComponent, CreateUserData, CreateUserAction } from '@pages/user/admin/users/user-create-modal/user-create-modal';
 import { 
@@ -37,6 +39,8 @@ import { Subscription } from 'rxjs';
     TableHeaderComponent,
     UserRolePipe,
     UserStatusPipe,
+    CpfMaskPipe,
+    PhoneMaskPipe,
     UserEditModalComponent,
     UserCreateModalComponent
   ],
@@ -293,9 +297,13 @@ export class UsersComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         this.loading = false;
+        this.cdr.markForCheck();
+        
         const errorMessage = error.error?.message || 'Erro ao criar usuário. Verifique os dados e tente novamente.';
+        
+        // Mostrar erro imediatamente, SEM fechar o modal
         this.modalService.alert({
-          title: 'Erro',
+          title: 'Erro ao Criar Usuário',
           message: errorMessage,
           confirmText: 'OK',
           variant: 'danger'
@@ -422,6 +430,8 @@ export class UsersComponent implements OnInit, OnDestroy {
     const updateDto = {
       name: updatedUser.name,
       lastName: updatedUser.lastName,
+      email: updatedUser.email,
+      cpf: updatedUser.cpf,
       phone: updatedUser.phone,
       avatar: updatedUser.avatar,
       status: updatedUser.status,
@@ -448,14 +458,23 @@ export class UsersComponent implements OnInit, OnDestroy {
           }, 100);
         }, 300);
       },
-      error: (error: Error) => {
+      error: (error: any) => {
         console.error('Erro ao atualizar usuário:', error);
-        this.modalService.alert({
-          title: 'Erro',
-          message: 'Ocorreu um erro ao atualizar o usuário. Tente novamente.',
-          confirmText: 'OK',
-          variant: 'danger'
-        }).subscribe();
+        this.isEditModalOpen = false;
+        this.userToEdit = null;
+        this.cdr.markForCheck();
+        
+        const errorMessage = error.error?.message || 'Ocorreu um erro ao atualizar o usuário. Tente novamente.';
+        
+        // Aguarda o modal fechar antes de mostrar o erro
+        setTimeout(() => {
+          this.modalService.alert({
+            title: 'Erro',
+            message: errorMessage,
+            confirmText: 'OK',
+            variant: 'danger'
+          }).subscribe();
+        }, 300);
       }
     });
   }

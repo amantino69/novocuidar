@@ -188,24 +188,6 @@
           Criar Conta
         </app-button>
 
-        @if (!inviteToken) {
-          <div class="auth-divider">
-            <span>ou cadastre-se com</span>
-          </div>
-
-          <app-button
-            type="button"
-            variant="secondary"
-            size="lg"
-            [fullWidth]="true"
-            [disabled]="isLoading"
-            (click)="registerWithGoogle()"
-          >
-            <app-icon name="google" [size]="20" />
-            <span>Continuar com Google</span>
-          </app-button>
-        }
-
         <div class="auth-footer">
           <p class="auth-footer__text">
             Já tem uma conta?

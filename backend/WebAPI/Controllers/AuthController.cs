@@ -183,8 +183,14 @@ public class AuthController : ControllerBase
     {
         try
         {
-            await _authService.ForgotPasswordAsync(request.Email);
-            return Ok(new { message = "If the email exists, a password reset link has been sent" });
+            var result = await _authService.ForgotPasswordAsync(request.Email);
+            
+            if (!result)
+            {
+                return BadRequest(new { message = "E-mail não encontrado na plataforma" });
+            }
+            
+            return Ok(new { message = "Link de recuperação enviado para seu e-mail" });
         }
         catch (Exception ex)
         {

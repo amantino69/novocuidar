@@ -49,7 +49,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
                           currentUrl.includes('/registrar') || 
                           currentUrl.includes('/esqueci-senha') ||
                           currentUrl.includes('/redefinir-senha') ||
-                          currentUrl.includes('/verify-email');
+                          currentUrl.includes('/verificar-email') ||
+                          currentUrl.includes('/verificar-alteracao-email');
         
         // Só limpar storage e redirecionar se não estiver em página de autenticação
         if (!isAuthPage) {

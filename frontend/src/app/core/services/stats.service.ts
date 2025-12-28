@@ -36,6 +36,11 @@ export interface ChartData {
   }[];
 }
 
+export interface MonthlyAppointmentsDto {
+  month: string;
+  appointments: number;
+}
+
 export interface DashboardStatsDto {
   users: {
     totalUsers: number;
@@ -52,6 +57,9 @@ export interface DashboardStatsDto {
     completed: number;
     cancelled: number;
   };
+  todayAppointments: number;
+  averageConsultationTime: number;
+  appointmentsByMonth: MonthlyAppointmentsDto[];
 }
 
 @Injectable({
@@ -68,14 +76,35 @@ export class StatsService {
         const stats: PlatformStats = {
           totalUsers: data.users.totalUsers,
           appointmentsScheduled: data.appointments.scheduled,
-          occupancyRate: 0,
-          averageRating: 4.5,
+          occupancyRate: 0, // A implementar
+          averageRating: 0, // A implementar
           activeProfessionals: data.users.professionals,
           activePatients: data.users.patients,
-          todayAppointments: data.appointments.inProgress,
-          averageConsultationTime: 35
+          todayAppointments: data.todayAppointments,
+          averageConsultationTime: data.averageConsultationTime
         };
         return stats;
+      })
+    );
+  }
+
+  getMonthlyAppointments(): Observable<ChartData> {
+    return this.http.get<DashboardStatsDto>(`${this.apiUrl}/dashboard`).pipe(
+      map(data => {
+        const monthlyData = data.appointmentsByMonth || [];
+        const months = monthlyData.map(m => m.month);
+        const appointments = monthlyData.map(m => m.appointments);
+        
+        return {
+          labels: months.length > 0 ? months : ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
+          datasets: [{
+            label: 'Consultas Realizadas',
+            data: appointments.length > 0 ? appointments : [0, 0, 0, 0, 0, 0],
+            borderColor: ['#3b82f6'],
+            backgroundColor: ['rgba(59, 130, 246, 0.2)'],
+            borderWidth: 2
+          }]
+        };
       })
     );
   }
@@ -125,28 +154,6 @@ export class StatsService {
           borderWidth: 1
         }]
       }))
-    );
-  }
-
-  getMonthlyAppointments(): Observable<ChartData> {
-    return this.http.get(`${this.apiUrl}`).pipe(
-      map((data: any) => {
-        // Se temos dados de mês a mês
-        const monthlyData = data.appointmentsByMonth || [];
-        const months = monthlyData.map((m: any) => m.month);
-        const appointments = monthlyData.map((m: any) => m.appointments);
-        
-        return {
-          labels: months.length > 0 ? months : ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
-          datasets: [{
-            label: 'Consultas Realizadas',
-            data: appointments.length > 0 ? appointments : [0, 0, 0, 0, 0, 0],
-            borderColor: ['#3b82f6'],
-            backgroundColor: ['rgba(59, 130, 246, 0.2)'],
-            borderWidth: 2
-          }]
-        };
-      })
     );
   }
 }

@@ -214,7 +214,7 @@ Este e-mail foi enviado automaticamente pelo sistema TeleCuidar.
         string resetToken,
         string frontendUrl = "http://localhost:4200")
     {
-        var resetLink = $"{frontendUrl}/reset-password?token={resetToken}";
+        var resetLink = $"{frontendUrl}/redefinir-senha?token={resetToken}";
 
         return $@"
 <!DOCTYPE html>
@@ -319,7 +319,7 @@ Este e-mail foi enviado automaticamente pelo sistema TeleCuidar.
         string resetToken,
         string frontendUrl = "http://localhost:4200")
     {
-        var resetLink = $"{frontendUrl}/reset-password?token={resetToken}";
+        var resetLink = $"{frontendUrl}/redefinir-senha?token={resetToken}";
 
         return $@"
 TeleCuidar - Recuperação de Senha
@@ -351,7 +351,7 @@ Este e-mail foi enviado automaticamente pelo sistema TeleCuidar.
         string verificationToken,
         string frontendUrl = "http://localhost:4200")
     {
-        var verificationLink = $"{frontendUrl}/auth/verify-email?token={verificationToken}";
+        var verificationLink = $"{frontendUrl}/verificar-email?token={verificationToken}";
 
         return $@"
 <!DOCTYPE html>
@@ -455,7 +455,7 @@ Este e-mail foi enviado automaticamente pelo sistema TeleCuidar.
         string verificationToken,
         string frontendUrl = "http://localhost:4200")
     {
-        var verificationLink = $"{frontendUrl}/auth/verify-email?token={verificationToken}";
+        var verificationLink = $"{frontendUrl}/verificar-email?token={verificationToken}";
 
         return $@"
 TeleCuidar - Confirmação de Email
@@ -667,7 +667,7 @@ Este e-mail foi enviado automaticamente pelo sistema TeleCuidar.
         string verificationToken,
         string frontendUrl = "http://localhost:4200")
     {
-        var verificationLink = $"{frontendUrl}/auth/verify-email-change?token={verificationToken}";
+        var verificationLink = $"{frontendUrl}/verificar-alteracao-email?token={verificationToken}";
 
         return $@"
 <!DOCTYPE html>
@@ -768,7 +768,7 @@ Este e-mail foi enviado automaticamente pelo sistema TeleCuidar.
         string verificationToken,
         string frontendUrl = "http://localhost:4200")
     {
-        var verificationLink = $"{frontendUrl}/auth/verify-email-change?token={verificationToken}";
+        var verificationLink = $"{frontendUrl}/verificar-alteracao-email?token={verificationToken}";
 
         return $@"
 TeleCuidar - Confirmação de Mudança de E-mail
