@@ -25,7 +25,7 @@ import { IconComponent } from '@app/shared/components/atoms/icon/icon';
         (click)="toggleVisibility()"
         [disabled]="disabled"
       >
-        <app-icon [name]="showPassword ? 'close' : 'check'" [size]="20"></app-icon>
+        <app-icon [name]="showPassword ? 'eye-off' : 'eye'" [size]="20"></app-icon>
       </button>
     </div>
   `,

@@ -128,7 +128,7 @@
                   size="sm"
                 />
               </td>
-              <td class="audit-logs-table__cell">{{ log.entityType }}</td>
+              <td class="audit-logs-table__cell">{{ getEntityTypeLabel(log.entityType) }}</td>
               <td class="audit-logs-table__cell">{{ getLogDescription(log) }}</td>
               <td class="audit-logs-table__cell">
                 <code class="audit-logs__ip">{{ log.ipAddress || 'N/A' }}</code>

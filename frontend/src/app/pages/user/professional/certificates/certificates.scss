@@ -356,7 +356,43 @@
       color: var(--text-secondary);
       margin-top: $spacing-sm;
     }
+  }
 
+  &__password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    
+    input {
+      flex: 1;
+      padding-right: 2.75rem !important;
+    }
+  }
+  
+  &__password-toggle {
+    position: absolute;
+    right: $spacing-md;
+    background: none;
+    border: none;
+    padding: $spacing-xs;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+    
+    &:hover:not(:disabled) {
+      color: var(--text-primary);
+    }
+    
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  }
+
+  &__group {
     &--switch {
       margin-top: $spacing-lg;
     }

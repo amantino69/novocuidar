@@ -11,11 +11,18 @@
     .header-content {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: $spacing-md;
 
-      app-icon {
-        color: var(--primary-500);
-        flex-shrink: 0;
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: $spacing-md;
+
+        app-icon {
+          color: var(--primary-500);
+          flex-shrink: 0;
+        }
       }
 
       h1 {
@@ -382,6 +389,13 @@
         cursor: not-allowed;
         background: var(--bg-background);
         border: none;
+      }
+
+      &.padding {
+        background: transparent;
+        border: none;
+        cursor: default;
+        pointer-events: none;
       }
     }
   }

@@ -51,6 +51,10 @@ export class SignDocumentModalComponent implements OnInit {
   isValidating = false;
   isSigning = false;
   errorMessage = '';
+  
+  // Password visibility toggles
+  showPassword = false;
+  showFilePassword = false;
 
   constructor(
     private certificateService: DigitalCertificateService,

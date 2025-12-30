@@ -250,13 +250,13 @@
              (click)="selectProfessional(pro)">
           <div class="pro-avatar">
             <app-avatar 
-              [name]="pro.name" 
+              [name]="pro.name + ' ' + pro.lastName" 
               [imageUrl]="pro.avatar"
               size="md">
             </app-avatar>
           </div>
           <div class="pro-info">
-            <h3>{{ pro.name }}</h3>
+            <h3>{{ pro.name }} {{ pro.lastName }}</h3>
             <p>{{ pro.email }}</p>
           </div>
           <app-icon name="arrow-right" [size]="16"></app-icon>

@@ -236,9 +236,26 @@ export class AuditLogsComponent implements OnInit, OnDestroy {
     return labels[action] || action;
   }
 
+  getEntityTypeLabel(entityType: string): string {
+    const labels: Record<string, string> = {
+      'User': 'Usuário',
+      'Specialty': 'Especialidade',
+      'Appointment': 'Consulta',
+      'Schedule': 'Agenda',
+      'Notification': 'Notificação',
+      'Attachment': 'Anexo',
+      'Invite': 'Convite',
+      'ScheduleBlock': 'Bloqueio de Agenda',
+      'Prescription': 'Receita',
+      'MedicalCertificate': 'Atestado'
+    };
+    return labels[entityType] || entityType;
+  }
+
   getLogDescription(log: AuditLog): string {
     const actionLabel = this.getActionLabel(log.action);
-    return `${actionLabel} ${log.entityType}`;
+    const entityLabel = this.getEntityTypeLabel(log.entityType);
+    return `${actionLabel} ${entityLabel}`;
   }
 
   viewDetails(log: AuditLog): void {

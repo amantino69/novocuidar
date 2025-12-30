@@ -155,13 +155,18 @@
             <h3>2. Informe a senha do certificado</h3>
             <div class="certificate-form__group">
               <label for="password">Senha</label>
-              <input 
-                type="password" 
-                id="password" 
-                [(ngModel)]="formData.password"
-                placeholder="Digite a senha do certificado"
-                [disabled]="!formData.file"
-              />
+              <div class="certificate-form__password-wrapper">
+                <input 
+                  [type]="showFormPassword ? 'text' : 'password'" 
+                  id="password" 
+                  [(ngModel)]="formData.password"
+                  placeholder="Digite a senha do certificado"
+                  [disabled]="!formData.file"
+                />
+                <button type="button" class="certificate-form__password-toggle" (click)="showFormPassword = !showFormPassword" [disabled]="!formData.file">
+                  <app-icon [name]="showFormPassword ? 'eye-off' : 'eye'" [size]="18" />
+                </button>
+              </div>
             </div>
             <button 
               type="button"
@@ -330,12 +335,17 @@
             @if (editForm.quickUseEnabled && !editingCertificate.quickUseEnabled) {
               <div class="certificate-form__group">
                 <label for="editPassword">Senha do certificado *</label>
-                <input 
-                  type="password" 
-                  id="editPassword" 
-                  [(ngModel)]="editForm.password"
-                  placeholder="Digite a senha para ativar uso rápido"
-                />
+                <div class="certificate-form__password-wrapper">
+                  <input 
+                    [type]="showEditPassword ? 'text' : 'password'" 
+                    id="editPassword" 
+                    [(ngModel)]="editForm.password"
+                    placeholder="Digite a senha para ativar uso rápido"
+                  />
+                  <button type="button" class="certificate-form__password-toggle" (click)="showEditPassword = !showEditPassword">
+                    <app-icon [name]="showEditPassword ? 'eye-off' : 'eye'" [size]="18" />
+                  </button>
+                </div>
                 <small>Necessária para armazenar a senha de forma segura</small>
               </div>
             }

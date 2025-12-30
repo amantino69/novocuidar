@@ -46,6 +46,22 @@ export class AuditLogDetailModalComponent {
     return labels[action] || action;
   }
 
+  getEntityTypeLabel(entityType: string): string {
+    const labels: Record<string, string> = {
+      'User': 'Usuário',
+      'Specialty': 'Especialidade',
+      'Appointment': 'Consulta',
+      'Schedule': 'Agenda',
+      'Notification': 'Notificação',
+      'Attachment': 'Anexo',
+      'Invite': 'Convite',
+      'ScheduleBlock': 'Bloqueio de Agenda',
+      'Prescription': 'Receita',
+      'MedicalCertificate': 'Atestado'
+    };
+    return labels[entityType] || entityType;
+  }
+
   parseJSON(jsonString: string | null | undefined): any {
     if (!jsonString) return null;
     try {

@@ -56,6 +56,10 @@ export class CertificatesComponent implements OnInit {
   isSaving = false;
   isDeleting = false;
   
+  // Password visibility toggles
+  showFormPassword = false;
+  showEditPassword = false;
+  
   // Toast
   showToast = false;
   toastMessage = '';

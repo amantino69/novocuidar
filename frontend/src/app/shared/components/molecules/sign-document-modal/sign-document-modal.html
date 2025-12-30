@@ -90,12 +90,17 @@
                 @if (needsPassword) {
                   <div class="form-group">
                     <label for="password">Senha do Certificado *</label>
-                    <input 
-                      type="password" 
-                      id="password"
-                      [(ngModel)]="password"
-                      placeholder="Digite a senha do certificado"
-                    />
+                    <div class="password-input-wrapper">
+                      <input 
+                        [type]="showPassword ? 'text' : 'password'" 
+                        id="password"
+                        [(ngModel)]="password"
+                        placeholder="Digite a senha do certificado"
+                      />
+                      <button type="button" class="password-toggle" (click)="showPassword = !showPassword">
+                        <app-icon [name]="showPassword ? 'eye-off' : 'eye'" [size]="18" />
+                      </button>
+                    </div>
                   </div>
                 }
               }
@@ -130,13 +135,18 @@
               <!-- Password -->
               <div class="form-group">
                 <label for="filePassword">Senha do Certificado *</label>
-                <input 
-                  type="password" 
-                  id="filePassword"
-                  [(ngModel)]="filePassword"
-                  placeholder="Digite a senha"
-                  [disabled]="!file"
-                />
+                <div class="password-input-wrapper">
+                  <input 
+                    [type]="showFilePassword ? 'text' : 'password'" 
+                    id="filePassword"
+                    [(ngModel)]="filePassword"
+                    placeholder="Digite a senha"
+                    [disabled]="!file"
+                  />
+                  <button type="button" class="password-toggle" (click)="showFilePassword = !showFilePassword" [disabled]="!file">
+                    <app-icon [name]="showFilePassword ? 'eye-off' : 'eye'" [size]="18" />
+                  </button>
+                </div>
               </div>
 
               @if (signMode === 'one-time') {

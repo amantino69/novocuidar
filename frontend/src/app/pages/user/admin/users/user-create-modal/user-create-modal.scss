@@ -291,6 +291,35 @@
     margin-top: $spacing-xs;
   }
 
+  &__password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    
+    .user-form__input {
+      flex: 1;
+      padding-right: 2.75rem;
+    }
+  }
+  
+  &__password-toggle {
+    position: absolute;
+    right: $spacing-md;
+    background: none;
+    border: none;
+    padding: $spacing-xs;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+    
+    &:hover {
+      color: var(--text-primary);
+    }
+  }
+
   &__input {
     padding: $spacing-md $spacing-lg;
     background: var(--background);

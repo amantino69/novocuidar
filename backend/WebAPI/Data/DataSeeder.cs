@@ -23,8 +23,8 @@ public static class DataSeeder
         var adminEmail = Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL") ?? "adm@adm.com";
         var adminPassword = Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD") ?? "zxcasd12";
         var adminName = Environment.GetEnvironmentVariable("SEED_ADMIN_NAME") ?? "Admin";
-        var adminLastName = Environment.GetEnvironmentVariable("SEED_ADMIN_LASTNAME") ?? "Sistema";
-        var adminCpf = Environment.GetEnvironmentVariable("SEED_ADMIN_CPF") ?? "11111111111";
+        var adminLastName = Environment.GetEnvironmentVariable("SEED_ADMIN_LASTNAME") ?? "Teste";
+        var adminCpf = Environment.GetEnvironmentVariable("SEED_ADMIN_CPF") ?? "00000000000";
         const string defaultPassword = "zxcasd12";
 
         // Criar especialidade de Cardiologia com campos personalizados
@@ -72,7 +72,7 @@ public static class DataSeeder
             new User
             {
                 Name = "Médico",
-                LastName = "Profissional",
+                LastName = "Teste",
                 Email = "med@med.com",
                 Cpf = "22222222222",
                 Phone = "11922222222",
@@ -84,7 +84,7 @@ public static class DataSeeder
             new User
             {
                 Name = "Paciente",
-                LastName = "Dev",
+                LastName = "De Teste",
                 Email = "pac@pac.com",
                 Cpf = "33333333333",
                 Phone = "11933333333",

@@ -45,6 +45,8 @@ export class UserCreateModalComponent {
   creationMode: 'manual' | 'link' = 'manual';
   linkValidity: number = 7;
   userForm!: FormGroup;
+  showPassword = false;
+  showConfirmPassword = false;
   
   userData: CreateUserData = {
     name: '',

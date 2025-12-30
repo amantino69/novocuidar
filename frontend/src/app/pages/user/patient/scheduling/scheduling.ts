@@ -27,6 +27,7 @@ interface DayAvailability {
   slots: number;
   professionalsCount: number;
   available: boolean;
+  isPadding?: boolean; // Dias de padding para alinhar calendário
 }
 
 interface TimeSlot {
@@ -535,10 +536,23 @@ export class SchedulingComponent implements OnDestroy {
     const year = this.currentMonth.getFullYear();
     const month = this.currentMonth.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 = Domingo, 1 = Segunda, etc.
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     this.calendarDays = [];
+    
+    // Adicionar dias de padding no início do mês para alinhar com os dias da semana
+    for (let i = 0; i < firstDayOfMonth; i++) {
+      const paddingDate = new Date(year, month, 1 - (firstDayOfMonth - i));
+      this.calendarDays.push({
+        date: paddingDate,
+        slots: 0,
+        professionalsCount: 0,
+        available: false,
+        isPadding: true
+      });
+    }
     
     // Buscar profissionais da especialidade
     this.usersService.getUsers({ role: 'PROFESSIONAL', specialtyId: this.selectedSpecialty?.id }, 1, 100).subscribe({
@@ -663,7 +677,7 @@ export class SchedulingComponent implements OnDestroy {
   }
 
   selectDate(day: DayAvailability) {
-    if (!day.available) return;
+    if (!day.available || day.isPadding) return;
     this.selectedDate = day.date;
     this.loadTimeSlots();
     this.currentStep = 'time';

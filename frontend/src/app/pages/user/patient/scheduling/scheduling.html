@@ -1,15 +1,17 @@
 <div class="scheduling-container">
   <div class="header">
     <div class="header-content">
+      <div class="header-left">
+        <app-icon name="calendar" [size]="32" />
+        <div>
+          <h1>Agendar Consulta</h1>
+          <p class="subtitle">Siga os passos para marcar seu atendimento</p>
+        </div>
+      </div>
       <app-button *ngIf="currentStep !== 'specialty'" variant="ghost" size="sm" (click)="goBack()">
         <app-icon name="arrow-left" [size]="16"></app-icon>
         Voltar
       </app-button>
-      <app-icon name="calendar" [size]="32" />
-      <div>
-        <h1>Agendar Consulta</h1>
-        <p class="subtitle">Siga os passos para marcar seu atendimento</p>
-      </div>
     </div>
   </div>
 
@@ -86,10 +88,11 @@
         <div class="day" 
              *ngFor="let day of calendarDays"
              [class.disabled]="!day.available"
-             [class.selected]="selectedDate === day.date"
+             [class.padding]="day.isPadding"
+             [class.selected]="selectedDate === day.date && !day.isPadding"
              (click)="selectDate(day)">
-          <span class="day-number">{{ day.date | date:'d' }}</span>
-          <div class="day-info" *ngIf="day.available">
+          <span class="day-number" *ngIf="!day.isPadding">{{ day.date | date:'d' }}</span>
+          <div class="day-info" *ngIf="day.available && !day.isPadding">
             <span class="slots">{{ day.slots }} vagas</span>
             <span class="pros">{{ day.professionalsCount }} prof.</span>
           </div>
@@ -129,13 +132,13 @@
            (click)="selectProfessional(pro)">
         <div class="pro-avatar">
           <app-avatar 
-            [name]="pro.name" 
+            [name]="pro.name + ' ' + pro.lastName" 
             [imageUrl]="pro.avatar"
             size="md">
           </app-avatar>
         </div>
         <div class="pro-info">
-          <h3>{{ pro.name }}</h3>
+          <h3>{{ pro.name }} {{ pro.lastName }}</h3>
           <p>CRM: {{ pro.cpf }}</p> <!-- Using CPF as CRM placeholder -->
         </div>
         <app-icon name="arrow-right" [size]="16"></app-icon>

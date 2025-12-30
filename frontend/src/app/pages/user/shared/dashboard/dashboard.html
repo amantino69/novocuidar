@@ -14,7 +14,7 @@
     <div class="profile-card">
       <div class="profile-card__content">
         <app-avatar 
-          [name]="user?.name || ''" 
+          [name]="(user?.name || '') + ' ' + (user?.lastName || '')" 
           [imageUrl]="user?.avatar"
           size="xl"
         />

@@ -191,14 +191,19 @@
                 <label for="create-user-password" class="user-form__label">
                   Senha *
                 </label>
-                <input
-                  id="create-user-password"
-                  type="password"
-                  class="user-form__input"
-                  [class.user-form__input--error]="userForm.get('password')?.invalid && userForm.get('password')?.touched"
-                  formControlName="password"
-                  placeholder="Digite a senha"
-                />
+                <div class="user-form__password-wrapper">
+                  <input
+                    id="create-user-password"
+                    [type]="showPassword ? 'text' : 'password'"
+                    class="user-form__input"
+                    [class.user-form__input--error]="userForm.get('password')?.invalid && userForm.get('password')?.touched"
+                    formControlName="password"
+                    placeholder="Digite a senha"
+                  />
+                  <button type="button" class="user-form__password-toggle" (click)="showPassword = !showPassword">
+                    <app-icon [name]="showPassword ? 'eye-off' : 'eye'" [size]="18" />
+                  </button>
+                </div>
                 @if (getErrorMessage('password')) {
                   <span class="user-form__error">{{ getErrorMessage('password') }}</span>
                 }
@@ -208,14 +213,19 @@
                 <label for="create-user-confirm-password" class="user-form__label">
                   Confirmar Senha *
                 </label>
-                <input
-                  id="create-user-confirm-password"
-                  type="password"
-                  class="user-form__input"
-                  [class.user-form__input--error]="userForm.get('confirmPassword')?.invalid && userForm.get('confirmPassword')?.touched"
-                  formControlName="confirmPassword"
-                  placeholder="Confirme a senha"
-                />
+                <div class="user-form__password-wrapper">
+                  <input
+                    id="create-user-confirm-password"
+                    [type]="showConfirmPassword ? 'text' : 'password'"
+                    class="user-form__input"
+                    [class.user-form__input--error]="userForm.get('confirmPassword')?.invalid && userForm.get('confirmPassword')?.touched"
+                    formControlName="confirmPassword"
+                    placeholder="Confirme a senha"
+                  />
+                  <button type="button" class="user-form__password-toggle" (click)="showConfirmPassword = !showConfirmPassword">
+                    <app-icon [name]="showConfirmPassword ? 'eye-off' : 'eye'" [size]="18" />
+                  </button>
+                </div>
                 @if (getErrorMessage('confirmPassword')) {
                   <span class="user-form__error">{{ getErrorMessage('confirmPassword') }}</span>
                 }
