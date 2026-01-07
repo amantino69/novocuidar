@@ -71,9 +71,12 @@ type ExamType = 'otoscope' | 'dermatoscope' | 'laryngoscope';
         </video>
         
         @if (!isStreaming) {
-          <div class="video-placeholder">
+          <div class="video-placeholder" (click)="startStream()">
             <app-icon [name]="getSelectedTypeIcon()" [size]="48" />
-            <span>Clique em "Iniciar" para visualizar</span>
+            <span>Clique aqui para iniciar</span>
+            @if (!selectedDeviceId) {
+              <small class="warning">Selecione uma câmera primeiro</small>
+            }
           </div>
         }
 
@@ -89,6 +92,9 @@ type ExamType = 'otoscope' | 'dermatoscope' | 'laryngoscope';
             <button class="ctrl-btn" (click)="toggleZoom()" title="Zoom">
               <app-icon [name]="isZoomed ? 'zoom-out' : 'zoom-in'" [size]="18" />
             </button>
+            <button class="ctrl-btn stop" (click)="stopStream()" title="Parar">
+              <app-icon name="square" [size]="18" />
+            </button>
           </div>
         }
       </div>
@@ -98,7 +104,7 @@ type ExamType = 'otoscope' | 'dermatoscope' | 'laryngoscope';
         @if (!isStreaming) {
           <button 
             class="btn-start" 
-            [disabled]="!selectedDeviceId || !appointmentId"
+            [disabled]="!selectedDeviceId"
             (click)="startStream()">
             <app-icon name="play" [size]="20" />
             Iniciar Exame
@@ -291,10 +297,23 @@ type ExamType = 'otoscope' | 'dermatoscope' | 'laryngoscope';
         align-items: center;
         justify-content: center;
         gap: 12px;
-        color: #666;
+        color: #888;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        
+        &:hover {
+          background: rgba(255, 255, 255, 0.05);
+          color: var(--color-primary);
+        }
         
         span {
-          font-size: 13px;
+          font-size: 14px;
+          font-weight: 500;
+        }
+
+        small.warning {
+          font-size: 11px;
+          color: var(--color-warning);
         }
       }
 
@@ -320,6 +339,14 @@ type ExamType = 'otoscope' | 'dermatoscope' | 'laryngoscope';
 
           &:hover {
             background: rgba(0, 0, 0, 0.8);
+          }
+
+          &.stop {
+            background: var(--color-error);
+            
+            &:hover {
+              background: #dc2626;
+            }
           }
         }
       }
@@ -506,28 +533,38 @@ export class ExamCameraPanelComponent implements OnInit, OnDestroy, AfterViewIni
   }
 
   async startStream(): Promise<void> {
-    if (!this.appointmentId) {
-      console.error('appointmentId não definido');
+    if (!this.selectedDeviceId) {
+      console.warn('[ExamCamera] Nenhuma câmera selecionada');
       return;
     }
 
     console.log('[ExamCamera] Iniciando stream...', { 
       type: this.selectedType, 
-      deviceId: this.selectedDeviceId 
+      deviceId: this.selectedDeviceId,
+      appointmentId: this.appointmentId
     });
 
-    const session = await this.streamingService.startExamStream(
-      this.selectedType,
-      this.selectedDeviceId
-    );
+    try {
+      const session = await this.streamingService.startExamStream(
+        this.selectedType,
+        this.selectedDeviceId
+      );
 
-    if (session && this.videoElement) {
-      console.log('[ExamCamera] Stream obtido, atribuindo ao video element');
-      this.videoElement.nativeElement.srcObject = session.stream;
-      this.isStreaming = true;
+      if (session && this.videoElement) {
+        console.log('[ExamCamera] Stream obtido, atribuindo ao video element');
+        this.videoElement.nativeElement.srcObject = session.stream;
+        this.isStreaming = true;
 
-      // Inicia streaming via WebRTC
-      await this.syncService.startStreaming(session.stream, 'video');
+        // Se tem appointmentId, inicia streaming via WebRTC para o médico
+        if (this.appointmentId) {
+          await this.syncService.startStreaming(session.stream, 'video');
+          console.log('[ExamCamera] Streaming para médico iniciado');
+        }
+      } else {
+        console.error('[ExamCamera] Falha ao obter stream ou videoElement não disponível');
+      }
+    } catch (error: any) {
+      console.error('[ExamCamera] Erro ao iniciar stream:', error);
     }
   }
 

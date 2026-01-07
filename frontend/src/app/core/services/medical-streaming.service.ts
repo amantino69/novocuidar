@@ -168,19 +168,38 @@ export class MedicalStreamingService {
     console.log('[MedicalStreaming] Iniciando stream de exame:', type, { deviceId });
 
     try {
-      const constraints: MediaStreamConstraints = {
-        audio: false,
-        video: {
-          deviceId: deviceId ? { exact: deviceId } : undefined,
-          width: { ideal: 1920, min: 1280 },
-          height: { ideal: 1080, min: 720 },
-          frameRate: { ideal: 30, min: 15 },
-          facingMode: 'environment'
-        }
+      // Se tem deviceId específico, usa ideal em vez de exact para mais flexibilidade
+      const videoConstraints: MediaTrackConstraints = {
+        width: { ideal: 1920, min: 640 },
+        height: { ideal: 1080, min: 480 },
+        frameRate: { ideal: 30, min: 15 }
       };
 
+      if (deviceId) {
+        videoConstraints.deviceId = { ideal: deviceId };
+      }
+
+      const constraints: MediaStreamConstraints = {
+        audio: false,
+        video: videoConstraints
+      };
+
+      console.log('[MedicalStreaming] Solicitando getUserMedia com constraints:', constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      console.log('[MedicalStreaming] Stream de vídeo obtido');
+      console.log('[MedicalStreaming] Stream de vídeo obtido com tracks:', stream.getVideoTracks().length);
+
+      // Log info do track obtido
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        const settings = videoTrack.getSettings();
+        console.log('[MedicalStreaming] Video track settings:', {
+          deviceId: settings.deviceId,
+          width: settings.width,
+          height: settings.height,
+          frameRate: settings.frameRate,
+          label: videoTrack.label
+        });
+      }
 
       const session: StreamSession = {
         id: this.generateSessionId(),
@@ -198,6 +217,7 @@ export class MedicalStreamingService {
 
     } catch (error: any) {
       console.error('[MedicalStreaming] Erro ao iniciar exame:', error);
+      console.error('[MedicalStreaming] Erro name:', error.name, 'message:', error.message);
       this._streamError$.next({ type, error: error.message });
       return null;
     }
