@@ -1,8 +1,10 @@
-import { Component, Input, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Subscription } from 'rxjs';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { Subscription, firstValueFrom } from 'rxjs';
 
-import { IconComponent, IconName } from '@shared/components/atoms/icon/icon';
+import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { 
   BluetoothDevicesService, 
   BluetoothDevice, 
@@ -10,29 +12,28 @@ import {
   VitalReading 
 } from '@app/core/services/bluetooth-devices.service';
 import { MedicalDevicesSyncService } from '@app/core/services/medical-devices-sync.service';
-
-interface DeviceConfig {
-  type: DeviceType;
-  name: string;
-  icon: IconName;
-  description: string;
-}
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-device-connection-panel',
   standalone: true,
-  imports: [CommonModule, IconComponent],
+  imports: [CommonModule, IconComponent, ReactiveFormsModule],
+  providers: [],
   template: `
     <div class="device-connection-panel">
       <div class="panel-header">
         <h4>
-          <app-icon name="bluetooth" [size]="20" />
-          Dispositivos Bluetooth
+          <app-icon name="activity" [size]="20" />
+          Sinais Vitais
         </h4>
         <span class="connection-status" [class.connected]="isHubConnected">
           {{ isHubConnected ? 'Sincronizado' : 'Offline' }}
         </span>
       </div>
+
+      <p class="description">
+        Digite os valores manualmente ou conecte os dispositivos Bluetooth para captura automática.
+      </p>
 
       @if (!bluetoothAvailable) {
         <div class="warning-banner">
@@ -41,84 +42,164 @@ interface DeviceConfig {
         </div>
       }
 
-      <div class="devices-grid">
-        @for (config of deviceConfigs; track config.type) {
-          <div class="device-card" [class.connected]="isDeviceConnected(config.type)">
-            <div class="device-icon">
-              <app-icon [name]="config.icon" [size]="32" />
-            </div>
-            <div class="device-info">
-              <span class="device-name">{{ config.name }}</span>
-              <span class="device-desc">{{ config.description }}</span>
-            </div>
-            
-            @if (isDeviceConnected(config.type)) {
-              <div class="device-status connected">
-                <app-icon name="check-circle" [size]="16" />
-                <span>Conectado</span>
+      <form [formGroup]="vitalsForm" class="vitals-form">
+        
+        <!-- SpO2 e Frequência Cardíaca (Oxímetro) -->
+        <div class="vital-card">
+          <div class="vital-icon spo2">
+            <app-icon name="heart" [size]="24" />
+          </div>
+          <div class="vital-fields">
+            <div class="field-row">
+              <div class="field-group">
+                <label>SpO₂</label>
+                <div class="input-wrapper">
+                  <input type="number" formControlName="spo2" placeholder="--" min="0" max="100">
+                  <span class="unit">%</span>
+                </div>
               </div>
-              <button class="btn-disconnect" (click)="disconnectDevice(config.type)">
-                Desconectar
-              </button>
+              <div class="field-group">
+                <label>Freq. Cardíaca</label>
+                <div class="input-wrapper">
+                  <input type="number" formControlName="heartRate" placeholder="--" min="0" max="300">
+                  <span class="unit">bpm</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="btn-connect" 
+                  [class.connected]="isDeviceConnected('oximeter')"
+                  [disabled]="!bluetoothAvailable || isConnecting"
+                  [title]="!bluetoothAvailable ? 'Bluetooth não disponível' : 'Conectar oxímetro'"
+                  (click)="connectDevice('oximeter')">
+            @if (connectingType === 'oximeter') {
+              <app-icon name="loader" [size]="16" class="spin" />
             } @else {
-              <button 
-                class="btn-connect" 
-                [disabled]="!bluetoothAvailable || isConnecting"
-                (click)="connectDevice(config.type)">
-                @if (connectingType === config.type) {
-                  <app-icon name="loader" [size]="16" class="spin" />
-                  Conectando...
-                } @else {
-                  <app-icon name="bluetooth" [size]="16" />
-                  Conectar
-                }
-              </button>
+              <app-icon [name]="isDeviceConnected('oximeter') ? 'check' : 'bluetooth'" [size]="16" />
             }
-          </div>
-        }
-      </div>
-
-      @if (connectedDevices.length > 0) {
-        <div class="readings-section">
-          <h5>
-            <app-icon name="activity" [size]="18" />
-            Leituras em Tempo Real
-          </h5>
-          
-          <div class="readings-grid">
-            @if (latestReadings['spo2']) {
-              <div class="reading-card spo2">
-                <span class="reading-label">SpO₂</span>
-                <span class="reading-value">{{ latestReadings['spo2'] }}<small>%</small></span>
-              </div>
-            }
-            @if (latestReadings['pulseRate']) {
-              <div class="reading-card pulse">
-                <span class="reading-label">Pulso</span>
-                <span class="reading-value">{{ latestReadings['pulseRate'] }}<small>bpm</small></span>
-              </div>
-            }
-            @if (latestReadings['temperature']) {
-              <div class="reading-card temp">
-                <span class="reading-label">Temperatura</span>
-                <span class="reading-value">{{ latestReadings['temperature'] }}<small>°C</small></span>
-              </div>
-            }
-            @if (latestReadings['weight']) {
-              <div class="reading-card weight">
-                <span class="reading-label">Peso</span>
-                <span class="reading-value">{{ latestReadings['weight'] }}<small>kg</small></span>
-              </div>
-            }
-            @if (latestReadings['systolic'] && latestReadings['diastolic']) {
-              <div class="reading-card bp">
-                <span class="reading-label">Pressão</span>
-                <span class="reading-value">{{ latestReadings['systolic'] }}/{{ latestReadings['diastolic'] }}<small>mmHg</small></span>
-              </div>
-            }
-          </div>
+            {{ isDeviceConnected('oximeter') ? 'Conectado' : 'Conectar' }}
+          </button>
         </div>
-      }
+
+        <!-- Pressão Arterial -->
+        <div class="vital-card">
+          <div class="vital-icon pressure">
+            <app-icon name="activity" [size]="24" />
+          </div>
+          <div class="vital-fields">
+            <div class="field-row">
+              <div class="field-group">
+                <label>Sistólica</label>
+                <div class="input-wrapper">
+                  <input type="number" formControlName="systolic" placeholder="--" min="0" max="300">
+                  <span class="unit">mmHg</span>
+                </div>
+              </div>
+              <div class="field-group">
+                <label>Diastólica</label>
+                <div class="input-wrapper">
+                  <input type="number" formControlName="diastolic" placeholder="--" min="0" max="200">
+                  <span class="unit">mmHg</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="btn-connect" 
+                  [class.connected]="isDeviceConnected('blood_pressure')"
+                  [disabled]="!bluetoothAvailable || isConnecting"
+                  [title]="!bluetoothAvailable ? 'Bluetooth não disponível' : 'Conectar medidor de pressão'"
+                  (click)="connectDevice('blood_pressure')">
+            @if (connectingType === 'blood_pressure') {
+              <app-icon name="loader" [size]="16" class="spin" />
+            } @else {
+              <app-icon [name]="isDeviceConnected('blood_pressure') ? 'check' : 'bluetooth'" [size]="16" />
+            }
+            {{ isDeviceConnected('blood_pressure') ? 'Conectado' : 'Conectar' }}
+          </button>
+        </div>
+
+        <!-- Temperatura -->
+        <div class="vital-card">
+          <div class="vital-icon temp">
+            <app-icon name="thermometer" [size]="24" />
+          </div>
+          <div class="vital-fields">
+            <div class="field-row">
+              <div class="field-group full">
+                <label>Temperatura</label>
+                <div class="input-wrapper">
+                  <input type="number" formControlName="temperature" placeholder="--" min="30" max="45" step="0.1">
+                  <span class="unit">°C</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="btn-connect" 
+                  [class.connected]="isDeviceConnected('thermometer')"
+                  [disabled]="!bluetoothAvailable || isConnecting"
+                  [title]="!bluetoothAvailable ? 'Bluetooth não disponível' : 'Conectar termômetro'"
+                  (click)="connectDevice('thermometer')">
+            @if (connectingType === 'thermometer') {
+              <app-icon name="loader" [size]="16" class="spin" />
+            } @else {
+              <app-icon [name]="isDeviceConnected('thermometer') ? 'check' : 'bluetooth'" [size]="16" />
+            }
+            {{ isDeviceConnected('thermometer') ? 'Conectado' : 'Conectar' }}
+          </button>
+        </div>
+
+        <!-- Peso (Balança) -->
+        <div class="vital-card">
+          <div class="vital-icon weight">
+            <app-icon name="scale" [size]="24" />
+          </div>
+          <div class="vital-fields">
+            <div class="field-row">
+              <div class="field-group full">
+                <label>Peso</label>
+                <div class="input-wrapper">
+                  <input type="number" formControlName="weight" placeholder="--" min="0" max="500" step="0.1">
+                  <span class="unit">kg</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="btn-connect" 
+                  [class.connected]="isDeviceConnected('scale')"
+                  [disabled]="!bluetoothAvailable || isConnecting"
+                  [title]="!bluetoothAvailable ? 'Bluetooth não disponível' : 'Conectar balança'"
+                  (click)="connectDevice('scale')">
+            @if (connectingType === 'scale') {
+              <app-icon name="loader" [size]="16" class="spin" />
+            } @else {
+              <app-icon [name]="isDeviceConnected('scale') ? 'check' : 'bluetooth'" [size]="16" />
+            }
+            {{ isDeviceConnected('scale') ? 'Conectado' : 'Conectar' }}
+          </button>
+        </div>
+
+        <!-- Botão Salvar -->
+        <div class="save-section">
+          <button type="button" class="btn-save" 
+                  [disabled]="isSaving || !hasAnyValue()"
+                  (click)="saveVitals()">
+            @if (isSaving) {
+              <app-icon name="loader" [size]="18" class="spin" />
+              Salvando...
+            } @else {
+              <app-icon name="check" [size]="18" />
+              Salvar Sinais Vitais
+            }
+          </button>
+          @if (lastSaved) {
+            <span class="last-saved">
+              <app-icon name="check-circle" [size]="14" />
+              Salvo às {{ lastSaved | date:'HH:mm:ss' }}
+            </span>
+          }
+        </div>
+
+      </form>
     </div>
   `,
   styles: [`
@@ -132,21 +213,21 @@ interface DeviceConfig {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      margin-bottom: 8px;
 
       h4 {
         display: flex;
         align-items: center;
         gap: 8px;
         margin: 0;
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 600;
         color: var(--text-primary);
       }
 
       .connection-status {
         font-size: 12px;
-        padding: 4px 8px;
+        padding: 4px 10px;
         border-radius: 12px;
         background: var(--bg-danger);
         color: var(--text-danger);
@@ -156,6 +237,12 @@ interface DeviceConfig {
           color: var(--text-success);
         }
       }
+    }
+
+    .description {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin: 0 0 16px 0;
     }
 
     .warning-banner {
@@ -170,157 +257,176 @@ interface DeviceConfig {
       font-size: 13px;
     }
 
-    .devices-grid {
+    .vitals-form {
       display: flex;
       flex-direction: column;
       gap: 12px;
     }
 
-    .device-card {
+    .vital-card {
       display: flex;
       align-items: center;
       gap: 12px;
       padding: 16px;
       background: var(--bg-secondary);
       border-radius: 12px;
-      border: 2px solid transparent;
-      transition: all 0.2s ease;
+      border: 1px solid var(--border-color);
+    }
 
-      &.connected {
-        border-color: var(--color-success);
-        background: var(--bg-success-subtle);
+    .vital-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      border-radius: 12px;
+      background: var(--bg-tertiary);
+
+      &.spo2 { color: #ef4444; }
+      &.pressure { color: #8b5cf6; }
+      &.temp { color: #f97316; }
+      &.weight { color: #3b82f6; }
+    }
+
+    .vital-fields {
+      flex: 1;
+    }
+
+    .field-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .field-group {
+      flex: 1;
+      
+      &.full {
+        max-width: 180px;
       }
 
-      .device-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        background: var(--bg-tertiary);
-        color: var(--color-primary);
-      }
-
-      .device-info {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-
-        .device-name {
-          font-weight: 600;
-          color: var(--text-primary);
-        }
-
-        .device-desc {
-          font-size: 12px;
-          color: var(--text-secondary);
-        }
-      }
-
-      .device-status {
-        display: flex;
-        align-items: center;
-        gap: 4px;
+      label {
+        display: block;
         font-size: 12px;
-        color: var(--text-success);
-      }
-
-      .btn-connect, .btn-disconnect {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 8px 16px;
-        border: none;
-        border-radius: 8px;
-        font-size: 13px;
         font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-      }
-
-      .btn-connect {
-        background: var(--color-primary);
-        color: white;
-
-        &:hover:not(:disabled) {
-          background: var(--color-primary-dark);
-        }
-
-        &:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-      }
-
-      .btn-disconnect {
-        background: var(--bg-danger);
-        color: var(--text-danger);
-
-        &:hover {
-          background: var(--color-danger);
-          color: white;
-        }
-      }
-    }
-
-    .readings-section {
-      margin-top: 24px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border-color);
-
-      h5 {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 0 0 16px 0;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text-primary);
-      }
-    }
-
-    .readings-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 12px;
-    }
-
-    .reading-card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 16px;
-      background: var(--bg-secondary);
-      border-radius: 12px;
-      text-align: center;
-
-      .reading-label {
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
         color: var(--text-secondary);
         margin-bottom: 4px;
       }
+    }
 
-      .reading-value {
-        font-size: 24px;
-        font-weight: 700;
+    .input-wrapper {
+      display: flex;
+      align-items: center;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+
+      input {
+        flex: 1;
+        width: 100%;
+        min-width: 60px;
+        padding: 8px 12px;
+        border: none;
+        background: transparent;
+        font-size: 16px;
+        font-weight: 600;
         color: var(--text-primary);
+        outline: none;
 
-        small {
-          font-size: 12px;
+        &::placeholder {
+          color: var(--text-tertiary);
           font-weight: 400;
-          margin-left: 2px;
+        }
+
+        &::-webkit-inner-spin-button,
+        &::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
         }
       }
 
-      &.spo2 .reading-value { color: #3b82f6; }
-      &.pulse .reading-value { color: #ef4444; }
-      &.temp .reading-value { color: #f97316; }
-      &.weight .reading-value { color: #8b5cf6; }
-      &.bp .reading-value { color: #10b981; }
+      .unit {
+        padding: 8px 12px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        background: var(--bg-tertiary);
+        border-left: 1px solid var(--border-color);
+      }
+    }
+
+    .btn-connect {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--color-primary);
+      color: white;
+      white-space: nowrap;
+
+      &:hover:not(:disabled) {
+        background: var(--color-primary-dark);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      &.connected {
+        background: var(--bg-success);
+        color: var(--text-success);
+      }
+    }
+
+    .save-section {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 8px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .btn-save {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: #10b981;
+      color: white;
+
+      &:hover:not(:disabled) {
+        background: #059669;
+        transform: translateY(-1px);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+    }
+
+    .last-saved {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #10b981;
     }
 
     .spin {
@@ -337,29 +443,39 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
   @Input() appointmentId: string | null = null;
   @Input() userrole: string = '';
 
-  deviceConfigs: DeviceConfig[] = [
-    { type: 'oximeter', name: 'Oxímetro', icon: 'heart', description: 'SpO₂ e frequência cardíaca' },
-    { type: 'thermometer', name: 'Termômetro', icon: 'thermometer', description: 'Temperatura corporal' },
-    { type: 'scale', name: 'Balança', icon: 'box', description: 'Peso corporal' },
-    { type: 'blood_pressure', name: 'Pressão Arterial', icon: 'activity', description: 'Sistólica / Diastólica' }
-  ];
-
+  vitalsForm: FormGroup;
+  
   bluetoothAvailable = false;
   isHubConnected = false;
   isConnecting = false;
+  isSaving = false;
   connectingType: DeviceType | null = null;
   connectedDevices: BluetoothDevice[] = [];
-  latestReadings: Record<string, number> = {};
+  lastSaved: Date | null = null;
 
   private subscriptions = new Subscription();
 
   constructor(
+    private fb: FormBuilder,
+    private http: HttpClient,
     private bluetoothService: BluetoothDevicesService,
     private syncService: MedicalDevicesSyncService
-  ) {}
+  ) {
+    this.vitalsForm = this.fb.group({
+      spo2: [null],
+      heartRate: [null],
+      systolic: [null],
+      diastolic: [null],
+      temperature: [null],
+      weight: [null]
+    });
+  }
 
   ngOnInit(): void {
     this.bluetoothAvailable = this.bluetoothService.isBluetoothAvailable();
+
+    // Carrega dados existentes do banco
+    this.loadExistingData();
 
     // Conecta ao hub
     if (this.appointmentId) {
@@ -380,7 +496,7 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
       })
     );
 
-    // Observa leituras
+    // Observa leituras do Bluetooth e preenche o formulário
     this.subscriptions.add(
       this.bluetoothService.readings$.subscribe(reading => {
         this.processReading(reading);
@@ -388,11 +504,42 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
     );
   }
 
+  private async loadExistingData(): Promise<void> {
+    if (!this.appointmentId) return;
+
+    try {
+      const apiUrl = `${environment.apiUrl}/appointments/${this.appointmentId}/biometrics`;
+      const data = await firstValueFrom(this.http.get<any>(apiUrl));
+      
+      if (data) {
+        this.vitalsForm.patchValue({
+          spo2: data.oxygenSaturation,
+          heartRate: data.heartRate,
+          systolic: data.bloodPressureSystolic,
+          diastolic: data.bloodPressureDiastolic,
+          temperature: data.temperature,
+          weight: data.weight
+        });
+        
+        if (data.lastUpdated) {
+          this.lastSaved = new Date(data.lastUpdated);
+        }
+      }
+    } catch (error) {
+      console.warn('[DeviceConnectionPanel] Erro ao carregar dados existentes:', error);
+    }
+  }
+
   isDeviceConnected(type: DeviceType): boolean {
     return this.connectedDevices.some(d => d.type === type);
   }
 
   async connectDevice(type: DeviceType): Promise<void> {
+    if (!this.bluetoothAvailable) {
+      alert('Web Bluetooth não está disponível. Use Chrome ou Edge em HTTPS.');
+      return;
+    }
+
     this.isConnecting = true;
     this.connectingType = type;
 
@@ -413,32 +560,87 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error('Erro ao conectar dispositivo:', error);
+      alert('Erro ao conectar dispositivo. Verifique se está ligado e próximo.');
     } finally {
       this.isConnecting = false;
       this.connectingType = null;
     }
   }
 
-  disconnectDevice(type: DeviceType): void {
-    const device = this.connectedDevices.find(d => d.type === type);
-    if (device) {
-      this.bluetoothService.disconnect(device.id);
-    }
-  }
-
   private processReading(reading: VitalReading): void {
     const values = reading.values;
     
-    if (values.spo2 !== undefined) this.latestReadings['spo2'] = values.spo2;
-    if (values.pulseRate !== undefined) this.latestReadings['pulseRate'] = values.pulseRate;
-    if (values.temperature !== undefined) this.latestReadings['temperature'] = values.temperature;
-    if (values.weight !== undefined) this.latestReadings['weight'] = values.weight;
-    if (values.systolic !== undefined) this.latestReadings['systolic'] = values.systolic;
-    if (values.diastolic !== undefined) this.latestReadings['diastolic'] = values.diastolic;
-    if (values.heartRate !== undefined) this.latestReadings['heartRate'] = values.heartRate;
+    // Preenche os campos do formulário com os dados do Bluetooth
+    if (values.spo2 !== undefined) {
+      this.vitalsForm.patchValue({ spo2: values.spo2 });
+    }
+    if (values.pulseRate !== undefined || values.heartRate !== undefined) {
+      this.vitalsForm.patchValue({ heartRate: values.pulseRate ?? values.heartRate });
+    }
+    if (values.temperature !== undefined) {
+      this.vitalsForm.patchValue({ temperature: values.temperature });
+    }
+    if (values.weight !== undefined) {
+      this.vitalsForm.patchValue({ weight: values.weight });
+    }
+    if (values.systolic !== undefined) {
+      this.vitalsForm.patchValue({ systolic: values.systolic });
+    }
+    if (values.diastolic !== undefined) {
+      this.vitalsForm.patchValue({ diastolic: values.diastolic });
+    }
+  }
+
+  hasAnyValue(): boolean {
+    const values = this.vitalsForm.value;
+    return Object.values(values).some(v => v !== null && v !== '' && v !== undefined);
+  }
+
+  async saveVitals(): Promise<void> {
+    if (!this.hasAnyValue() || !this.appointmentId) {
+      return;
+    }
+
+    this.isSaving = true;
+
+    try {
+      const formValues = this.vitalsForm.value;
+      
+      // Monta o objeto de sinais vitais no formato esperado pela API
+      const biometrics = {
+        oxygenSaturation: formValues.spo2 ? Number(formValues.spo2) : null,
+        heartRate: formValues.heartRate ? Number(formValues.heartRate) : null,
+        bloodPressureSystolic: formValues.systolic ? Number(formValues.systolic) : null,
+        bloodPressureDiastolic: formValues.diastolic ? Number(formValues.diastolic) : null,
+        temperature: formValues.temperature ? Number(formValues.temperature) : null,
+        weight: formValues.weight ? Number(formValues.weight) : null
+      };
+
+      // 1. Salva no banco de dados via API REST
+      const apiUrl = `${environment.apiUrl}/appointments/${this.appointmentId}/biometrics`;
+      await firstValueFrom(this.http.put(apiUrl, biometrics));
+      console.log('[DeviceConnectionPanel] Biométricos salvos na API:', biometrics);
+
+      // 2. Envia via SignalR para o médico em tempo real
+      try {
+        await this.syncService.sendVitalSigns(biometrics);
+        console.log('[DeviceConnectionPanel] Biométricos enviados via SignalR');
+      } catch (signalRError) {
+        console.warn('[DeviceConnectionPanel] Erro ao enviar via SignalR (dados já salvos na API):', signalRError);
+      }
+      
+      this.lastSaved = new Date();
+    } catch (error) {
+      console.error('Erro ao salvar sinais vitais:', error);
+      alert('Erro ao salvar sinais vitais. Tente novamente.');
+    } finally {
+      this.isSaving = false;
+    }
   }
 
   ngOnDestroy(): void {
     this.subscriptions.unsubscribe();
   }
 }
+
+

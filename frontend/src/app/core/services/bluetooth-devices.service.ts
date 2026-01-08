@@ -54,9 +54,13 @@ const GATT_SERVICES = {
   BLOOD_PRESSURE: '00001810-0000-1000-8000-00805f9b34fb',
   BLOOD_PRESSURE_MEASUREMENT: '00002a35-0000-1000-8000-00805f9b34fb',
   
-  // Weight Scale Service
+  // Weight Scale Service (genérico)
   WEIGHT_SCALE: '0000181d-0000-1000-8000-00805f9b34fb',
   WEIGHT_MEASUREMENT: '00002a9d-0000-1000-8000-00805f9b34fb',
+  
+  // Body Composition Service (Xiaomi MIBFS)
+  BODY_COMPOSITION: '0000181b-0000-1000-8000-00805f9b34fb',
+  BODY_COMPOSITION_MEASUREMENT: '00002a9c-0000-1000-8000-00805f9b34fb',
   
   // Pulse Oximeter Service
   PULSE_OXIMETER: '00001822-0000-1000-8000-00805f9b34fb',
@@ -124,12 +128,85 @@ export class BluetoothDevicesService {
   }
 
   /**
-   * Conecta a uma balança
+   * Conecta a uma balança (suporta MIBFS/Xiaomi e balanças genéricas)
    */
   async connectScale(): Promise<BluetoothDevice | null> {
-    return this.connectDevice('scale', [
-      GATT_SERVICES.WEIGHT_SCALE
-    ]);
+    return this.connectScaleMIBFS();
+  }
+
+  /**
+   * Conecta especificamente à balança Xiaomi MIBFS (Body Composition Scale)
+   */
+  async connectScaleMIBFS(): Promise<BluetoothDevice | null> {
+    if (!this.isBluetoothAvailable()) {
+      console.error('[BluetoothDevices] Web Bluetooth não disponível');
+      return null;
+    }
+
+    try {
+      console.log('[BluetoothDevices] Buscando balança MIBFS...');
+      
+      // Solicita dispositivo - busca por nome MIBFS ou serviço Body Composition
+      const device = await (navigator as any).bluetooth.requestDevice({
+        filters: [
+          { name: 'MIBFS' },
+          { namePrefix: 'MI' },
+          { services: [GATT_SERVICES.BODY_COMPOSITION] }
+        ],
+        optionalServices: [
+          GATT_SERVICES.BODY_COMPOSITION,
+          GATT_SERVICES.WEIGHT_SCALE,
+          GATT_SERVICES.BATTERY,
+          GATT_SERVICES.DEVICE_INFO
+        ]
+      });
+
+      if (!device) {
+        console.log('[BluetoothDevices] Nenhum dispositivo selecionado');
+        return null;
+      }
+
+      const deviceId = device.id;
+      this._connectionStatus$.next({ deviceId, status: 'connecting' });
+
+      console.log(`[BluetoothDevices] Conectando a ${device.name}...`);
+      const server = await device.gatt.connect();
+      
+      this.gattServers.set(deviceId, server);
+
+      const bleDevice: BluetoothDevice = {
+        id: deviceId,
+        name: device.name || 'Balança MIBFS',
+        type: 'scale',
+        connected: true,
+        batteryLevel: await this.readBatteryLevel(server)
+      };
+
+      this.devices.set(deviceId, bleDevice);
+      this._devices$.next(Array.from(this.devices.values()));
+      this._connectionStatus$.next({ deviceId, status: 'connected' });
+
+      device.addEventListener('gattserverdisconnected', () => {
+        this.ngZone.run(() => {
+          this.handleDisconnection(deviceId);
+        });
+      });
+
+      // Inicia leitura específica para MIBFS
+      await this.startMIBFSReadings(server, deviceId);
+
+      console.log(`[BluetoothDevices] ${device.name} conectado com sucesso!`);
+      return bleDevice;
+
+    } catch (error: any) {
+      console.error('[BluetoothDevices] Erro ao conectar MIBFS:', error);
+      this._connectionStatus$.next({ 
+        deviceId: 'unknown', 
+        status: 'error', 
+        message: error.message 
+      });
+      return null;
+    }
   }
 
   /**
@@ -373,6 +450,84 @@ export class BluetoothDevicesService {
         this.updateDeviceLastReading(deviceId);
       });
     });
+  }
+
+  /**
+   * Leituras específicas da balança Xiaomi MIBFS (Body Composition)
+   * A MIBFS usa o serviço Body Composition (181B) ao invés do Weight Scale (181D)
+   */
+  private async startMIBFSReadings(server: BluetoothRemoteGATTServer, deviceId: string): Promise<void> {
+    try {
+      console.log('[BluetoothDevices] Iniciando leituras MIBFS...');
+      
+      const service = await server.getPrimaryService(GATT_SERVICES.BODY_COMPOSITION);
+      const char = await service.getCharacteristic(GATT_SERVICES.BODY_COMPOSITION_MEASUREMENT);
+      
+      await char.startNotifications();
+      console.log('[BluetoothDevices] Notificações MIBFS ativadas');
+      
+      let primeiraLeituraIgnorada = false;
+      const inicioConexao = Date.now();
+      
+      char.addEventListener('characteristicvaluechanged', (event: Event) => {
+        const target = event.target as unknown as BluetoothRemoteGATTCharacteristic;
+        const value = target.value!;
+        
+        this.ngZone.run(() => {
+          const bytes = Array.from(new Uint8Array(value.buffer));
+          console.log('[BluetoothDevices] MIBFS bytes recebidos:', bytes.join(', '));
+          
+          // Formato MIBFS: byte 1 = flags, bytes 2-3 = peso (little endian), bytes 4-5 = impedância
+          const flags = value.getUint8(1);
+          const estabilizado = (flags & 0x20) !== 0;
+          const rawPeso = value.getUint16(2, true);
+          const peso = rawPeso / 200; // Resolução: 0.005 kg
+          
+          let impedancia = 0;
+          if (value.byteLength >= 6) {
+            impedancia = value.getUint16(4, true);
+          }
+          
+          console.log(`[BluetoothDevices] MIBFS - Peso: ${peso.toFixed(2)}kg, Impedância: ${impedancia}, Estab: ${estabilizado}`);
+          
+          // Ignora primeira leitura (cache da ROM)
+          if (!primeiraLeituraIgnorada) {
+            console.log('[BluetoothDevices] MIBFS - Ignorando cache ROM');
+            primeiraLeituraIgnorada = true;
+            return;
+          }
+          
+          // Ignora leituras nos primeiros 5 segundos (lixo inicial)
+          const tempoDecorrido = Date.now() - inicioConexao;
+          if (tempoDecorrido < 5000) {
+            console.log('[BluetoothDevices] MIBFS - Ignorando leitura inicial');
+            return;
+          }
+          
+          // Só emite se peso válido (> 2kg) e estabilizado ou impedância detectada
+          if (peso > 2 && (estabilizado || impedancia > 100)) {
+            console.log(`[BluetoothDevices] MIBFS - CAPTURADO: ${peso.toFixed(1)} kg`);
+            
+            this._readings$.next({
+              deviceId,
+              deviceType: 'scale',
+              timestamp: new Date(),
+              values: { weight: parseFloat(peso.toFixed(1)) }
+            });
+            
+            this.updateDeviceLastReading(deviceId);
+          }
+        });
+      });
+      
+      console.log('[BluetoothDevices] MIBFS - Listener registrado. SUBA NA BALANÇA!');
+      
+    } catch (error) {
+      console.error('[BluetoothDevices] Erro ao iniciar leituras MIBFS:', error);
+      // Fallback para serviço Weight Scale genérico
+      console.log('[BluetoothDevices] Tentando fallback para Weight Scale genérico...');
+      await this.startScaleReadings(server, deviceId);
+    }
   }
 
   /**

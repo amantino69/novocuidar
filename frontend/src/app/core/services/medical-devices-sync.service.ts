@@ -275,16 +275,31 @@ export class MedicalDevicesSyncService implements OnDestroy {
 
   /**
    * Envia sinais vitais via SignalR
+   * Aceita tanto VitalReading (do Bluetooth) quanto objeto simples de sinais vitais
    */
-  async sendVitalSigns(reading: VitalReading): Promise<void> {
+  async sendVitalSigns(reading: VitalReading | Record<string, any>): Promise<void> {
     if (!this.hubConnection || !this.currentAppointmentId) return;
 
     try {
+      // Verifica se é um VitalReading ou um objeto simples
+      const isVitalReading = 'timestamp' in reading && 'values' in reading;
+      
+      const vitals = isVitalReading 
+        ? (reading as VitalReading).values 
+        : {
+            spo2: (reading as any).oxygenSaturation,
+            heartRate: (reading as any).heartRate,
+            systolic: (reading as any).bloodPressureSystolic,
+            diastolic: (reading as any).bloodPressureDiastolic,
+            temperature: (reading as any).temperature,
+            weight: (reading as any).weight
+          };
+
       const data: VitalSignsData = {
         appointmentId: this.currentAppointmentId,
         senderRole: this.authService.currentUser()?.role || 'unknown',
-        timestamp: reading.timestamp,
-        vitals: reading.values
+        timestamp: isVitalReading ? (reading as VitalReading).timestamp : new Date(),
+        vitals
       };
 
       await this.hubConnection.invoke('SendVitalSigns', data);

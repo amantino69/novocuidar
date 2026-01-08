@@ -1,9 +1,11 @@
 import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Subscription } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { Subscription, firstValueFrom } from 'rxjs';
 
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { MedicalDevicesSyncService, VitalSignsData } from '@app/core/services/medical-devices-sync.service';
+import { environment } from '@env/environment';
 
 interface VitalDisplay {
   label: string;
@@ -342,9 +344,15 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy {
 
   private subscriptions = new Subscription();
 
-  constructor(private syncService: MedicalDevicesSyncService) {}
+  constructor(
+    private http: HttpClient,
+    private syncService: MedicalDevicesSyncService
+  ) {}
 
   ngOnInit(): void {
+    // Carrega dados existentes do banco
+    this.loadExistingData();
+    
     // Conecta ao hub
     if (this.appointmentId) {
       this.syncService.connect(this.appointmentId);
@@ -365,38 +373,77 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy {
     );
   }
 
+  private async loadExistingData(): Promise<void> {
+    if (!this.appointmentId) return;
+
+    try {
+      const apiUrl = `${environment.apiUrl}/appointments/${this.appointmentId}/biometrics`;
+      const data = await firstValueFrom(this.http.get<any>(apiUrl));
+      
+      if (data && this.hasAnyVitalData(data)) {
+        // Converte dados do banco para formato do componente
+        const vitalSignsData: VitalSignsData = {
+          appointmentId: this.appointmentId,
+          senderRole: 'loaded',
+          timestamp: data.lastUpdated ? new Date(data.lastUpdated) : new Date(),
+          vitals: {
+            spo2: data.oxygenSaturation,
+            pulseRate: data.heartRate,
+            heartRate: data.heartRate,
+            systolic: data.bloodPressureSystolic,
+            diastolic: data.bloodPressureDiastolic,
+            temperature: data.temperature,
+            weight: data.weight
+          }
+        };
+        this.processVitalSigns(vitalSignsData);
+      }
+    } catch (error) {
+      console.warn('[VitalSignsPanel] Erro ao carregar dados existentes:', error);
+    }
+  }
+
+  private hasAnyVitalData(data: any): boolean {
+    return data.oxygenSaturation || data.heartRate || data.bloodPressureSystolic || 
+           data.bloodPressureDiastolic || data.temperature || data.weight;
+  }
+
   private processVitalSigns(data: VitalSignsData): void {
     this.hasAnyData = true;
     this.lastUpdate = new Date(data.timestamp);
 
     const v = data.vitals;
 
-    if (v.spo2 !== undefined) {
+    // Suporta tanto spo2 quanto oxygenSaturation
+    const spo2Value = v.spo2 ?? (v as any).oxygenSaturation;
+    if (spo2Value !== undefined && spo2Value !== null) {
       this.vitals['spo2'] = {
         label: 'SpO₂',
-        value: v.spo2.toString(),
+        value: spo2Value.toString(),
         unit: '%',
         icon: 'droplet',
         color: '#3b82f6',
-        status: this.getSpo2Status(v.spo2)
+        status: this.getSpo2Status(spo2Value)
       };
     }
 
-    if (v.pulseRate !== undefined) {
+    // Suporta tanto pulseRate quanto heartRate
+    const pulseValue = v.pulseRate ?? v.heartRate ?? (v as any).heartRate;
+    if (pulseValue !== undefined && pulseValue !== null) {
       this.vitals['pulseRate'] = {
         label: 'Freq. Cardíaca',
-        value: v.pulseRate.toString(),
+        value: pulseValue.toString(),
         unit: 'bpm',
         icon: 'heart',
         color: '#ef4444',
-        status: this.getPulseStatus(v.pulseRate)
+        status: this.getPulseStatus(pulseValue)
       };
     }
 
-    if (v.temperature !== undefined) {
+    if (v.temperature !== undefined && v.temperature !== null) {
       this.vitals['temperature'] = {
         label: 'Temperatura',
-        value: v.temperature.toFixed(1),
+        value: Number(v.temperature).toFixed(1),
         unit: '°C',
         icon: 'thermometer',
         color: '#f97316',
@@ -404,21 +451,25 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy {
       };
     }
 
-    if (v.systolic !== undefined && v.diastolic !== undefined) {
+    // Suporta tanto systolic/diastolic quanto bloodPressureSystolic/bloodPressureDiastolic
+    const systolicValue = v.systolic ?? (v as any).bloodPressureSystolic;
+    const diastolicValue = v.diastolic ?? (v as any).bloodPressureDiastolic;
+    if (systolicValue !== undefined && diastolicValue !== undefined && 
+        systolicValue !== null && diastolicValue !== null) {
       this.vitals['bloodPressure'] = {
         label: 'Pressão Arterial',
-        value: `${v.systolic}/${v.diastolic}`,
+        value: `${systolicValue}/${diastolicValue}`,
         unit: 'mmHg',
         icon: 'activity',
         color: '#10b981',
-        status: this.getBloodPressureStatus(v.systolic, v.diastolic)
+        status: this.getBloodPressureStatus(systolicValue, diastolicValue)
       };
     }
 
-    if (v.weight !== undefined) {
+    if (v.weight !== undefined && v.weight !== null) {
       this.vitals['weight'] = {
         label: 'Peso',
-        value: v.weight.toFixed(1),
+        value: Number(v.weight).toFixed(1),
         unit: 'kg',
         icon: 'box',
         color: '#8b5cf6',
