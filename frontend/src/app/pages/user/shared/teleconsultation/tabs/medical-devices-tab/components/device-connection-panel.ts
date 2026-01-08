@@ -356,50 +356,37 @@ import { environment } from '@env/environment';
     }
 
     .btn-connect {
-      display: flex !important;
-      visibility: visible !important;
+      display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 14px 24px;
-      border: 3px solid #ff0000;
-      border-radius: 12px;
-      font-size: 16px;
-      font-weight: 700;
+      gap: 6px;
+      padding: 10px 16px;
+      border: 1px solid #3b82f6;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
       cursor: pointer;
       transition: all 0.2s ease;
-      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      background: #3b82f6;
       color: white;
       white-space: nowrap;
-      min-width: 140px;
-      animation: piscar 0.5s infinite;
-      box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+      min-width: 110px;
 
       &:hover:not(:disabled) {
-        background: linear-gradient(135deg, #2563eb, #7c3aed);
-        transform: scale(1.1);
+        background: #2563eb;
+        border-color: #2563eb;
       }
 
       &:disabled {
         opacity: 0.5;
         cursor: not-allowed;
-        animation: none;
+        background: var(--bg-tertiary);
+        border-color: var(--border-color);
+        color: var(--text-secondary);
       }
 
       &.connected {
-        background: linear-gradient(135deg, #10b981, #059669);
+        background: #10b981;
         border-color: #10b981;
-        animation: none;
-      }
-    }
-
-    @keyframes piscar {
-      0%, 100% { 
-        opacity: 1; 
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
-      }
-      50% { 
-        opacity: 0.7; 
-        box-shadow: 0 0 40px rgba(139, 92, 246, 1);
       }
     }
 
