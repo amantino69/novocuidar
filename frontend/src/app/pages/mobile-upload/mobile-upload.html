@@ -28,26 +28,26 @@
           </div>
 
           <div class="action-buttons-row">
-            <button class="action-btn compact" (click)="triggerCamera()">
+            <label class="action-btn compact" for="camera-input">
               <div class="icon-circle camera">
                 <app-icon name="camera" [size]="24" />
               </div>
               <span>Câmera</span>
-            </button>
+            </label>
 
-            <button class="action-btn compact" (click)="triggerGallery()">
+            <label class="action-btn compact" for="gallery-input">
               <div class="icon-circle gallery">
                 <app-icon name="image" [size]="24" />
               </div>
               <span>Galeria</span>
-            </button>
+            </label>
 
-            <button class="action-btn compact" (click)="triggerFiles()">
+            <label class="action-btn compact" for="file-input">
               <div class="icon-circle files">
-                <app-icon name="file" [size]="24" />
+                <app-icon name="folder" [size]="24" />
               </div>
               <span>Arquivos</span>
-            </button>
+            </label>
           </div>
         </div>
 
@@ -91,14 +91,16 @@
     <!-- Hidden Inputs (with multiple support) -->
     <input 
       type="file" 
+      id="camera-input"
       #cameraInput
-      accept="image/*,video/*"
+      accept="image/*"
       capture="environment"
       (change)="onFileSelected($event)" 
       hidden>
 
     <input 
       type="file" 
+      id="gallery-input"
       #galleryInput
       accept="image/*,video/*"
       multiple
@@ -107,6 +109,7 @@
 
     <input 
       type="file" 
+      id="file-input"
       #fileInput
       accept="*/*" 
       multiple
