@@ -354,13 +354,21 @@ export class MedicalDevicesSyncService implements OnDestroy {
       area,
       hasHubConnection: !!this.hubConnection,
       appointmentId: this.currentAppointmentId,
-      hubState: this.hubConnection?.state
+      hubState: this.hubConnection?.state,
+      streamTracks: stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState, label: t.label }))
     });
 
     if (!this.hubConnection || !this.currentAppointmentId) {
       console.error('[MedicalDevicesSync] Não conectado ao hub - hubConnection:', !!this.hubConnection, 'appointmentId:', this.currentAppointmentId);
       this._connectionError$.next('Não conectado ao hub de dispositivos médicos');
-      return;
+      throw new Error('Não conectado ao hub de dispositivos médicos');
+    }
+
+    // Limpa conexão anterior se existir
+    if (this.peerConnection) {
+      console.log('[MedicalDevicesSync] Limpando peer connection anterior');
+      this.peerConnection.close();
+      this.peerConnection = null;
     }
 
     try {
@@ -375,8 +383,18 @@ export class MedicalDevicesSyncService implements OnDestroy {
         iceServers: this.iceServers
       });
 
+      // Log de eventos de conexão para debug
+      this.peerConnection.onconnectionstatechange = () => {
+        console.log('[MedicalDevicesSync] Connection state:', this.peerConnection?.connectionState);
+      };
+
+      this.peerConnection.oniceconnectionstatechange = () => {
+        console.log('[MedicalDevicesSync] ICE connection state:', this.peerConnection?.iceConnectionState);
+      };
+
       // Adiciona tracks ao peer connection
       stream.getTracks().forEach(track => {
+        console.log('[MedicalDevicesSync] Adicionando track:', track.kind, track.label);
         this.peerConnection!.addTrack(track, stream);
       });
 
@@ -546,15 +564,27 @@ export class MedicalDevicesSyncService implements OnDestroy {
    * Limpa recursos WebRTC
    */
   private cleanupWebRTC(): void {
+    console.log('[MedicalDevicesSync] cleanupWebRTC - limpando recursos');
+    
     if (this.peerConnection) {
-      this.peerConnection.close();
+      // Remove todos os event listeners antes de fechar
+      this.peerConnection.onicecandidate = null;
+      this.peerConnection.ontrack = null;
+      this.peerConnection.onconnectionstatechange = null;
+      this.peerConnection.oniceconnectionstatechange = null;
+      
+      // Fecha a conexão
+      try {
+        this.peerConnection.close();
+      } catch (e) {
+        console.warn('[MedicalDevicesSync] Erro ao fechar peerConnection:', e);
+      }
       this.peerConnection = null;
     }
 
-    if (this.localStream) {
-      this.localStream.getTracks().forEach(t => t.stop());
-      this.localStream = null;
-    }
+    // Nota: NÃO paramos o localStream aqui pois ele é gerenciado pelo MedicalStreamingService
+    // Apenas limpamos a referência
+    this.localStream = null;
 
     this.remoteStream = null;
     this._remoteStream$.next(null);

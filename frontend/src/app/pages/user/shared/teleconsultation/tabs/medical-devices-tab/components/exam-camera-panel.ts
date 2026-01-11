@@ -29,6 +29,14 @@ type ExamType = 'otoscope' | 'dermatoscope' | 'laryngoscope';
         </span>
       </div>
 
+      <!-- Info da câmera ativa -->
+      @if (isStreaming && activeCameraLabel) {
+        <div class="active-camera-info">
+          <app-icon name="check-circle" [size]="14" />
+          <span>Câmera ativa: <strong>{{ activeCameraLabel }}</strong></span>
+        </div>
+      }
+
       <!-- Tipo de exame -->
       <div class="exam-type-selector">
         <label>Tipo de Exame:</label>
@@ -49,19 +57,30 @@ type ExamType = 'otoscope' | 'dermatoscope' | 'laryngoscope';
       <!-- Seleção de câmera -->
       <div class="device-selector">
         <label>Câmera:</label>
-        <select [(ngModel)]="selectedDeviceId" [disabled]="isStreaming">
+        <select [(ngModel)]="selectedDeviceId" (ngModelChange)="onCameraChange($event)" [disabled]="isStarting">
           <option value="">Selecione a câmera</option>
           @for (device of videoDevices; track device.deviceId) {
-            <option [value]="device.deviceId">{{ device.label }}</option>
+            <option [value]="device.deviceId">{{ device.label }} ({{ device.deviceId.slice(0, 8) }}...)</option>
           }
         </select>
-        <button class="btn-refresh" (click)="refreshDevices()" [disabled]="isStreaming">
+        <button class="btn-refresh" (click)="refreshDevices()" [disabled]="isStarting">
           <app-icon name="refresh-cw" [size]="16" />
         </button>
       </div>
 
+      <!-- Mensagem de erro -->
+      @if (errorMessage) {
+        <div class="error-message">
+          <app-icon name="alert-circle" [size]="16" />
+          <span>{{ errorMessage }}</span>
+          <button class="btn-dismiss" (click)="errorMessage = null">
+            <app-icon name="x" [size]="14" />
+          </button>
+        </div>
+      }
+
       <!-- Preview de vídeo -->
-      <div class="video-container" [class.active]="isStreaming">
+      <div class="video-container" [class.active]="isStreaming" [class.loading]="isStarting">
         <video 
           #videoElement 
           autoplay 
@@ -70,7 +89,13 @@ type ExamType = 'otoscope' | 'dermatoscope' | 'laryngoscope';
           [class.mirrored]="mirrorVideo">
         </video>
         
-        @if (!isStreaming) {
+        @if (isStarting) {
+          <div class="video-placeholder loading">
+            <div class="spinner"></div>
+            <span>Conectando à câmera...</span>
+            <small>Isso pode levar alguns segundos para câmeras USB</small>
+          </div>
+        } @else if (!isStreaming) {
           <div class="video-placeholder" (click)="startStream()">
             <app-icon [name]="getSelectedTypeIcon()" [size]="48" />
             <span>Clique aqui para iniciar</span>
@@ -104,10 +129,15 @@ type ExamType = 'otoscope' | 'dermatoscope' | 'laryngoscope';
         @if (!isStreaming) {
           <button 
             class="btn-start" 
-            [disabled]="!selectedDeviceId"
+            [disabled]="!selectedDeviceId || isStarting"
             (click)="startStream()">
-            <app-icon name="play" [size]="20" />
-            Iniciar Exame
+            @if (isStarting) {
+              <div class="btn-spinner"></div>
+              Conectando...
+            } @else {
+              <app-icon name="play" [size]="20" />
+              Iniciar Exame
+            }
           </button>
         } @else {
           <button class="btn-stop" (click)="stopStream()">
@@ -227,6 +257,21 @@ type ExamType = 'otoscope' | 'dermatoscope' | 'laryngoscope';
       }
     }
 
+    .active-camera-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: var(--bg-success);
+      border-radius: 8px;
+      color: var(--text-success);
+      font-size: 12px;
+
+      strong {
+        font-weight: 600;
+      }
+    }
+
     .device-selector {
       display: flex;
       align-items: flex-end;
@@ -263,6 +308,59 @@ type ExamType = 'otoscope' | 'dermatoscope' | 'laryngoscope';
       }
     }
 
+    .error-message {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--bg-danger);
+      border: 1px solid var(--color-danger);
+      border-radius: 8px;
+      color: var(--text-danger);
+      font-size: 13px;
+
+      span {
+        flex: 1;
+      }
+
+      .btn-dismiss {
+        padding: 4px;
+        background: transparent;
+        border: none;
+        color: var(--text-danger);
+        cursor: pointer;
+        opacity: 0.7;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .btn-spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
     .video-container {
       position: relative;
       background: #000;
@@ -270,6 +368,10 @@ type ExamType = 'otoscope' | 'dermatoscope' | 'laryngoscope';
       overflow: hidden;
       aspect-ratio: 16 / 9;
       min-height: 200px;
+
+      &.loading {
+        border: 2px solid var(--color-primary);
+      }
 
       video {
         width: 100%;
@@ -301,14 +403,27 @@ type ExamType = 'otoscope' | 'dermatoscope' | 'laryngoscope';
         cursor: pointer;
         transition: all 0.2s ease;
         
-        &:hover {
+        &:hover:not(.loading) {
           background: rgba(255, 255, 255, 0.05);
           color: var(--color-primary);
+        }
+
+        &.loading {
+          cursor: default;
+          color: var(--color-primary);
+          background: rgba(0, 0, 0, 0.7);
         }
         
         span {
           font-size: 14px;
           font-weight: 500;
+        }
+
+        small {
+          font-size: 11px;
+          color: var(--text-secondary);
+          text-align: center;
+          max-width: 80%;
         }
 
         small.warning {
@@ -477,7 +592,7 @@ export class ExamCameraPanelComponent implements OnInit, OnDestroy, AfterViewIni
   examTypes: Array<{id: ExamType; label: string; icon: IconName}> = [
     { id: 'otoscope' as ExamType, label: 'Otoscópio', icon: 'ear' },
     { id: 'dermatoscope' as ExamType, label: 'Dermatoscópio', icon: 'scan' },
-    { id: 'laryngoscope' as ExamType, label: 'Laringoscópio', icon: 'mic' }
+    { id: 'laryngoscope' as ExamType, label: 'Lagosta', icon: 'mic' }
   ];
 
   selectedType: ExamType = 'otoscope';
@@ -495,6 +610,8 @@ export class ExamCameraPanelComponent implements OnInit, OnDestroy, AfterViewIni
     timestamp: Date;
   }> = [];
 
+  activeCameraLabel: string | null = null;
+
   private subscriptions = new Subscription();
 
   constructor(
@@ -508,9 +625,11 @@ export class ExamCameraPanelComponent implements OnInit, OnDestroy, AfterViewIni
     // Observa dispositivos de vídeo
     this.subscriptions.add(
       this.streamingService.availableVideoDevices$.subscribe(devices => {
+        console.log('[ExamCamera] Lista de câmeras atualizada:', devices.map(d => ({ id: d.deviceId.slice(0, 8), label: d.label })));
         this.videoDevices = devices;
         if (devices.length > 0 && !this.selectedDeviceId) {
           this.selectedDeviceId = devices[0].deviceId;
+          console.log('[ExamCamera] Câmera padrão selecionada:', devices[0].label);
         }
       })
     );
@@ -521,6 +640,7 @@ export class ExamCameraPanelComponent implements OnInit, OnDestroy, AfterViewIni
   }
 
   refreshDevices(): void {
+    console.log('[ExamCamera] Atualizando lista de dispositivos...');
     this.streamingService.refreshDeviceList();
   }
 
@@ -532,16 +652,55 @@ export class ExamCameraPanelComponent implements OnInit, OnDestroy, AfterViewIni
     return this.examTypes.find(t => t.id === this.selectedType)?.icon || 'video';
   }
 
+  isStarting = false;
+  errorMessage: string | null = null;
+
+  /**
+   * Chamado quando o usuário muda a câmera selecionada no dropdown
+   */
+  onCameraChange(newDeviceId: string): void {
+    console.log('[ExamCamera] Câmera selecionada mudou:', {
+      anterior: this.selectedDeviceId,
+      nova: newDeviceId,
+      isStreaming: this.isStreaming
+    });
+
+    // Se já está transmitindo, para e reinicia com a nova câmera
+    if (this.isStreaming && newDeviceId) {
+      console.log('[ExamCamera] Trocando câmera durante streaming...');
+      this.stopStream();
+      // Pequeno delay para garantir que o stream anterior foi parado
+      setTimeout(() => {
+        this.startStream();
+      }, 300);
+    }
+  }
+
   async startStream(): Promise<void> {
     if (!this.selectedDeviceId) {
       console.warn('[ExamCamera] Nenhuma câmera selecionada');
+      this.errorMessage = 'Por favor, selecione uma câmera antes de iniciar.';
       return;
     }
 
+    // Evita cliques múltiplos
+    if (this.isStarting) {
+      console.warn('[ExamCamera] Já está iniciando, ignorando clique');
+      return;
+    }
+
+    this.isStarting = true;
+    this.errorMessage = null;
+
+    // Log detalhado da câmera selecionada
+    const selectedDevice = this.videoDevices.find(d => d.deviceId === this.selectedDeviceId);
     console.log('[ExamCamera] Iniciando stream...', { 
       type: this.selectedType, 
       deviceId: this.selectedDeviceId,
-      appointmentId: this.appointmentId
+      deviceLabel: selectedDevice?.label || 'desconhecido',
+      appointmentId: this.appointmentId,
+      totalDevices: this.videoDevices.length,
+      allDevices: this.videoDevices.map(d => ({ id: d.deviceId.slice(0, 8), label: d.label }))
     });
 
     try {
@@ -551,24 +710,62 @@ export class ExamCameraPanelComponent implements OnInit, OnDestroy, AfterViewIni
       );
 
       if (session && this.videoElement) {
-        console.log('[ExamCamera] Stream obtido, atribuindo ao video element');
+        // Verifica se o stream veio da câmera correta
+        const track = session.stream.getVideoTracks()[0];
+        if (track) {
+          // Captura o label da câmera realmente ativa
+          this.activeCameraLabel = track.label;
+          console.log('[ExamCamera] ✓ Stream obtido da câmera:', {
+            label: track.label,
+            deviceId: track.getSettings().deviceId
+          });
+        }
+        
         this.videoElement.nativeElement.srcObject = session.stream;
         this.isStreaming = true;
 
         // Se tem appointmentId, inicia streaming via WebRTC para o médico
         if (this.appointmentId) {
-          await this.syncService.startStreaming(session.stream, 'video');
-          console.log('[ExamCamera] Streaming para médico iniciado');
+          try {
+            await this.syncService.startStreaming(session.stream, 'video');
+            console.log('[ExamCamera] Streaming para médico iniciado');
+          } catch (syncError: any) {
+            console.error('[ExamCamera] Erro ao enviar stream para médico:', syncError);
+            // Não para o stream local, apenas notifica
+            this.errorMessage = 'Câmera local funcionando, mas houve erro ao transmitir para o médico.';
+          }
         }
       } else {
         console.error('[ExamCamera] Falha ao obter stream ou videoElement não disponível');
+        this.errorMessage = 'Não foi possível acessar a câmera. Verifique se está conectada.';
       }
     } catch (error: any) {
       console.error('[ExamCamera] Erro ao iniciar stream:', error);
+      
+      // Mensagens de erro amigáveis baseadas no tipo de erro
+      if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+        this.errorMessage = 'Câmera não encontrada. Verifique se está conectada corretamente.';
+      } else if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        this.errorMessage = 'Permissão de câmera negada. Por favor, permita o acesso à câmera.';
+      } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+        this.errorMessage = 'A câmera está em uso por outro aplicativo. Feche outros programas que possam estar usando-a.';
+      } else if (error.message?.includes('Timeout')) {
+        this.errorMessage = 'A câmera demorou muito para responder. Reconecte o dispositivo USB e tente novamente.';
+      } else if (error.message?.includes('Não foi possível acessar')) {
+        this.errorMessage = error.message;
+      } else {
+        this.errorMessage = `Erro ao acessar câmera: ${error.message || 'Erro desconhecido'}`;
+      }
+      
+      // Atualiza lista de dispositivos para refletir estado atual
+      this.refreshDevices();
+    } finally {
+      this.isStarting = false;
     }
   }
 
   stopStream(): void {
+    console.log('[ExamCamera] Parando stream...');
     this.streamingService.stopStream();
     this.syncService.stopStreaming();
     
@@ -577,6 +774,8 @@ export class ExamCameraPanelComponent implements OnInit, OnDestroy, AfterViewIni
     }
     
     this.isStreaming = false;
+    this.errorMessage = null;
+    this.activeCameraLabel = null;
   }
 
   toggleMirror(): void {

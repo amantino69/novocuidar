@@ -474,13 +474,21 @@ export class DoctorStreamReceiverComponent implements OnInit, OnDestroy, AfterVi
   private handleRemoteStream(stream: MediaStream | null): void {
     console.log('[DoctorStreamReceiver] handleRemoteStream chamado:', {
       hasStream: !!stream,
-      tracks: stream?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState }))
+      streamType: this.streamType,
+      tracks: stream?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState, label: t.label }))
     });
 
     this.hasActiveStream = !!stream;
 
     if (!stream) {
       this.stopAudioVisualization();
+      // Limpa os elementos de mídia
+      if (this.videoElement?.nativeElement) {
+        this.videoElement.nativeElement.srcObject = null;
+      }
+      if (this.audioElement?.nativeElement) {
+        this.audioElement.nativeElement.srcObject = null;
+      }
       return;
     }
 
@@ -488,10 +496,14 @@ export class DoctorStreamReceiverComponent implements OnInit, OnDestroy, AfterVi
     const hasVideo = stream.getVideoTracks().length > 0;
     const hasAudio = stream.getAudioTracks().length > 0;
 
-    console.log('[DoctorStreamReceiver] Stream info:', { hasVideo, hasAudio });
+    console.log('[DoctorStreamReceiver] Stream info:', { hasVideo, hasAudio, streamType: this.streamType });
 
-    if (hasVideo && this.videoElement) {
-      this.videoElement.nativeElement.srcObject = stream;
+    if (hasVideo) {
+      // Aguarda o DOM atualizar para ter acesso ao elemento de vídeo
+      // (necessário porque o @if pode não ter renderizado o elemento ainda)
+      setTimeout(() => {
+        this.setupVideoPlayback(stream);
+      }, 100);
     }
 
     if (hasAudio) {
@@ -500,6 +512,27 @@ export class DoctorStreamReceiverComponent implements OnInit, OnDestroy, AfterVi
         this.setupAudioPlayback(stream);
       }, 100);
     }
+  }
+
+  private setupVideoPlayback(stream: MediaStream): void {
+    console.log('[DoctorStreamReceiver] setupVideoPlayback - videoElement:', !!this.videoElement);
+    
+    if (!this.videoElement) {
+      console.warn('[DoctorStreamReceiver] videoElement não disponível, tentando novamente...');
+      // Tenta novamente após mais tempo (o Angular precisa renderizar o template)
+      setTimeout(() => this.setupVideoPlayback(stream), 200);
+      return;
+    }
+
+    const video = this.videoElement.nativeElement;
+    video.srcObject = stream;
+    
+    // Garante que o vídeo comece a reproduzir
+    video.play().catch(err => {
+      console.warn('[DoctorStreamReceiver] Erro ao reproduzir vídeo:', err.message);
+    });
+    
+    console.log('[DoctorStreamReceiver] Vídeo configurado com sucesso');
   }
 
   private setupAudioPlayback(stream: MediaStream): void {
