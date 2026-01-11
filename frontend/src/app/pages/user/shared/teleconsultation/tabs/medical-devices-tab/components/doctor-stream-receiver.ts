@@ -403,6 +403,8 @@ import { MedicalDevicesSyncService } from '@app/core/services/medical-devices-sy
 export class DoctorStreamReceiverComponent implements OnInit, OnDestroy, AfterViewInit {
   @Input() appointmentId: string | null = null;
   @Input() userrole: string = '';
+  /** Tipo de stream que esta instância deve exibir. Se não definido, exibe qualquer tipo. */
+  @Input() expectedStreamType: 'auscultation' | 'video' | null = null;
 
   @ViewChild('audioElement') audioElement!: ElementRef<HTMLAudioElement>;
   @ViewChild('videoElement') videoElement!: ElementRef<HTMLVideoElement>;
@@ -475,8 +477,20 @@ export class DoctorStreamReceiverComponent implements OnInit, OnDestroy, AfterVi
     console.log('[DoctorStreamReceiver] handleRemoteStream chamado:', {
       hasStream: !!stream,
       streamType: this.streamType,
+      expectedStreamType: this.expectedStreamType,
       tracks: stream?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState, label: t.label }))
     });
+
+    // Se temos um tipo esperado e o stream é de outro tipo, ignoramos
+    if (this.expectedStreamType && this.streamType && this.expectedStreamType !== this.streamType) {
+      console.log('[DoctorStreamReceiver] Ignorando stream - tipo não corresponde:', {
+        expected: this.expectedStreamType,
+        received: this.streamType
+      });
+      // Mantemos hasActiveStream false para este componente
+      this.hasActiveStream = false;
+      return;
+    }
 
     this.hasActiveStream = !!stream;
 

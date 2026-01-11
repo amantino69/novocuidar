@@ -22,7 +22,8 @@ import { AuthService } from '@core/services/auth.service';
       } @else {
         <app-doctor-stream-receiver
           [appointmentId]="appointmentId"
-          [userrole]="userrole">
+          [userrole]="userrole"
+          [expectedStreamType]="'video'">
         </app-doctor-stream-receiver>
       }
     </div>

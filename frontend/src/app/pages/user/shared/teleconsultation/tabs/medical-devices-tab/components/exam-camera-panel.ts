@@ -628,8 +628,20 @@ export class ExamCameraPanelComponent implements OnInit, OnDestroy, AfterViewIni
         console.log('[ExamCamera] Lista de câmeras atualizada:', devices.map(d => ({ id: d.deviceId.slice(0, 8), label: d.label })));
         this.videoDevices = devices;
         if (devices.length > 0 && !this.selectedDeviceId) {
-          this.selectedDeviceId = devices[0].deviceId;
-          console.log('[ExamCamera] Câmera padrão selecionada:', devices[0].label);
+          // Prioridade de seleção automática:
+          // 1. Câmera USB externa (para exames)
+          // 2. Primeira câmera disponível
+          const usbCamera = devices.find(d => 
+            d.label.toLowerCase().includes('usb') ||
+            d.label.toLowerCase().includes('external') ||
+            d.label.toLowerCase().includes('exame') ||
+            d.label.toLowerCase().includes('dermatoscope') ||
+            d.label.toLowerCase().includes('otoscope')
+          );
+          
+          this.selectedDeviceId = usbCamera?.deviceId || devices[0].deviceId;
+          console.log('[ExamCamera] Câmera selecionada automaticamente:', 
+            usbCamera?.label || devices[0].label);
         }
       })
     );

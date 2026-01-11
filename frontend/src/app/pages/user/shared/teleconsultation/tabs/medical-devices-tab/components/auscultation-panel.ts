@@ -1027,14 +1027,30 @@ export class AuscultationPanelComponent implements OnInit, OnDestroy, AfterViewI
       this.streamingService.availableAudioDevices$.subscribe(devices => {
         this.audioDevices = devices;
         if (devices.length > 0 && !this.selectedDeviceId) {
-          // Tenta encontrar um estetoscópio digital ou microfone externo
+          // Prioridade de seleção automática:
+          // 1. Dispositivo com "ausculta" no nome
+          // 2. Estetoscópio digital ou microfone médico
+          // 3. Microfone USB/externo
+          // 4. Primeiro dispositivo disponível
+          const auscultaDevice = devices.find(d => 
+            d.label.toLowerCase().includes('ausculta')
+          );
           const stethoscope = devices.find(d => 
             d.label.toLowerCase().includes('steth') || 
-            d.label.toLowerCase().includes('medical') ||
+            d.label.toLowerCase().includes('medical')
+          );
+          const externalMic = devices.find(d => 
             d.label.toLowerCase().includes('usb') ||
             d.label.toLowerCase().includes('external')
           );
-          this.selectedDeviceId = stethoscope?.deviceId || devices[0].deviceId;
+          
+          this.selectedDeviceId = auscultaDevice?.deviceId || 
+                                  stethoscope?.deviceId || 
+                                  externalMic?.deviceId || 
+                                  devices[0].deviceId;
+          
+          console.log('[Auscultation] Dispositivo selecionado automaticamente:', 
+            auscultaDevice?.label || stethoscope?.label || externalMic?.label || devices[0].label);
         }
       })
     );
