@@ -333,4 +333,26 @@ public class MedicalDevicesHub : Hub
                 timestamp = DateTime.UtcNow
             });
     }
+
+    /// <summary>
+    /// Envia chunk de áudio PCM para streaming de baixa latência (fonocardiograma)
+    /// Otimizado para transmissão de sons cardíacos com mínima latência
+    /// </summary>
+    public async Task SendAudioChunk(JsonElement audioChunk)
+    {
+        string? appointmentId = null;
+        if (audioChunk.TryGetProperty("appointmentId", out var appointmentIdProp))
+        {
+            appointmentId = appointmentIdProp.GetString();
+        }
+        
+        if (string.IsNullOrEmpty(appointmentId))
+        {
+            return;
+        }
+
+        // Reenvia para outros na sala sem logging (alta frequência ~20/s)
+        await Clients.OthersInGroup($"appointment_{appointmentId}")
+            .SendAsync("ReceiveAudioChunk", audioChunk);
+    }
 }

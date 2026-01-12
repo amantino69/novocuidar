@@ -79,11 +79,22 @@ export class MedicalDevicesSyncService implements OnDestroy {
   private _dictationModeActive$ = new BehaviorSubject<boolean>(false);
   public dictationModeActive$ = this._dictationModeActive$.asObservable();
 
+  // Streaming de áudio PCM para fonocardiograma
+  private _audioChunkReceived$ = new Subject<any>();
+  public audioChunkReceived$ = this._audioChunkReceived$.asObservable();
+
   // ICE Servers para WebRTC
   private iceServers: RTCIceServer[] = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' }
   ];
+
+  /**
+   * Verifica se a conexão SignalR está no estado Connected
+   */
+  private isHubConnected(): boolean {
+    return this.hubConnection?.state === 'Connected';
+  }
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
@@ -254,6 +265,13 @@ export class MedicalDevicesSyncService implements OnDestroy {
       });
     });
 
+    // Recebe chunk de áudio PCM (fonocardiograma)
+    this.hubConnection.on('ReceiveAudioChunk', (data: any) => {
+      this.ngZone.run(() => {
+        this._audioChunkReceived$.next(data);
+      });
+    });
+
     // Handlers de reconexão
     this.hubConnection.onreconnecting((error: any) => {
       console.warn('[MedicalDevicesSync] Reconectando...', error);
@@ -290,7 +308,7 @@ export class MedicalDevicesSyncService implements OnDestroy {
    * Aceita tanto VitalReading (do Bluetooth) quanto objeto simples de sinais vitais
    */
   async sendVitalSigns(reading: VitalReading | Record<string, any>): Promise<void> {
-    if (!this.hubConnection || !this.currentAppointmentId) return;
+    if (!this.hubConnection || !this.currentAppointmentId || !this.isHubConnected()) return;
 
     try {
       // Verifica se é um VitalReading ou um objeto simples
@@ -332,8 +350,8 @@ export class MedicalDevicesSyncService implements OnDestroy {
       hubState: this.hubConnection?.state
     });
 
-    if (!this.hubConnection || !this.currentAppointmentId) {
-      console.warn('[MedicalDevicesSync] Não conectado ao hub! Não pode notificar modo ditado');
+    if (!this.hubConnection || !this.currentAppointmentId || !this.isHubConnected()) {
+      console.warn('[MedicalDevicesSync] Não conectado ao hub! Não pode notificar modo ditado. State:', this.hubConnection?.state);
       return;
     }
 
@@ -342,6 +360,23 @@ export class MedicalDevicesSyncService implements OnDestroy {
       console.log('[MedicalDevicesSync] ✓ Notificação de modo ditado enviada:', isActive);
     } catch (error) {
       console.error('[MedicalDevicesSync] Erro ao notificar modo ditado:', error);
+    }
+  }
+
+  /**
+   * Envia chunk de áudio PCM para streaming de baixa latência (fonocardiograma)
+   * Usa chunks pequenos (~50ms) para minimizar latência
+   */
+  async sendAudioChunk(appointmentId: string, chunk: { samples: number[]; timestamp: number; sampleRate: number; duration: number }): Promise<void> {
+    if (!this.hubConnection || !this.isHubConnected()) return;
+
+    try {
+      await this.hubConnection.invoke('SendAudioChunk', {
+        appointmentId,
+        ...chunk
+      });
+    } catch (error) {
+      // Silencia erros de chunks individuais para não sobrecarregar console
     }
   }
 
@@ -357,8 +392,8 @@ export class MedicalDevicesSyncService implements OnDestroy {
       hubState: this.hubConnection?.state
     });
 
-    if (!this.hubConnection || !this.currentAppointmentId) {
-      console.error('[MedicalDevicesSync] Não conectado ao hub - hubConnection:', !!this.hubConnection, 'appointmentId:', this.currentAppointmentId);
+    if (!this.hubConnection || !this.currentAppointmentId || !this.isHubConnected()) {
+      console.error('[MedicalDevicesSync] Não conectado ao hub - hubConnection:', !!this.hubConnection, 'appointmentId:', this.currentAppointmentId, 'state:', this.hubConnection?.state);
       this._connectionError$.next('Não conectado ao hub de dispositivos médicos');
       return;
     }
@@ -382,7 +417,7 @@ export class MedicalDevicesSyncService implements OnDestroy {
 
       // Handler para ICE candidates
       this.peerConnection.onicecandidate = (event) => {
-        if (event.candidate && this.hubConnection) {
+        if (event.candidate && this.hubConnection && this.isHubConnected()) {
           this.hubConnection.invoke('SendIceCandidate', {
             appointmentId: this.currentAppointmentId,
             candidate: event.candidate.toJSON()
@@ -415,7 +450,7 @@ export class MedicalDevicesSyncService implements OnDestroy {
    * Reenvia a oferta de stream (quando outro usuário entra na sala)
    */
   private async resendStreamOffer(): Promise<void> {
-    if (!this.hubConnection || !this.currentAppointmentId || !this.localStream || !this.currentStreamType) {
+    if (!this.hubConnection || !this.currentAppointmentId || !this.localStream || !this.currentStreamType || !this.isHubConnected()) {
       return;
     }
 
@@ -436,7 +471,7 @@ export class MedicalDevicesSyncService implements OnDestroy {
 
       // Handler para ICE candidates
       this.peerConnection.onicecandidate = (event) => {
-        if (event.candidate && this.hubConnection) {
+        if (event.candidate && this.hubConnection && this.isHubConnected()) {
           this.hubConnection.invoke('SendIceCandidate', {
             appointmentId: this.currentAppointmentId,
             candidate: event.candidate.toJSON()
@@ -483,7 +518,7 @@ export class MedicalDevicesSyncService implements OnDestroy {
 
       // Handler para ICE candidates
       this.peerConnection.onicecandidate = (event) => {
-        if (event.candidate && this.hubConnection) {
+        if (event.candidate && this.hubConnection && this.isHubConnected()) {
           this.hubConnection.invoke('SendIceCandidate', {
             appointmentId: this.currentAppointmentId,
             candidate: event.candidate.toJSON()
@@ -496,13 +531,16 @@ export class MedicalDevicesSyncService implements OnDestroy {
       const answer = await this.peerConnection.createAnswer();
       await this.peerConnection.setLocalDescription(answer);
 
-      // Envia resposta
-      await this.hubConnection.invoke('SendStreamAnswer', {
-        appointmentId: this.currentAppointmentId,
-        answer: answer
-      });
-
-      console.log('[MedicalDevicesSync] Resposta enviada');
+      // Envia resposta (somente se conectado)
+      if (this.isHubConnected()) {
+        await this.hubConnection.invoke('SendStreamAnswer', {
+          appointmentId: this.currentAppointmentId,
+          answer: answer
+        });
+        console.log('[MedicalDevicesSync] Resposta enviada');
+      } else {
+        console.warn('[MedicalDevicesSync] Não foi possível enviar resposta - hub não conectado');
+      }
 
     } catch (error) {
       console.error('[MedicalDevicesSync] Erro ao processar oferta:', error);
@@ -527,7 +565,7 @@ export class MedicalDevicesSyncService implements OnDestroy {
    * Para o streaming
    */
   async stopStreaming(): Promise<void> {
-    if (this.hubConnection && this.currentAppointmentId) {
+    if (this.hubConnection && this.currentAppointmentId && this.isHubConnected()) {
       try {
         await this.hubConnection.invoke('EndStream', this.currentAppointmentId);
       } catch (e) {
@@ -569,7 +607,7 @@ export class MedicalDevicesSyncService implements OnDestroy {
 
     if (this.hubConnection) {
       try {
-        if (this.currentAppointmentId) {
+        if (this.currentAppointmentId && this.isHubConnected()) {
           await this.hubConnection.invoke('LeaveAppointment', this.currentAppointmentId);
         }
         await this.hubConnection.stop();
