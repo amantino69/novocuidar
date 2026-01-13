@@ -2,7 +2,8 @@ import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { Subscription, firstValueFrom } from 'rxjs';
+import { Subscription, firstValueFrom, Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { 
@@ -178,23 +179,22 @@ import { environment } from '@env/environment';
           </button>
         </div>
 
-        <!-- Botão Salvar -->
-        <div class="save-section">
-          <button type="button" class="btn-save" 
-                  [disabled]="isSaving || !hasAnyValue()"
-                  (click)="saveVitals()">
-            @if (isSaving) {
-              <app-icon name="loader" [size]="18" class="spin" />
-              Salvando...
-            } @else {
-              <app-icon name="check" [size]="18" />
-              Salvar Sinais Vitais
-            }
-          </button>
-          @if (lastSaved) {
-            <span class="last-saved">
+        <!-- Status de Sincronização -->
+        <div class="sync-section">
+          @if (isSending) {
+            <span class="sync-status sending">
+              <app-icon name="loader" [size]="14" class="spin" />
+              Enviando...
+            </span>
+          } @else if (lastSent) {
+            <span class="sync-status sent">
               <app-icon name="check-circle" [size]="14" />
-              Salvo às {{ lastSaved | date:'HH:mm:ss' }}
+              Sincronizado às {{ lastSent | date:'HH:mm:ss' }}
+            </span>
+          } @else if (hasAnyValue()) {
+            <span class="sync-status waiting">
+              <app-icon name="wifi" [size]="14" />
+              Pronto para sincronizar
             </span>
           }
         </div>
@@ -426,12 +426,32 @@ import { environment } from '@env/environment';
       }
     }
 
-    .last-saved {
+    .sync-section {
+      padding: 8px 0;
+    }
+
+    .sync-status {
       display: flex;
       align-items: center;
       gap: 6px;
       font-size: 13px;
-      color: #10b981;
+      padding: 8px 12px;
+      border-radius: 8px;
+
+      &.sending {
+        color: #3b82f6;
+        background: rgba(59, 130, 246, 0.1);
+      }
+
+      &.sent {
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+      }
+
+      &.waiting {
+        color: var(--text-secondary);
+        background: var(--bg-tertiary);
+      }
     }
 
     .spin {
@@ -453,12 +473,19 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
   bluetoothAvailable = false;
   isHubConnected = false;
   isConnecting = false;
-  isSaving = false;
+  isSending = false;
   connectingType: DeviceType | null = null;
   connectedDevices: BluetoothDevice[] = [];
-  lastSaved: Date | null = null;
+  lastSent: Date | null = null;
 
   private subscriptions = new Subscription();
+  private formChanged$ = new Subject<void>();
+  private saveTimeout: any = null;
+  
+  // Cache key para persistir valores entre mudanças de aba
+  private get cacheKey(): string {
+    return `vitals_cache_${this.appointmentId}`;
+  }
 
   constructor(
     private fb: FormBuilder,
@@ -479,7 +506,10 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.bluetoothAvailable = this.bluetoothService.isBluetoothAvailable();
 
-    // Carrega dados existentes do banco
+    // Carrega do cache local primeiro (instantâneo)
+    this.loadFromCache();
+    
+    // Depois carrega dados existentes do banco (pode sobrescrever se mais recente)
     this.loadExistingData();
 
     // Conecta ao hub
@@ -507,6 +537,24 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
         this.processReading(reading);
       })
     );
+
+    // *** ENVIO INSTANTÂNEO: Observa mudanças no formulário ***
+    this.subscriptions.add(
+      this.vitalsForm.valueChanges.subscribe(() => {
+        this.saveToCache(); // Cache local instantâneo
+        this.formChanged$.next(); // Trigger debounce
+      })
+    );
+
+    // Debounce de 300ms para enviar via SignalR (instantâneo para o médico)
+    this.subscriptions.add(
+      this.formChanged$.pipe(
+        debounceTime(300),
+        distinctUntilChanged()
+      ).subscribe(() => {
+        this.sendVitalsRealtime();
+      })
+    );
   }
 
   private async loadExistingData(): Promise<void> {
@@ -524,10 +572,10 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
           diastolic: data.bloodPressureDiastolic,
           temperature: data.temperature,
           weight: data.weight
-        });
+        }, { emitEvent: false }); // Não dispara envio automático ao carregar
         
         if (data.lastUpdated) {
-          this.lastSaved = new Date(data.lastUpdated);
+          this.lastSent = new Date(data.lastUpdated);
         }
       }
     } catch (error) {
@@ -601,50 +649,104 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
     return Object.values(values).some(v => v !== null && v !== '' && v !== undefined);
   }
 
-  async saveVitals(): Promise<void> {
-    if (!this.hasAnyValue() || !this.appointmentId) {
-      return;
+  /**
+   * Salva valores no cache local (sessionStorage)
+   */
+  private saveToCache(): void {
+    if (!this.appointmentId) return;
+    try {
+      const values = this.vitalsForm.value;
+      sessionStorage.setItem(this.cacheKey, JSON.stringify({
+        values,
+        timestamp: new Date().toISOString()
+      }));
+    } catch (e) {
+      // Ignora erros de storage
+    }
+  }
+
+  /**
+   * Carrega valores do cache local
+   */
+  private loadFromCache(): void {
+    if (!this.appointmentId) return;
+    try {
+      const cached = sessionStorage.getItem(this.cacheKey);
+      if (cached) {
+        const { values, timestamp } = JSON.parse(cached);
+        // Só usa cache se for da última hora
+        const cacheTime = new Date(timestamp).getTime();
+        const now = Date.now();
+        if (now - cacheTime < 60 * 60 * 1000) { // 1 hora
+          this.vitalsForm.patchValue(values, { emitEvent: false });
+          console.log('[DeviceConnectionPanel] Dados carregados do cache');
+        }
+      }
+    } catch (e) {
+      // Ignora erros de storage
+    }
+  }
+
+  /**
+   * Envia sinais vitais em tempo real via SignalR (instantâneo para o médico)
+   * E agenda salvamento em background no banco de dados
+   */
+  private async sendVitalsRealtime(): Promise<void> {
+    if (!this.hasAnyValue() || !this.appointmentId) return;
+
+    const formValues = this.vitalsForm.value;
+    const biometrics = {
+      oxygenSaturation: formValues.spo2 ? Number(formValues.spo2) : null,
+      heartRate: formValues.heartRate ? Number(formValues.heartRate) : null,
+      bloodPressureSystolic: formValues.systolic ? Number(formValues.systolic) : null,
+      bloodPressureDiastolic: formValues.diastolic ? Number(formValues.diastolic) : null,
+      temperature: formValues.temperature ? Number(formValues.temperature) : null,
+      weight: formValues.weight ? Number(formValues.weight) : null
+    };
+
+    // 1. Envia IMEDIATAMENTE via SignalR (instantâneo para o médico)
+    this.isSending = true;
+    try {
+      await this.syncService.sendVitalSigns(biometrics);
+      this.lastSent = new Date();
+      console.log('[DeviceConnectionPanel] ✓ Sinais vitais enviados via SignalR');
+    } catch (error) {
+      console.warn('[DeviceConnectionPanel] Erro no SignalR:', error);
+    } finally {
+      this.isSending = false;
     }
 
-    this.isSaving = true;
+    // 2. Agenda salvamento em BACKGROUND no banco (não bloqueia UI)
+    // Usa debounce de 2 segundos para evitar muitas requisições
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+    this.saveTimeout = setTimeout(() => {
+      this.saveToDatabase(biometrics);
+    }, 2000);
+  }
 
+  /**
+   * Salva no banco de dados em background (não bloqueia UI)
+   */
+  private async saveToDatabase(biometrics: any): Promise<void> {
+    if (!this.appointmentId) return;
+    
     try {
-      const formValues = this.vitalsForm.value;
-      
-      // Monta o objeto de sinais vitais no formato esperado pela API
-      const biometrics = {
-        oxygenSaturation: formValues.spo2 ? Number(formValues.spo2) : null,
-        heartRate: formValues.heartRate ? Number(formValues.heartRate) : null,
-        bloodPressureSystolic: formValues.systolic ? Number(formValues.systolic) : null,
-        bloodPressureDiastolic: formValues.diastolic ? Number(formValues.diastolic) : null,
-        temperature: formValues.temperature ? Number(formValues.temperature) : null,
-        weight: formValues.weight ? Number(formValues.weight) : null
-      };
-
-      // 1. Salva no banco de dados via API REST
       const apiUrl = `${environment.apiUrl}/appointments/${this.appointmentId}/biometrics`;
       await firstValueFrom(this.http.put(apiUrl, biometrics));
-      console.log('[DeviceConnectionPanel] Biométricos salvos na API:', biometrics);
-
-      // 2. Envia via SignalR para o médico em tempo real
-      try {
-        await this.syncService.sendVitalSigns(biometrics);
-        console.log('[DeviceConnectionPanel] Biométricos enviados via SignalR');
-      } catch (signalRError) {
-        console.warn('[DeviceConnectionPanel] Erro ao enviar via SignalR (dados já salvos na API):', signalRError);
-      }
-      
-      this.lastSaved = new Date();
+      console.log('[DeviceConnectionPanel] ✓ Dados persistidos no banco');
     } catch (error) {
-      console.error('Erro ao salvar sinais vitais:', error);
-      alert('Erro ao salvar sinais vitais. Tente novamente.');
-    } finally {
-      this.isSaving = false;
+      console.warn('[DeviceConnectionPanel] Erro ao salvar no banco (dados já enviados via SignalR):', error);
     }
   }
 
   ngOnDestroy(): void {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
     this.subscriptions.unsubscribe();
+    this.formChanged$.complete();
   }
 }
 
