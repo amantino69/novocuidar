@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Subscription, firstValueFrom, Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { debounceTime } from 'rxjs/operators';
 
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { 
@@ -549,8 +549,7 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
     // Debounce de 300ms para enviar via SignalR (instantâneo para o médico)
     this.subscriptions.add(
       this.formChanged$.pipe(
-        debounceTime(300),
-        distinctUntilChanged()
+        debounceTime(300)
       ).subscribe(() => {
         this.sendVitalsRealtime();
       })
