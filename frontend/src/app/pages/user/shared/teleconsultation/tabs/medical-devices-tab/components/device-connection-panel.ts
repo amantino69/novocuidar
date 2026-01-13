@@ -193,7 +193,7 @@ import { environment } from '@env/environment';
             </span>
           } @else if (hasAnyValue()) {
             <span class="sync-status waiting">
-              <app-icon name="wifi" [size]="14" />
+              <app-icon name="radio" [size]="14" />
               Pronto para sincronizar
             </span>
           }
