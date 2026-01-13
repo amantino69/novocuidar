@@ -46,9 +46,9 @@ export class PhonocardiogramService {
   private lastPeakTime = 0;
   private heartRates: number[] = [];
   
-  // Controle de taxa de envio (30fps para SignalR, 60fps local)
+  // Controle de taxa de envio (10fps para SignalR - mais estável sobre rede)
   private lastSendTime = 0;
-  private readonly SEND_INTERVAL = 33; // ~30fps
+  private readonly SEND_INTERVAL = 100; // 10fps (era 33ms/30fps)
   private frameCount = 0;
   
   // Estados observáveis
@@ -204,8 +204,8 @@ export class PhonocardiogramService {
   private createFrame(dataArray: Float32Array): PhonocardiogramFrame {
     const now = Date.now();
     
-    // Reduzir para 64 pontos para transmissão eficiente
-    const waveform = this.downsample(dataArray, 64);
+    // 128 pontos para boa resolução (10fps × 128pts = 1280 pontos/s)
+    const waveform = this.downsample(dataArray, 128);
     
     // Detectar picos (S1, S2)
     const { s1Amplitude, s2Amplitude } = this.detectHeartSounds(dataArray);

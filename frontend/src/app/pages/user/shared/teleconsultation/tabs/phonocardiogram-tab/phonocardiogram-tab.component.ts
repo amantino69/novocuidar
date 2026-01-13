@@ -477,9 +477,14 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
   // Canvas
   private ctx: CanvasRenderingContext2D | null = null;
   private waveformHistory: number[][] = [];
-  private maxHistory = 100; // ~3 segundos a 30fps (reduzido para melhor performance)
+  private maxHistory = 50; // ~5 segundos a 10fps
   private animationFrameId: number | null = null;
   private isBrowser: boolean;
+  
+  // Scrolling contínuo estilo ECG
+  private scrollOffset = 0;
+  private lastAnimationTime = 0;
+  private readonly SCROLL_SPEED = 80; // pixels por segundo
 
   // Subscriptions
   private subscriptions: Subscription[] = [];
@@ -618,11 +623,21 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
   }
 
   private startAnimation(): void {
-    const animate = () => {
+    this.lastAnimationTime = performance.now();
+    
+    const animate = (currentTime: number) => {
+      // Calcular delta time para animação suave
+      const deltaTime = (currentTime - this.lastAnimationTime) / 1000;
+      this.lastAnimationTime = currentTime;
+      
+      // Scroll contínuo (mesmo sem novos dados)
+      this.scrollOffset += this.SCROLL_SPEED * deltaTime;
+      
       this.drawWaveform();
       this.animationFrameId = requestAnimationFrame(animate);
     };
-    animate();
+    
+    requestAnimationFrame(animate);
   }
 
   private drawWaveform(): void {
@@ -633,11 +648,9 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
     const width = canvas.width;
     const height = canvas.height;
 
-    // Limpar com fade (efeito de persistência)
-    ctx.fillStyle = 'rgba(10, 10, 20, 0.15)';
+    // Limpar completamente (sem fade para ECG mais limpo)
+    ctx.fillStyle = '#0a0a14';
     ctx.fillRect(0, 0, width, height);
-
-    if (this.waveformHistory.length === 0) return;
 
     // Desenhar grade
     ctx.strokeStyle = 'rgba(34, 197, 94, 0.1)';
@@ -648,7 +661,10 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
       ctx.lineTo(width, y);
       ctx.stroke();
     }
-    for (let x = 0; x < width; x += 40) {
+    
+    // Grade vertical com scroll
+    const gridOffset = this.scrollOffset % 40;
+    for (let x = -gridOffset; x < width; x += 40) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
@@ -656,26 +672,43 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
     }
 
     // Desenhar linha central
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0, height / 2);
     ctx.lineTo(width, height / 2);
     ctx.stroke();
 
-    // Desenhar forma de onda
+    if (this.waveformHistory.length === 0) {
+      // Mostrar linha plana quando não há dados
+      ctx.strokeStyle = 'rgba(34, 197, 94, 0.3)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, height / 2);
+      ctx.lineTo(width, height / 2);
+      ctx.stroke();
+      return;
+    }
+
+    // Flatten todos os pontos
     const flatData = this.waveformHistory.flat();
     if (flatData.length === 0) return;
 
+    // Desenhar forma de onda com scrolling
     ctx.strokeStyle = '#22c55e';
     ctx.lineWidth = 2;
     ctx.beginPath();
 
-    const step = width / flatData.length;
-    for (let i = 0; i < flatData.length; i++) {
-      const x = i * step;
-      const y = height / 2 - flatData[i] * height * 3;
+    // Calcular quantos pontos cabem na tela
+    const pointsPerPixel = flatData.length / width;
+    const scrolledPoints = Math.floor(this.scrollOffset * pointsPerPixel) % flatData.length;
 
-      if (i === 0) {
+    for (let x = 0; x < width; x++) {
+      const dataIndex = (x + scrolledPoints) % flatData.length;
+      const value = flatData[dataIndex] || 0;
+      const y = height / 2 - value * height * 2.5;
+
+      if (x === 0) {
         ctx.moveTo(x, y);
       } else {
         ctx.lineTo(x, y);
@@ -685,9 +718,18 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
 
     // Glow effect
     ctx.shadowColor = '#22c55e';
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 6;
     ctx.stroke();
     ctx.shadowBlur = 0;
+
+    // Linha de scan (indicador de posição atual)
+    const scanX = (this.scrollOffset % width);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(scanX, 0);
+    ctx.lineTo(scanX, height);
+    ctx.stroke();
   }
 
   // ======== DEBUG METHODS ========
