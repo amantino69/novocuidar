@@ -31,11 +31,30 @@
     transform: translateX(0);
   }
 
+  // Modo tela cheia: sidebar ocupa 50% da tela (metade direita)
+  // deixando a outra metade para o vídeo do Jitsi
   &.full-screen {
-    width: 100%;
+    width: 50vw;
+    min-width: 50vw;
+    max-width: 50vw;
+    top: 0;
+    height: 100%;
+    z-index: 60;
+    
+    @include mobile {
+      // Em mobile, ocupa 100% pois não dá pra dividir
+      width: 100%;
+      min-width: 100%;
+      max-width: 100%;
+      top: 0;
+      height: 100%;
+    }
+  }
+
+  // Quando header está visível, ajustar posição
+  &.full-screen:not(.header-hidden) {
     top: 80px;
     height: calc(100% - 80px);
-    z-index: 60;
     
     @include mobile {
       top: 120px;

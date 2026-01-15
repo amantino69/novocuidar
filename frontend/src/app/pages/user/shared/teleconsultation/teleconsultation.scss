@@ -93,8 +93,15 @@
       }
     }
 
-    &.sidebar-open.full-screen {
-      margin-right: 0; // Full screen sidebar doesn't push content
+    // Modo full-screen: vídeo ocupa 50% da esquerda, sidebar 50% da direita
+    &.full-screen {
+      width: 50vw;
+      margin-right: 50vw;
+      
+      @include mobile {
+        // Em mobile, esconde o vídeo quando sidebar está em tela cheia
+        display: none;
+      }
     }
   }
 

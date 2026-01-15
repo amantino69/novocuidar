@@ -9,9 +9,9 @@
   </div>
 
   <!-- Main Content (Video + Header) -->
-  <div class="main-content" [class.sidebar-open]="isSidebarOpen && !isSidebarFull" [class.full-screen]="isSidebarFull">
+  <div class="main-content" [class.sidebar-open]="isSidebarOpen && !isSidebarFull" [class.full-screen]="isSidebarOpen && isSidebarFull">
     <!-- Header -->
-    <div class="tele-header" [class.hidden]="!isHeaderVisible" [class.above-sidebar]="isSidebarFull && isHeaderVisible">
+    <div class="tele-header" [class.hidden]="!isHeaderVisible">
       <div class="header-content">
         <div class="info-section">
           <div class="main-info" *ngIf="appointment">
