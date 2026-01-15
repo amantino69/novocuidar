@@ -20,9 +20,15 @@
           class="icon-btn dictation-btn" 
           [class.active]="isDictationActive"
           [class.listening]="isListening"
+          [class.initializing]="isDictationInitializing"
+          [disabled]="isDictationInitializing"
           (click)="toggleDictation()" 
-          title="Modo Ditado">
-          <app-icon [name]="isDictationActive ? 'mic' : 'mic-off'" [size]="20" />
+          [title]="isDictationInitializing ? 'Liberando microfone...' : 'Modo Ditado'">
+          @if (isDictationInitializing) {
+            <span class="spinner"></span>
+          } @else {
+            <app-icon [name]="isDictationActive ? 'mic' : 'mic-off'" [size]="20" />
+          }
         </button>
       }
       <button class="icon-btn close-btn" (click)="onToggle()">

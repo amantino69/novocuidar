@@ -82,6 +82,7 @@ export class TeleconsultationSidebarComponent implements OnInit, OnDestroy, OnCh
 
   isDictationActive = false;
   isListening = false;
+  isDictationInitializing = false; // Novo estado para feedback visual
   private destroy$ = new Subject<void>();
 
   // Sistema de grupos de tabs
@@ -114,6 +115,13 @@ export class TeleconsultationSidebarComponent implements OnInit, OnDestroy, OnCh
     this.dictationService.isListening$
       .pipe(takeUntil(this.destroy$))
       .subscribe(isListening => this.isListening = isListening);
+    
+    this.dictationService.isInitializing$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(isInitializing => {
+        this.isDictationInitializing = isInitializing;
+        this.cdr.detectChanges();
+      });
   }
 
   ngOnDestroy() {

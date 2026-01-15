@@ -121,6 +121,30 @@
         background: var(--red-50);
         animation: pulse 1.5s infinite;
       }
+
+      &.initializing {
+        color: var(--warning-600);
+        border-color: var(--warning-600);
+        background: var(--warning-50);
+        cursor: wait;
+        opacity: 0.8;
+      }
+
+      .spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        display: inline-block;
+      }
+    }
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
     }
   }
 

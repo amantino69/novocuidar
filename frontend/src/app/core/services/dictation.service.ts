@@ -18,6 +18,7 @@ export class DictationService {
   
   public isDictationActive$ = new BehaviorSubject<boolean>(false);
   public isListening$ = new BehaviorSubject<boolean>(false);
+  public isInitializing$ = new BehaviorSubject<boolean>(false); // Estado de inicialização
   public lastTranscript$ = new BehaviorSubject<string>(''); // Para feedback visual
 
   constructor(
@@ -136,6 +137,12 @@ export class DictationService {
   }
 
   toggleDictation() {
+    // Previne cliques múltiplos durante inicialização
+    if (this.isInitializing$.value) {
+      console.log('[Dictation] Já está inicializando, ignorando clique');
+      return;
+    }
+    
     if (this.isDictationActive$.value) {
       this.stopDictation();
     } else {
@@ -158,6 +165,8 @@ export class DictationService {
       return;
     }
     
+    // Indica que está inicializando (feedback visual imediato)
+    this.isInitializing$.next(true);
     console.log('[Dictation] Solicitando acesso ao microfone...');
     
     // Solicita acesso explícito ao microfone primeiro
@@ -179,6 +188,7 @@ export class DictationService {
       
     } catch (err) {
       console.error('[Dictation] Erro ao acessar microfone:', err);
+      this.isInitializing$.next(false); // Desativa estado de inicialização em caso de erro
       this.modalService.alert({
         title: 'Microfone Inacessível',
         message: 'Não foi possível acessar o microfone. Verifique as permissões do navegador.',
@@ -189,6 +199,7 @@ export class DictationService {
     
     console.log('[Dictation] Ativando modo ditado...');
     this.isDictationActive$.next(true);
+    this.isInitializing$.next(false); // Desativa estado de inicialização após sucesso
     
     // Muta o microfone do Jitsi para o paciente não ouvir o médico ditando
     this.jitsiService.setLocalAudioMuted(true);
@@ -198,6 +209,7 @@ export class DictationService {
 
   stopDictation() {
     this.isDictationActive$.next(false);
+    this.isInitializing$.next(false); // Garante que inicialização está desativada
     this.stopListening();
     this.activeElement = null;
     this.lastInterim = '';
