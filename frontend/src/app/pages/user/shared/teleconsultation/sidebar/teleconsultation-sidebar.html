@@ -54,7 +54,7 @@
         <button 
           class="group-btn finish" 
           [class.active]="isTabActive('Finalizar Consulta')"
-          (click)="onTabChange('Finalizar Consulta')">
+          (click)="onFinalizarClick()">
           <app-icon name="check-circle" [size]="16" />
           <span>Finalizar</span>
         </button>
@@ -78,8 +78,8 @@
       }
     }
 
-    <!-- Ferramentas (Análise IA, CADSUS, Histórico) como ícones -->
-    @if (getStandaloneGroup(); as standaloneGroup) {
+    <!-- Ferramentas (Análise IA, CADSUS, Histórico) - APENAS para Avaliação Clínica -->
+    @if (activeGroup === 'exame-fisico' && getStandaloneGroup(); as standaloneGroup) {
       <div class="nav-icons tools">
         @for (tab of standaloneGroup.tabs; track tab.id) {
           @if (tab.id !== 'conclusion') {

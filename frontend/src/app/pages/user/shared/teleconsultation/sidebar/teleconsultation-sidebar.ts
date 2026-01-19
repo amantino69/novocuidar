@@ -195,6 +195,12 @@ export class TeleconsultationSidebarComponent implements OnInit, OnDestroy, OnCh
     this.tabChange.emit(tab);
   }
 
+  // Método especial para Finalizar - limpa os grupos ativos
+  onFinalizarClick() {
+    this.activeGroup = null;
+    this.tabChange.emit('Finalizar Consulta');
+  }
+
   onFinishConsultation(observations: string) {
     this.finishConsultation.emit(observations);
   }
