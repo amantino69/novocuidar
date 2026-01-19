@@ -135,7 +135,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
   },
   {
     id: 'phonocardiogram',
-    label: 'Fono',
+    label: 'Fonocardio',
     icon: 'heart',
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: true, // HABILITADO - Fonocardiograma em tempo real
