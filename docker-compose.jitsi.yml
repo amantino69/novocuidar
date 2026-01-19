@@ -63,8 +63,8 @@ services:
       - jitsi-web-certs:/etc/letsencrypt
       - jitsi-transcripts:/usr/share/jitsi-meet/transcripts
       # Arquivos customizados para remover branding e desabilitar página inicial
-      - ./jitsi-config/custom/custom-interface_config.js:/config/interface_config.js:ro
-      - ./jitsi-config/custom/custom-config.js:/config/config.js:ro
+      - ./jitsi-config/custom/custom-interface_config.js:/usr/share/jitsi-meet/interface_config.js:ro
+      - ./jitsi-config/custom/custom-config.js:/defaults/config.js:ro
     networks:
       meet.jitsi:
         aliases:
