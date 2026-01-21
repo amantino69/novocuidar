@@ -47,7 +47,7 @@ public class PatientsController : ControllerBase
     /// <param name="includeDetails">Se true, inclui detalhes de prescrições, exames, etc.</param>
     /// <param name="reason">Motivo do acesso (obrigatório para auditoria)</param>
     [HttpGet("cpf/{cpf}/clinical-timeline")]
-    [Authorize(Roles = "ADMIN,PROFESSIONAL")]
+    [Authorize(Roles = "ADMIN,PROFESSIONAL,ASSISTANT")]
     public async Task<ActionResult<ClinicalTimelineDto>> GetTimelineByCpf(
         string cpf,
         [FromQuery] bool includeDetails = false,
@@ -98,7 +98,7 @@ public class PatientsController : ControllerBase
     /// <param name="includeDetails">Se true, inclui detalhes de prescrições, exames, etc.</param>
     /// <param name="reason">Motivo do acesso (obrigatório para auditoria)</param>
     [HttpGet("{patientId}/clinical-timeline")]
-    [Authorize(Roles = "ADMIN,PROFESSIONAL")]
+    [Authorize(Roles = "ADMIN,PROFESSIONAL,ASSISTANT")]
     public async Task<ActionResult<ClinicalTimelineDto>> GetTimelineByPatientId(
         Guid patientId,
         [FromQuery] bool includeDetails = false,
@@ -147,7 +147,7 @@ public class PatientsController : ControllerBase
     /// <param name="appointmentId">ID da consulta</param>
     /// <param name="reason">Motivo do acesso (para auditoria)</param>
     [HttpGet("appointments/{appointmentId}/details")]
-    [Authorize(Roles = "ADMIN,PROFESSIONAL")]
+    [Authorize(Roles = "ADMIN,PROFESSIONAL,ASSISTANT")]
     public async Task<ActionResult<TimelineEntryDto>> GetAppointmentDetails(
         Guid appointmentId,
         [FromQuery] string? reason = null)

@@ -383,12 +383,13 @@ FodyWeavers.xsd
 .idea/
 *.sln.iml
 
-# Database files
+# Database files (exceto banco POC)
 *.db
 *.db-shm
 *.db-wal
 *.sqlite
 *.sqlite3
+!WebAPI/telecuidar.db
 
 # Environment variables
 .env

@@ -127,6 +127,16 @@ export class RegisterComponent implements OnInit {
         // Remover validação de termos quando houver convite
         this.registerForm.get('acceptTerms')?.clearValidators();
         this.registerForm.get('acceptTerms')?.updateValueAndValidity();
+        
+        // Marcar campos pré-preenchidos como touched para exibir erros de validação
+        setTimeout(() => {
+          ['name', 'lastName', 'email', 'cpf', 'phone'].forEach(field => {
+            const control = this.registerForm.get(field);
+            if (control?.value) {
+              control.markAsTouched();
+            }
+          });
+        }, 500);
       }
     });
   }
@@ -264,7 +274,7 @@ export class RegisterComponent implements OnInit {
     }
 
     if (fieldName === 'cpf') {
-      if (control.errors['invalidCpf']) {
+      if (control.errors['cpfInvalid'] || control.errors['invalidCpf']) {
         return AUTH_CONSTANTS.VALIDATION_MESSAGES.CPF;
       }
       if (control.errors['cpfTaken']) {
@@ -273,7 +283,7 @@ export class RegisterComponent implements OnInit {
     }
 
     if (fieldName === 'phone') {
-      if (control.errors['invalidPhone']) {
+      if (control.errors['phoneInvalid'] || control.errors['invalidPhone']) {
         return AUTH_CONSTANTS.VALIDATION_MESSAGES.PHONE;
       }
       if (control.errors['phoneTaken']) {

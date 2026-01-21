@@ -40,7 +40,7 @@
       }
     </div>
 
-    <!-- Formulário de Adicionar Item -->
+    <!-- Formulário de Adicionar Item (Padrão e-SUS) -->
     @if (showItemForm) {
       <div class="item-form">
         <h4>{{ isEditMode ? 'Editar Medicamento' : 'Adicionar Medicamento' }}</h4>
@@ -71,6 +71,9 @@
                         <div class="med-name">{{ med.nome }}</div>
                         <div class="med-info">
                           <span class="principle">{{ med.principioAtivo }}</span>
+                          @if (med.concentracao) {
+                            <span class="concentration">{{ med.concentracao }}</span>
+                          }
                           <span class="lab">{{ med.empresa }}</span>
                         </div>
                       </div>
@@ -86,6 +89,39 @@
             </div>
           </div>
 
+          <!-- Informações do Medicamento (preenchidas automaticamente) -->
+          <div class="form-row three-cols">
+            <div class="form-group">
+              <label for="principioAtivo">Princípio Ativo</label>
+              <input 
+                type="text" 
+                id="principioAtivo" 
+                formControlName="principioAtivo"
+                placeholder="Substância ativa"
+                readonly
+              />
+            </div>
+            <div class="form-group">
+              <label for="concentracao">Concentração</label>
+              <input 
+                type="text" 
+                id="concentracao" 
+                formControlName="concentracao"
+                placeholder="Ex: 500mg, 20mg/ml..."
+              />
+            </div>
+            <div class="form-group">
+              <label for="formaFarmaceutica">Forma Farmacêutica</label>
+              <select id="formaFarmaceutica" formControlName="formaFarmaceutica">
+                <option value="">Selecione...</option>
+                @for (forma of formasFarmaceuticas; track forma) {
+                  <option [value]="forma">{{ forma }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <!-- Posologia Principal -->
           <div class="form-row two-cols">
             <div class="form-group">
               <label for="dosagem">Dosagem *</label>
@@ -93,9 +129,20 @@
                 type="text" 
                 id="dosagem" 
                 formControlName="dosagem"
-                placeholder="Ex: 500mg, 1g, 10ml..."
+                placeholder="Ex: 1 comprimido, 10ml, 2 cápsulas..."
               />
             </div>
+            <div class="form-group">
+              <label for="viaAdministracao">Via de Administração</label>
+              <select id="viaAdministracao" formControlName="viaAdministracao">
+                @for (via of viasAdministracao; track via) {
+                  <option [value]="via">{{ via }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row two-cols">
             <div class="form-group">
               <label for="frequencia">Frequência *</label>
               <input 
@@ -105,9 +152,6 @@
                 placeholder="Ex: 8/8h, 12/12h, 1x ao dia..."
               />
             </div>
-          </div>
-
-          <div class="form-row two-cols">
             <div class="form-group">
               <label for="periodo">Período *</label>
               <input 
@@ -117,14 +161,57 @@
                 placeholder="Ex: 7 dias, 14 dias, uso contínuo..."
               />
             </div>
+          </div>
+
+          <div class="form-row">
             <div class="form-group">
-              <label for="posologia">Posologia *</label>
+              <label for="posologia">Posologia Completa *</label>
               <input 
                 type="text" 
                 id="posologia" 
                 formControlName="posologia"
-                placeholder="Ex: Tomar 1 comprimido após refeições..."
+                placeholder="Ex: Tomar 1 comprimido por via oral após as refeições..."
               />
+            </div>
+          </div>
+
+          <!-- Quantidade e Tipo de Receita -->
+          <div class="form-row three-cols">
+            <div class="form-group">
+              <label for="quantidadeTotal">Quantidade Total</label>
+              <input 
+                type="number" 
+                id="quantidadeTotal" 
+                formControlName="quantidadeTotal"
+                placeholder="Ex: 30"
+                min="1"
+              />
+            </div>
+            <div class="form-group">
+              <label for="unidadeQuantidade">Unidade</label>
+              <select id="unidadeQuantidade" formControlName="unidadeQuantidade">
+                @for (unidade of unidadesQuantidade; track unidade) {
+                  <option [value]="unidade">{{ unidade }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="tipoReceita">Tipo de Receita</label>
+              <select id="tipoReceita" formControlName="tipoReceita">
+                @for (tipo of tiposReceita; track tipo) {
+                  <option [value]="tipo">{{ tipo }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <!-- Checkbox de medicamento controlado -->
+          <div class="form-row">
+            <div class="form-group checkbox-group">
+              <label class="checkbox-label">
+                <input type="checkbox" formControlName="isControlado" />
+                <span>Medicamento Controlado (exige receita especial)</span>
+              </label>
             </div>
           </div>
 
@@ -206,13 +293,19 @@
                 } @else {
                   <div class="medications-list">
                     @for (item of prescription.items; track item.id; let j = $index) {
-                      <div class="medication-item">
+                      <div class="medication-item" [class.controlado]="item.isControlado">
                         <div class="medication-header">
                           <span class="medication-number">{{ j + 1 }}</span>
                           <div class="medication-name">
                             <strong>{{ item.medicamento }}</strong>
-                            @if (item.codigoAnvisa) {
-                              <span class="anvisa-code">ANVISA: {{ item.codigoAnvisa }}</span>
+                            @if (item.concentracao) {
+                              <span class="concentration-badge">{{ item.concentracao }}</span>
+                            }
+                            @if (item.isControlado) {
+                              <span class="controlled-badge">
+                                <app-icon name="alert-circle" [size]="12" />
+                                Controlado
+                              </span>
                             }
                           </div>
                           @if (canEdit && !prescription.isSigned) {
@@ -226,11 +319,24 @@
                             </div>
                           }
                         </div>
+                        @if (item.principioAtivo) {
+                          <div class="medication-principle">
+                            <strong>Princípio Ativo:</strong> {{ item.principioAtivo }}
+                          </div>
+                        }
                         <div class="medication-details">
                           <span><strong>Dosagem:</strong> {{ item.dosagem }}</span>
+                          @if (item.viaAdministracao) {
+                            <span><strong>Via:</strong> {{ item.viaAdministracao }}</span>
+                          }
                           <span><strong>Frequência:</strong> {{ item.frequencia }}</span>
                           <span><strong>Período:</strong> {{ item.periodo }}</span>
                         </div>
+                        @if (item.quantidadeTotal) {
+                          <div class="medication-quantity">
+                            <strong>Quantidade:</strong> {{ item.quantidadeTotal }} {{ item.unidadeQuantidade || 'unidade(s)' }}
+                          </div>
+                        }
                         <div class="medication-posologia">
                           <strong>Posologia:</strong> {{ item.posologia }}
                         </div>
@@ -239,6 +345,17 @@
                             <strong>Obs:</strong> {{ item.observacoes }}
                           </div>
                         }
+                        <div class="medication-codes">
+                          @if (item.codigoAnvisa) {
+                            <span class="code-badge">ANVISA: {{ item.codigoAnvisa }}</span>
+                          }
+                          @if (item.codigoCatmat) {
+                            <span class="code-badge">CATMAT: {{ item.codigoCatmat }}</span>
+                          }
+                          @if (item.tipoReceita && item.tipoReceita !== 'Simples') {
+                            <span class="type-badge">{{ item.tipoReceita }}</span>
+                          }
+                        </div>
                       </div>
                     }
                   </div>
@@ -277,8 +394,9 @@
                   {{ formatDate(prescription.createdAt) }}
                 </span>
                 
-                @if (isProfessional) {
-                  <div class="prescription-actions">
+                <div class="prescription-actions">
+                  <!-- Ações do profissional -->
+                  @if (isProfessional) {
                     @if (!prescription.isSigned && canEdit) {
                       <button class="action-btn delete" (click)="deletePrescription(prescription)" title="Excluir">
                         <app-icon name="trash" [size]="16" />
@@ -292,26 +410,28 @@
                         </button>
                       }
                     }
-                    @if (hasItems(prescription)) {
-                      @if (prescription.isSigned) {
-                        <button 
-                          class="action-btn pdf signed" 
-                          (click)="downloadSignedPdf(prescription)" 
-                          title="Baixar PDF Assinado (validável em validar.iti.gov.br)">
-                          <app-icon name="download" [size]="16" />
-                        </button>
-                      } @else if (canEdit) {
-                        <button 
-                          class="action-btn pdf" 
-                          (click)="generatePdf(prescription)" 
-                          [disabled]="isGeneratingPdf"
-                          title="Gerar PDF">
-                          <app-icon name="download" [size]="16" />
-                        </button>
-                      }
+                    @if (hasItems(prescription) && !prescription.isSigned && canEdit) {
+                      <button 
+                        class="action-btn pdf" 
+                        (click)="generatePdf(prescription)" 
+                        [disabled]="isGeneratingPdf"
+                        title="Gerar PDF Prévia">
+                        <app-icon name="download" [size]="16" />
+                      </button>
                     }
-                  </div>
-                }
+                  }
+                  
+                  <!-- Botão de download do PDF assinado - disponível para todos -->
+                  @if (prescription.isSigned && hasItems(prescription)) {
+                    <button 
+                      class="action-btn pdf signed" 
+                      (click)="downloadSignedPdf(prescription)" 
+                      title="Baixar Receita Assinada (PDF)">
+                      <app-icon name="download" [size]="16" />
+                      <span class="btn-label">Baixar PDF</span>
+                    </button>
+                  }
+                </div>
               </div>
             </div>
           }

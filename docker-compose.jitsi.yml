@@ -20,7 +20,8 @@ services:
     ports:
       - "8443:8443"
     volumes:
-      - ./docker/nginx/conf.d/jitsi.conf:/etc/nginx/conf.d/jitsi.conf:ro
+      # Usa configuração de desenvolvimento para ambiente local
+      - ./docker/nginx/conf.d/jitsi-dev.conf:/etc/nginx/conf.d/default.conf:ro
       - ./docker/ssl:/etc/nginx/ssl:ro
     depends_on:
       - jitsi-web

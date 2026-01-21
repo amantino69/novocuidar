@@ -142,11 +142,22 @@ public class PrescriptionService : IPrescriptionService
         {
             Id = Guid.NewGuid().ToString(),
             Medicamento = dto.Medicamento,
+            PrincipioAtivo = dto.PrincipioAtivo,
             CodigoAnvisa = dto.CodigoAnvisa,
+            CodigoCatmat = dto.CodigoCatmat,
+            FormaFarmaceutica = dto.FormaFarmaceutica,
+            Concentracao = dto.Concentracao,
+            ViaAdministracao = dto.ViaAdministracao,
             Dosagem = dto.Dosagem,
             Frequencia = dto.Frequencia,
             Periodo = dto.Periodo,
             Posologia = dto.Posologia,
+            QuantidadeTotal = dto.QuantidadeTotal,
+            UnidadeQuantidade = dto.UnidadeQuantidade,
+            TipoReceita = dto.TipoReceita,
+            IsControlado = dto.IsControlado,
+            Laboratorio = dto.Laboratorio,
+            Apresentacao = dto.Apresentacao,
             Observacoes = dto.Observacoes
         });
 
@@ -192,11 +203,22 @@ public class PrescriptionService : IPrescriptionService
             throw new InvalidOperationException("Medicamento não encontrado na receita.");
 
         item.Medicamento = dto.Medicamento;
+        item.PrincipioAtivo = dto.PrincipioAtivo;
         item.CodigoAnvisa = dto.CodigoAnvisa;
+        item.CodigoCatmat = dto.CodigoCatmat;
+        item.FormaFarmaceutica = dto.FormaFarmaceutica;
+        item.Concentracao = dto.Concentracao;
+        item.ViaAdministracao = dto.ViaAdministracao;
         item.Dosagem = dto.Dosagem;
         item.Frequencia = dto.Frequencia;
         item.Periodo = dto.Periodo;
         item.Posologia = dto.Posologia;
+        item.QuantidadeTotal = dto.QuantidadeTotal;
+        item.UnidadeQuantidade = dto.UnidadeQuantidade;
+        item.TipoReceita = dto.TipoReceita;
+        item.IsControlado = dto.IsControlado;
+        item.Laboratorio = dto.Laboratorio;
+        item.Apresentacao = dto.Apresentacao;
         item.Observacoes = dto.Observacoes;
 
         prescription.ItemsJson = JsonSerializer.Serialize(items);
@@ -327,11 +349,22 @@ public class PrescriptionService : IPrescriptionService
             {
                 Id = i.Id,
                 Medicamento = i.Medicamento,
+                PrincipioAtivo = i.PrincipioAtivo,
                 CodigoAnvisa = i.CodigoAnvisa,
+                CodigoCatmat = i.CodigoCatmat,
+                FormaFarmaceutica = i.FormaFarmaceutica,
+                Concentracao = i.Concentracao,
+                ViaAdministracao = i.ViaAdministracao,
                 Dosagem = i.Dosagem,
                 Frequencia = i.Frequencia,
                 Periodo = i.Periodo,
                 Posologia = i.Posologia,
+                QuantidadeTotal = i.QuantidadeTotal,
+                UnidadeQuantidade = i.UnidadeQuantidade,
+                TipoReceita = i.TipoReceita,
+                IsControlado = i.IsControlado,
+                Laboratorio = i.Laboratorio,
+                Apresentacao = i.Apresentacao,
                 Observacoes = i.Observacoes
             }).ToList(),
             IsSigned = prescription.SignedAt.HasValue,
@@ -420,30 +453,108 @@ public class PrescriptionService : IPrescriptionService
         foreach (var item in items)
         {
             var medicationTable = new Table(1).UseAllAvailableWidth().SetMarginBottom(12);
+            
+            // Estilo diferenciado para medicamento controlado
+            var isControlado = item.IsControlado;
+            var borderColor = isControlado 
+                ? new DeviceRgb(245, 158, 11) // Amarelo para controlado
+                : new DeviceRgb(226, 232, 240); // Cinza padrão
+            var bgColor = isControlado 
+                ? new DeviceRgb(254, 252, 232) // Fundo amarelo claro
+                : PdfDocumentHelper.LightGray;
+            
             var medicationCell = new Cell()
                 .SetPadding(12)
-                .SetBorder(new iText.Layout.Borders.SolidBorder(new DeviceRgb(226, 232, 240), 1))
-                .SetBackgroundColor(PdfDocumentHelper.LightGray);
+                .SetBorder(new iText.Layout.Borders.SolidBorder(borderColor, isControlado ? 2 : 1))
+                .SetBackgroundColor(bgColor);
             
-            medicationCell.Add(new Paragraph($"{itemNumber}. {item.Medicamento}")
+            // Nome do medicamento com concentração
+            var medicationTitle = $"{itemNumber}. {item.Medicamento}";
+            if (!string.IsNullOrEmpty(item.Concentracao))
+            {
+                medicationTitle += $" {item.Concentracao}";
+            }
+            
+            medicationCell.Add(new Paragraph(medicationTitle)
                 .SetFont(boldFont)
                 .SetFontSize(12)
                 .SetFontColor(PdfDocumentHelper.PrimaryColor));
             
-            if (!string.IsNullOrEmpty(item.CodigoAnvisa))
+            // Princípio Ativo (se disponível)
+            if (!string.IsNullOrEmpty(item.PrincipioAtivo))
             {
-                medicationCell.Add(new Paragraph($"Registro ANVISA: {item.CodigoAnvisa}")
+                medicationCell.Add(new Paragraph($"Princípio Ativo: {item.PrincipioAtivo}")
+                    .SetFont(regularFont)
+                    .SetFontSize(9)
+                    .SetFontColor(PdfDocumentHelper.GrayColor));
+            }
+            
+            // Forma farmacêutica e apresentação
+            if (!string.IsNullOrEmpty(item.FormaFarmaceutica) || !string.IsNullOrEmpty(item.Apresentacao))
+            {
+                var formaApresentacao = new List<string>();
+                if (!string.IsNullOrEmpty(item.FormaFarmaceutica)) formaApresentacao.Add(item.FormaFarmaceutica);
+                if (!string.IsNullOrEmpty(item.Apresentacao)) formaApresentacao.Add(item.Apresentacao);
+                
+                medicationCell.Add(new Paragraph($"Forma Farmacêutica: {string.Join(" - ", formaApresentacao)}")
+                    .SetFont(regularFont)
+                    .SetFontSize(9)
+                    .SetFontColor(PdfDocumentHelper.GrayColor));
+            }
+            
+            // Códigos ANVISA e CATMAT
+            var codes = new List<string>();
+            if (!string.IsNullOrEmpty(item.CodigoAnvisa))
+                codes.Add($"ANVISA: {item.CodigoAnvisa}");
+            if (!string.IsNullOrEmpty(item.CodigoCatmat))
+                codes.Add($"CATMAT: {item.CodigoCatmat}");
+            
+            if (codes.Count > 0)
+            {
+                medicationCell.Add(new Paragraph(string.Join(" | ", codes))
                     .SetFont(regularFont)
                     .SetFontSize(8)
                     .SetFontColor(PdfDocumentHelper.GrayColor));
             }
             
+            // Badge de medicamento controlado
+            if (isControlado)
+            {
+                var tipoReceita = !string.IsNullOrEmpty(item.TipoReceita) ? item.TipoReceita : "Receita Especial";
+                medicationCell.Add(new Paragraph($"⚠ MEDICAMENTO CONTROLADO - {tipoReceita}")
+                    .SetFont(boldFont)
+                    .SetFontSize(9)
+                    .SetFontColor(new DeviceRgb(180, 83, 9))
+                    .SetMarginTop(4));
+            }
+            
+            // Tabela de detalhes da posologia
             var detailsTable = new Table(2).UseAllAvailableWidth().SetMarginTop(8);
             detailsTable.AddCell(CreateDetailCell($"Dosagem: {item.Dosagem}", regularFont));
+            
+            var viaAdm = !string.IsNullOrEmpty(item.ViaAdministracao) ? item.ViaAdministracao : "-";
+            detailsTable.AddCell(CreateDetailCell($"Via: {viaAdm}", regularFont));
+            
             detailsTable.AddCell(CreateDetailCell($"Frequência: {item.Frequencia}", regularFont));
             detailsTable.AddCell(CreateDetailCell($"Período: {item.Periodo}", regularFont));
-            detailsTable.AddCell(CreateDetailCell($"Posologia: {item.Posologia}", regularFont));
             medicationCell.Add(detailsTable);
+            
+            // Quantidade total
+            if (item.QuantidadeTotal.HasValue && item.QuantidadeTotal > 0)
+            {
+                var unidade = !string.IsNullOrEmpty(item.UnidadeQuantidade) ? item.UnidadeQuantidade : "unidade(s)";
+                medicationCell.Add(new Paragraph($"Quantidade Total: {item.QuantidadeTotal} {unidade}")
+                    .SetFont(boldFont)
+                    .SetFontSize(10)
+                    .SetFontColor(PdfDocumentHelper.PrimaryColor)
+                    .SetMarginTop(8));
+            }
+            
+            // Posologia completa
+            medicationCell.Add(new Paragraph($"Posologia: {item.Posologia}")
+                .SetFont(regularFont)
+                .SetFontSize(10)
+                .SetMarginTop(6));
             
             if (!string.IsNullOrEmpty(item.Observacoes))
             {

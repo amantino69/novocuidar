@@ -6,15 +6,102 @@ import { environment } from '@env/environment';
 
 const API_BASE_URL = environment.apiUrl;
 
+// Tipos de receita conforme legislação brasileira
+export const TIPOS_RECEITA = [
+  'Simples',
+  'Controle Especial - Branca (C1)',
+  'Controle Especial - Azul (B)',
+  'Controle Especial - Amarela (A)',
+  'Antimicrobiano',
+  'Retinoides'
+] as const;
+
+// Vias de administração padrão e-SUS
+export const VIAS_ADMINISTRACAO = [
+  'Oral',
+  'Sublingual',
+  'Intravenosa (IV)',
+  'Intramuscular (IM)',
+  'Subcutânea (SC)',
+  'Tópica',
+  'Oftálmica',
+  'Auricular',
+  'Nasal',
+  'Inalatória',
+  'Retal',
+  'Vaginal',
+  'Transdérmica',
+  'Intradérmica'
+] as const;
+
+// Formas farmacêuticas padrão
+export const FORMAS_FARMACEUTICAS = [
+  'Comprimido',
+  'Comprimido revestido',
+  'Cápsula',
+  'Cápsula gelatinosa',
+  'Drágea',
+  'Solução oral',
+  'Suspensão oral',
+  'Xarope',
+  'Gotas',
+  'Solução injetável',
+  'Pó para solução injetável',
+  'Pomada',
+  'Creme',
+  'Gel',
+  'Loção',
+  'Spray',
+  'Aerossol',
+  'Colírio',
+  'Supositório',
+  'Óvulo vaginal',
+  'Adesivo transdérmico',
+  'Pó para inalação',
+  'Solução para inalação'
+] as const;
+
+// Unidades de quantidade para dispensação
+export const UNIDADES_QUANTIDADE = [
+  'Comprimido(s)',
+  'Cápsula(s)',
+  'mL',
+  'Frasco(s)',
+  'Ampola(s)',
+  'Bisnaga(s)',
+  'Caixa(s)',
+  'Sachê(s)',
+  'Adesivo(s)',
+  'Unidade(s)',
+  'Grama(s)'
+] as const;
+
 export interface PrescriptionItem {
   id: string;
+  // Identificação do medicamento
   medicamento: string;
+  principioAtivo?: string;
   codigoAnvisa?: string;
+  codigoCatmat?: string;
+  // Forma e apresentação
+  formaFarmaceutica?: string;
+  concentracao?: string;
+  apresentacao?: string;
+  // Posologia e administração
   dosagem: string;
+  viaAdministracao?: string;
   frequencia: string;
   periodo: string;
   posologia: string;
+  // Quantidade e dispensação
+  quantidadeTotal?: number;
+  unidadeQuantidade?: string;
+  // Tipo de receita
+  tipoReceita: string;
+  isControlado: boolean;
+  // Observações
   observacoes?: string;
+  laboratorio?: string;
 }
 
 export interface Prescription {
@@ -45,23 +132,57 @@ export interface UpdatePrescriptionDto {
 }
 
 export interface AddPrescriptionItemDto {
+  // Identificação do medicamento
   medicamento: string;
+  principioAtivo?: string;
   codigoAnvisa?: string;
+  codigoCatmat?: string;
+  // Forma e apresentação
+  formaFarmaceutica?: string;
+  concentracao?: string;
+  apresentacao?: string;
+  // Posologia e administração
   dosagem: string;
+  viaAdministracao?: string;
   frequencia: string;
   periodo: string;
   posologia: string;
+  // Quantidade e dispensação
+  quantidadeTotal?: number;
+  unidadeQuantidade?: string;
+  // Tipo de receita
+  tipoReceita?: string;
+  isControlado?: boolean;
+  // Observações
   observacoes?: string;
+  laboratorio?: string;
 }
 
 export interface UpdatePrescriptionItemDto {
+  // Identificação do medicamento
   medicamento: string;
+  principioAtivo?: string;
   codigoAnvisa?: string;
+  codigoCatmat?: string;
+  // Forma e apresentação
+  formaFarmaceutica?: string;
+  concentracao?: string;
+  apresentacao?: string;
+  // Posologia e administração
   dosagem: string;
+  viaAdministracao?: string;
   frequencia: string;
   periodo: string;
   posologia: string;
+  // Quantidade e dispensação
+  quantidadeTotal?: number;
+  unidadeQuantidade?: string;
+  // Tipo de receita
+  tipoReceita?: string;
+  isControlado?: boolean;
+  // Observações
   observacoes?: string;
+  laboratorio?: string;
 }
 
 export interface PrescriptionPdf {
@@ -78,6 +199,14 @@ export interface MedicamentoAnvisa {
   classeTerapeutica?: string;
   categoriaRegulatoria?: string;
   empresa?: string;
+  formaFarmaceutica?: string;
+  concentracao?: string;
+  viaAdministracao?: string;
+  codigoCatmat?: string;
+  laboratorio?: string;
+  apresentacao?: string;
+  isControlado?: boolean;
+  tipoReceita?: string;
 }
 
 export interface MedicamentoSearchResult {

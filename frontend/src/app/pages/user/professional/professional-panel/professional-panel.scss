@@ -6,8 +6,8 @@
 // Ajuste específico para centralizar o grid
 .buttons-grid {
   @media (min-width: 768px) {
-    // Grid 4x2 com cards centralizados e tamanho máximo
-    grid-template-columns: repeat(4, minmax(120px, 180px));
+    // Grid 4x2 com cards centralizados - tamanhos otimizados para legibilidade
+    grid-template-columns: repeat(4, minmax(140px, 190px));
     grid-template-rows: repeat(2, auto);
     justify-content: center;
     align-content: center;

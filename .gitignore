@@ -27,12 +27,13 @@
 node_modules/
 orleans.codegen.cs
 
-# SQLite
+# SQLite (exceto banco POC)
 *.db
 *.db-shm
 *.db-wal
 *.sqlite
 *.sqlite3
+!backend/WebAPI/telecuidar.db
 
 # Visual Studio
 .vs/

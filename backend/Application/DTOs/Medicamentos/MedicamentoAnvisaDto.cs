@@ -8,6 +8,16 @@ public class MedicamentoAnvisaDto
     public string? ClasseTerapeutica { get; set; }
     public string? CategoriaRegulatoria { get; set; }
     public string? Empresa { get; set; }
+    
+    // Campos adicionais para e-SUS
+    public string? FormaFarmaceutica { get; set; }
+    public string? Concentracao { get; set; }
+    public string? ViaAdministracao { get; set; }
+    public string? CodigoCatmat { get; set; }
+    public string? Laboratorio { get; set; }
+    public string? Apresentacao { get; set; }
+    public bool IsControlado { get; set; } = false;
+    public string? TipoReceita { get; set; }
 }
 
 public class MedicamentoSearchResultDto

@@ -14,7 +14,7 @@
       @if (inviteToken && inviteRole) {
         <div class="auth-alert auth-alert--info">
           <app-icon name="mail" [size]="20" />
-          <span>Você está se cadastrando como: <strong>{{ inviteRole === 'PATIENT' ? 'Paciente' : inviteRole === 'PROFESSIONAL' ? 'Profissional' : 'Administrador' }}</strong></span>
+          <span>Você está se cadastrando como: <strong>{{ inviteRole === 'PATIENT' ? 'Paciente' : inviteRole === 'PROFESSIONAL' ? 'Profissional' : inviteRole === 'ASSISTANT' ? 'Assistente' : 'Administrador' }}</strong></span>
         </div>
       }
 

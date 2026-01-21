@@ -96,7 +96,13 @@ public class MedicamentoAnvisaService : IMedicamentoAnvisaService
                         PrincipioAtivo = GetValue(values, colIndexes, "PRINCIPIO_ATIVO"),
                         ClasseTerapeutica = GetValue(values, colIndexes, "CLASSE_TERAPEUTICA"),
                         CategoriaRegulatoria = GetValue(values, colIndexes, "CATEGORIA_REGULATORIA"),
-                        Empresa = ExtractEmpresaName(GetValue(values, colIndexes, "EMPRESA_DETENTORA_REGISTRO"))
+                        Empresa = ExtractEmpresaName(GetValue(values, colIndexes, "EMPRESA_DETENTORA_REGISTRO")),
+                        // Laboratorio é o mesmo que Empresa para fins de prescrição
+                        Laboratorio = ExtractEmpresaName(GetValue(values, colIndexes, "EMPRESA_DETENTORA_REGISTRO")),
+                        // Tentar extrair concentração do nome do produto (ex: "500mg", "10mg/ml")
+                        Concentracao = ExtractConcentracao(nome),
+                        // Via de administração padrão oral (pode ser ajustada pelo profissional)
+                        ViaAdministracao = "Oral"
                     });
                 }
                 catch (Exception ex)
@@ -175,6 +181,30 @@ public class MedicamentoAnvisaService : IMedicamentoAnvisaService
         // Formato: "CNPJ - NOME DA EMPRESA"
         var parts = empresaFull.Split(" - ", 2);
         return parts.Length > 1 ? parts[1].Trim() : empresaFull.Trim();
+    }
+
+    private static string? ExtractConcentracao(string nomeProduto)
+    {
+        if (string.IsNullOrEmpty(nomeProduto)) return null;
+        
+        // Padrões comuns de concentração em nomes de medicamentos
+        // Ex: "500mg", "10mg/ml", "250 mg", "1g", "0,5%"
+        var patterns = new[]
+        {
+            @"\b(\d+(?:,\d+)?(?:\.\d+)?\s*(?:mg|g|mcg|ml|%|ui|u)(?:/\s*\d*\s*(?:ml|mg|g|dose))?)\b",
+        };
+        
+        foreach (var pattern in patterns)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(nomeProduto, pattern, 
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                return match.Value.Trim().ToUpperInvariant();
+            }
+        }
+        
+        return null;
     }
 
     private static string NormalizeString(string input)

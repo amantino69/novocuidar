@@ -129,13 +129,14 @@ public class InviteService : IInviteService
         // Only validate email if it's provided (for generic links, email can be empty)
         if (!string.IsNullOrWhiteSpace(dto.Email))
         {
-            // Check if email already has a pending invite
+            // Check if email already has a pending invite - cancel it automatically
             var existingInvite = await _context.Invites
                 .FirstOrDefaultAsync(i => i.Email == dto.Email && i.Status == InviteStatus.Pending);
 
             if (existingInvite != null)
             {
-                throw new InvalidOperationException("This email already has a pending invite");
+                // Cancelar convite anterior automaticamente
+                existingInvite.Status = InviteStatus.Cancelled;
             }
 
             // Check if email is already registered

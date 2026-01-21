@@ -222,6 +222,17 @@ if (seedEnabled)
     await Infrastructure.Data.ReferenceTablesSeeder.SeedAsync(app.Services);
 }
 
+// POC Seeder - Ativar apenas para prova de conceito
+var pocSeedEnabled = Environment.GetEnvironmentVariable("POC_SEED_ENABLED")?.ToLower() == "true";
+if (pocSeedEnabled)
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await WebAPI.Data.PocSeeder.SeedPocAsync(context);
+    }
+}
+
 // Configure the HTTP request pipeline.
 var swaggerEnabled = Environment.GetEnvironmentVariable("SWAGGER_ENABLED")?.ToLower() != "false";
 if (app.Environment.IsDevelopment() || swaggerEnabled)

@@ -1,6 +1,6 @@
 @if (isOpen) {
   <div class="modal-backdrop" (click)="onBackdropClick()">
-    <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal" [class.modal--form]="step === 2" (click)="$event.stopPropagation()">
       <!-- Etapa 1: Seleção do tipo de usuário -->
       @if (step === 1) {
         <div class="modal__header">
@@ -28,7 +28,7 @@
               (click)="selectRole('PATIENT')"
             >
               <div class="role-card__icon role-card__icon--patient">
-                <app-icon name="user" [size]="32" />
+                <app-icon name="user" [size]="24" />
               </div>
               <h3 class="role-card__title">Paciente</h3>
               <p class="role-card__description">{{ getRoleDescription('PATIENT') }}</p>
@@ -40,7 +40,7 @@
               (click)="selectRole('PROFESSIONAL')"
             >
               <div class="role-card__icon role-card__icon--professional">
-                <app-icon name="users" [size]="32" />
+                <app-icon name="users" [size]="24" />
               </div>
               <h3 class="role-card__title">Profissional</h3>
               <p class="role-card__description">{{ getRoleDescription('PROFESSIONAL') }}</p>
@@ -52,7 +52,7 @@
               (click)="selectRole('ADMIN')"
             >
               <div class="role-card__icon role-card__icon--admin">
-                <app-icon name="shield" [size]="32" />
+                <app-icon name="shield" [size]="24" />
               </div>
               <h3 class="role-card__title">Administrador</h3>
               <p class="role-card__description">{{ getRoleDescription('ADMIN') }}</p>
@@ -64,7 +64,7 @@
               (click)="selectRole('ASSISTANT')"
             >
               <div class="role-card__icon role-card__icon--assistant">
-                <app-icon name="phone" [size]="32" />
+                <app-icon name="phone" [size]="24" />
               </div>
               <h3 class="role-card__title">Assistente</h3>
               <p class="role-card__description">{{ getRoleDescription('ASSISTANT') }}</p>

@@ -14,7 +14,11 @@ import {
   AddPrescriptionItemDto,
   UpdatePrescriptionItemDto,
   MedicamentoAnvisa,
-  PrescriptionItem
+  PrescriptionItem,
+  TIPOS_RECEITA,
+  VIAS_ADMINISTRACAO,
+  FORMAS_FARMACEUTICAS,
+  UNIDADES_QUANTIDADE
 } from '@core/services/prescription.service';
 
 @Component({
@@ -63,6 +67,12 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private searchSubject = new Subject<string>();
 
+  // Listas de opções para dropdowns (padrão e-SUS)
+  tiposReceita = TIPOS_RECEITA;
+  viasAdministracao = VIAS_ADMINISTRACAO;
+  formasFarmaceuticas = FORMAS_FARMACEUTICAS;
+  unidadesQuantidade = UNIDADES_QUANTIDADE;
+
   constructor(
     private fb: FormBuilder,
     private modalService: ModalService,
@@ -71,12 +81,34 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef
   ) {
     this.itemForm = this.fb.group({
+      // Identificação do medicamento
       medicamento: ['', Validators.required],
+      principioAtivo: [''],
       codigoAnvisa: [''],
+      codigoCatmat: [''],
+      laboratorio: [''],
+      
+      // Forma farmacêutica e apresentação
+      formaFarmaceutica: [''],
+      concentracao: [''],
+      apresentacao: [''],
+      
+      // Posologia
       dosagem: ['', Validators.required],
+      viaAdministracao: ['Oral'],
       frequencia: ['', Validators.required],
       periodo: ['', Validators.required],
       posologia: ['', Validators.required],
+      
+      // Quantidade
+      quantidadeTotal: [null],
+      unidadeQuantidade: ['Comprimido(s)'],
+      
+      // Tipo de receita
+      tipoReceita: ['Simples'],
+      isControlado: [false],
+      
+      // Observações
       observacoes: ['']
     });
   }
@@ -198,11 +230,34 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
   
   openAddItemForm(prescriptionId: string) {
     this.currentPrescriptionId = prescriptionId;
-    this.itemForm.reset();
+    this.resetFormToDefaults();
     this.medicamentoSearch = '';
     this.showItemForm = true;
     this.isEditMode = false;
     this.editingItemId = null;
+  }
+
+  private resetFormToDefaults() {
+    this.itemForm.reset({
+      medicamento: '',
+      principioAtivo: '',
+      codigoAnvisa: '',
+      codigoCatmat: '',
+      laboratorio: '',
+      formaFarmaceutica: '',
+      concentracao: '',
+      apresentacao: '',
+      dosagem: '',
+      viaAdministracao: 'Oral',
+      frequencia: '',
+      periodo: '',
+      posologia: '',
+      quantidadeTotal: null,
+      unidadeQuantidade: 'Comprimido(s)',
+      tipoReceita: 'Simples',
+      isControlado: false,
+      observacoes: ''
+    });
   }
 
   openEditItemForm(prescription: Prescription, item: PrescriptionItem) {
@@ -216,11 +271,22 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
     // Preencher o formulário com os dados do item
     this.itemForm.patchValue({
       medicamento: item.medicamento,
+      principioAtivo: item.principioAtivo || '',
       codigoAnvisa: item.codigoAnvisa || '',
+      codigoCatmat: item.codigoCatmat || '',
+      laboratorio: item.laboratorio || '',
+      formaFarmaceutica: item.formaFarmaceutica || '',
+      concentracao: item.concentracao || '',
+      apresentacao: item.apresentacao || '',
       dosagem: item.dosagem,
+      viaAdministracao: item.viaAdministracao || 'Oral',
       frequencia: item.frequencia,
       periodo: item.periodo,
       posologia: item.posologia,
+      quantidadeTotal: item.quantidadeTotal || null,
+      unidadeQuantidade: item.unidadeQuantidade || 'Comprimido(s)',
+      tipoReceita: item.tipoReceita || 'Simples',
+      isControlado: item.isControlado || false,
       observacoes: item.observacoes || ''
     });
     this.medicamentoSearch = item.medicamento;
@@ -250,7 +316,7 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
       this.prescriptionService.updateItem(this.currentPrescriptionId, this.editingItemId, updateDto).subscribe({
         next: () => {
           this.isSaving = false;
-          this.itemForm.reset();
+          this.resetFormToDefaults();
           this.medicamentoSearch = '';
           this.isEditMode = false;
           this.editingItemId = null;
@@ -277,7 +343,7 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
       this.prescriptionService.addItem(this.currentPrescriptionId, item).subscribe({
         next: () => {
           this.isSaving = false;
-          this.itemForm.reset();
+          this.resetFormToDefaults();
           this.medicamentoSearch = '';
           this.loadPrescriptions();
           this.showToast('Medicamento adicionado! Você pode adicionar mais ou fechar o formulário.');
@@ -362,7 +428,14 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
   selectMedicamento(medicamento: MedicamentoAnvisa) {
     this.itemForm.patchValue({
       medicamento: medicamento.nome,
-      codigoAnvisa: medicamento.codigo
+      principioAtivo: medicamento.principioAtivo || '',
+      codigoAnvisa: medicamento.codigo,
+      codigoCatmat: medicamento.codigoCatmat || '',
+      laboratorio: medicamento.laboratorio || '',
+      formaFarmaceutica: medicamento.formaFarmaceutica || '',
+      concentracao: medicamento.concentracao || '',
+      apresentacao: medicamento.apresentacao || '',
+      viaAdministracao: medicamento.viaAdministracao || 'Oral'
     });
     this.medicamentoSearch = medicamento.nome;
     this.showMedicamentoDropdown = false;
@@ -371,7 +444,13 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
   useFreeText() {
     this.itemForm.patchValue({
       medicamento: this.medicamentoSearch,
-      codigoAnvisa: ''
+      principioAtivo: '',
+      codigoAnvisa: '',
+      codigoCatmat: '',
+      laboratorio: '',
+      formaFarmaceutica: '',
+      concentracao: '',
+      apresentacao: ''
     });
     this.showMedicamentoDropdown = false;
   }
