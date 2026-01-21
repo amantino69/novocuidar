@@ -47,7 +47,7 @@ interface VitalDisplay {
           @if (vitals['spo2']) {
             <div class="vital-card spo2" [class]="getStatusClass(vitals['spo2'])">
               <div class="vital-icon">
-                <app-icon name="droplet" [size]="24" />
+                <app-icon name="droplet" [size]="20" />
               </div>
               <div class="vital-info">
                 <span class="vital-label">SpO₂</span>
@@ -60,7 +60,7 @@ interface VitalDisplay {
           @if (vitals['pulseRate']) {
             <div class="vital-card pulse" [class]="getStatusClass(vitals['pulseRate'])">
               <div class="vital-icon pulse-animation">
-                <app-icon name="heart" [size]="24" />
+                <app-icon name="heart" [size]="20" />
               </div>
               <div class="vital-info">
                 <span class="vital-label">Freq. Cardíaca</span>
@@ -73,7 +73,7 @@ interface VitalDisplay {
           @if (vitals['temperature']) {
             <div class="vital-card temp" [class]="getStatusClass(vitals['temperature'])">
               <div class="vital-icon">
-                <app-icon name="thermometer" [size]="24" />
+                <app-icon name="thermometer" [size]="20" />
               </div>
               <div class="vital-info">
                 <span class="vital-label">Temperatura</span>
@@ -86,7 +86,7 @@ interface VitalDisplay {
           @if (vitals['bloodPressure']) {
             <div class="vital-card bp" [class]="getStatusClass(vitals['bloodPressure'])">
               <div class="vital-icon">
-                <app-icon name="activity" [size]="24" />
+                <app-icon name="activity" [size]="20" />
               </div>
               <div class="vital-info">
                 <span class="vital-label">Pressão Arterial</span>
@@ -99,7 +99,7 @@ interface VitalDisplay {
           @if (vitals['weight']) {
             <div class="vital-card weight">
               <div class="vital-icon">
-                <app-icon name="box" [size]="24" />
+                <app-icon name="box" [size]="20" />
               </div>
               <div class="vital-info">
                 <span class="vital-label">Peso</span>
@@ -212,11 +212,11 @@ interface VitalDisplay {
     .vital-card {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 16px;
+      gap: 10px;
+      padding: 12px 14px;
       background: var(--bg-secondary);
-      border-radius: 16px;
-      border-left: 4px solid transparent;
+      border-radius: 12px;
+      border-left: 3px solid transparent;
       position: relative;
       transition: all 0.3s ease;
 
@@ -236,13 +236,13 @@ interface VitalDisplay {
       }
 
       .vital-icon {
-        width: 48px;
-        height: 48px;
+        width: 40px;
+        height: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
         background: var(--bg-tertiary);
-        border-radius: 12px;
+        border-radius: 10px;
 
         &.pulse-animation {
           animation: heartbeat 1s infinite;
@@ -253,26 +253,28 @@ interface VitalDisplay {
         flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 4px;
 
         .vital-label {
-          font-size: 12px;
+          font-size: 11px;
           color: var(--text-secondary);
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.3px;
+          font-weight: 500;
         }
 
         .vital-value {
-          font-size: 28px;
-          font-weight: 700;
+          font-size: 20px;
+          font-weight: 600;
           color: var(--text-primary);
-          line-height: 1;
+          line-height: 1.2;
+          font-variant-numeric: tabular-nums;
 
           small {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 400;
-            margin-left: 4px;
-            color: var(--text-secondary);
+            margin-left: 2px;
+            color: var(--text-tertiary);
           }
         }
       }

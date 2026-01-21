@@ -255,3 +255,241 @@
 
   color-scheme: dark;
 }
+
+// ========================================
+// TEMA OCEAN - Azul profundo para saúde
+// ========================================
+[data-theme='ocean'] {
+  // Primary - Tons de azul oceano
+  --primary-50: #0a1628;
+  --primary-100: #0c1929;
+  --primary-200: #132f4c;
+  --primary-300: #1a4971;
+  --primary-400: #2d6a9f;
+  --primary-500: #5090d3;
+  --primary-600: #7eb8f6;
+  --primary-700: #a8d1ff;
+  --primary-800: #d0e8ff;
+  --primary-900: #e8f4ff;
+
+  // Red Colors
+  --red-50: #2d1f1f;
+  --red-100: #4a2525;
+  --red-200: #6b2f2f;
+  --red-300: #9b4444;
+  --red-400: #d45c5c;
+  --red-500: #f07575;
+  --red-600: #f9a8a8;
+  --red-700: #ffd0d0;
+  --red-800: #ffe8e8;
+  --red-900: #fff5f5;
+
+  // Green Colors
+  --green-50: #0f2419;
+  --green-100: #143d22;
+  --green-200: #1a5430;
+  --green-300: #227344;
+  --green-400: #2d9d5a;
+  --green-500: #3fc776;
+  --green-600: #6ee89a;
+  --green-700: #a5f5c0;
+  --green-800: #d1fae5;
+  --green-900: #ecfdf5;
+
+  // Blue Colors
+  --blue-50: #0a1628;
+  --blue-100: #0c1f3d;
+  --blue-200: #0f2d5a;
+  --blue-300: #1347a0;
+  --blue-400: #2563eb;
+  --blue-500: #5090d3;
+  --blue-600: #7eb8f6;
+  --blue-700: #a8d1ff;
+  --blue-800: #d0e8ff;
+  --blue-900: #e8f4ff;
+
+  // Amber Colors
+  --amber-50: #2d2410;
+  --amber-100: #4a3a14;
+  --amber-200: #6b5018;
+  --amber-300: #9a7420;
+  --amber-400: #d4a02a;
+  --amber-500: #f5c842;
+  --amber-600: #f9dc7a;
+  --amber-700: #fce9a8;
+  --amber-800: #fef4d0;
+  --amber-900: #fffaeb;
+
+  // Neutral Colors - Ocean tones
+  --neutral-50: #0a1628;
+  --neutral-100: #0c1929;
+  --neutral-200: #132f4c;
+  --neutral-300: #1e3a5f;
+  --neutral-400: #3d5a80;
+  --neutral-500: #6b8aae;
+  --neutral-600: #98b5d1;
+  --neutral-700: #c5d8eb;
+  --neutral-800: #e1ecf5;
+  --neutral-900: #f0f6fa;
+
+  // Semantic Colors
+  --background: #0a1628;
+  --surface: #0c1929;
+  --surface-primary: #0c1929;
+  --surface-card: #132f4c;
+  --bg-primary: #0c1929;
+  --bg-secondary: #132f4c;
+  --bg-tertiary: #1e3a5f;
+  --text-primary: #e8f4ff;
+  --text-secondary: #98b5d1;
+  --text-tertiary: #6b8aae;
+  --border: #1e3a5f;
+  --border-color: #1e3a5f;
+
+  // Section Backgrounds
+  --section-bg-primary: #0a1628;
+  --section-bg-secondary: #0c1929;
+
+  // Success, Warning, Error, Info
+  --success: var(--green-500);
+  --warning: var(--amber-500);
+  --error: var(--red-500);
+  --info: var(--blue-500);
+
+  // Background colors for semantic elements
+  --success-bg: var(--green-50);
+  --warning-bg: var(--amber-50);
+  --error-bg: var(--red-50);
+  --info-bg: var(--blue-50);
+  --primary-bg: var(--primary-50);
+  --bg-warning-subtle: rgba(212, 160, 42, 0.15);
+  --bg-danger-subtle: rgba(212, 92, 92, 0.15);
+
+  // Shadows
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
+}
+
+// ========================================
+// TEMA AURORA - Moderno com gradientes suaves
+// ========================================
+[data-theme='aurora'] {
+  // Primary - Índigo/Violeta moderno
+  --primary-50: #eef2ff;
+  --primary-100: #e0e7ff;
+  --primary-200: #c7d2fe;
+  --primary-300: #a5b4fc;
+  --primary-400: #818cf8;
+  --primary-500: #6366f1;
+  --primary-600: #4f46e5;
+  --primary-700: #4338ca;
+  --primary-800: #3730a3;
+  --primary-900: #312e81;
+
+  // Red Colors
+  --red-50: #fef2f2;
+  --red-100: #fee2e2;
+  --red-200: #fecaca;
+  --red-300: #fca5a5;
+  --red-400: #f87171;
+  --red-500: #ef4444;
+  --red-600: #dc2626;
+  --red-700: #b91c1c;
+  --red-800: #991b1b;
+  --red-900: #7f1d1d;
+
+  // Green Colors - Esmeralda
+  --green-50: #ecfdf5;
+  --green-100: #d1fae5;
+  --green-200: #a7f3d0;
+  --green-300: #6ee7b7;
+  --green-400: #34d399;
+  --green-500: #10b981;
+  --green-600: #059669;
+  --green-700: #047857;
+  --green-800: #065f46;
+  --green-900: #064e3b;
+
+  // Blue Colors - Azul vibrante
+  --blue-50: #eff6ff;
+  --blue-100: #dbeafe;
+  --blue-200: #bfdbfe;
+  --blue-300: #93c5fd;
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
+  --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
+  --blue-800: #1e40af;
+  --blue-900: #1e3a8a;
+
+  // Amber Colors
+  --amber-50: #fffbeb;
+  --amber-100: #fef3c7;
+  --amber-200: #fde68a;
+  --amber-300: #fcd34d;
+  --amber-400: #fbbf24;
+  --amber-500: #f59e0b;
+  --amber-600: #d97706;
+  --amber-700: #b45309;
+  --amber-800: #92400e;
+  --amber-900: #78350f;
+
+  // Neutral Colors - Tom lilás sutil
+  --neutral-50: #fafbff;
+  --neutral-100: #f5f7ff;
+  --neutral-200: #eef1f9;
+  --neutral-300: #e2e5f0;
+  --neutral-400: #a3a8c2;
+  --neutral-500: #6e7491;
+  --neutral-600: #4c5166;
+  --neutral-700: #3a3e4f;
+  --neutral-800: #282a38;
+  --neutral-900: #1a1b26;
+
+  // Semantic Colors
+  --background: #fafbff;
+  --surface: #ffffff;
+  --surface-primary: #ffffff;
+  --surface-card: #f5f7ff;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f0f4ff;
+  --bg-tertiary: #e8f0fe;
+  --text-primary: #1a1b26;
+  --text-secondary: #4c5166;
+  --text-tertiary: #6e7491;
+  --border: #e2e5f0;
+  --border-color: #e2e5f0;
+
+  // Section Backgrounds
+  --section-bg-primary: #fafbff;
+  --section-bg-secondary: #f0f4ff;
+
+  // Success, Warning, Error, Info
+  --success: var(--green-500);
+  --warning: var(--amber-500);
+  --error: var(--red-500);
+  --info: var(--blue-500);
+
+  // Background colors for semantic elements
+  --success-bg: var(--green-50);
+  --warning-bg: var(--amber-50);
+  --error-bg: var(--red-50);
+  --info-bg: var(--blue-50);
+  --primary-bg: var(--primary-50);
+  --bg-warning-subtle: rgba(251, 191, 36, 0.12);
+  --bg-danger-subtle: rgba(239, 68, 68, 0.08);
+
+  // Shadows com tom lilás sutil
+  --shadow-sm: 0 1px 2px 0 rgba(99, 102, 241, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(99, 102, 241, 0.08), 0 2px 4px -1px rgba(99, 102, 241, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(99, 102, 241, 0.1), 0 4px 6px -2px rgba(99, 102, 241, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(99, 102, 241, 0.12), 0 10px 10px -5px rgba(99, 102, 241, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(99, 102, 241, 0.15);
+
+  color-scheme: light;
+}

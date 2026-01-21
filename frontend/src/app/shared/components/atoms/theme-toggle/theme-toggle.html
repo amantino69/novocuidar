@@ -1,12 +1,43 @@
-<button
-  class="theme-toggle"
-  (click)="toggleTheme()"
-  [attr.aria-label]="isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'"
-  type="button"
->
-  @if (isDark) {
-    <app-icon name="sun" [size]="20"></app-icon>
-  } @else {
-    <app-icon name="moon" [size]="20"></app-icon>
+<div class="theme-toggle-container">
+  <button
+    class="theme-toggle"
+    (click)="toggleDropdown()"
+    [attr.aria-label]="'Tema atual: ' + getCurrentThemeInfo().name"
+    [attr.aria-expanded]="isOpen"
+    type="button"
+  >
+    <app-icon [name]="getCurrentThemeInfo().icon" [size]="20"></app-icon>
+  </button>
+
+  @if (isOpen) {
+    <div class="theme-dropdown" role="menu">
+      <div class="dropdown-header">
+        <span class="dropdown-title">Escolha o tema</span>
+      </div>
+      <div class="dropdown-options">
+        @for (theme of themes; track theme.id) {
+          <button
+            class="theme-option"
+            [class.active]="currentTheme === theme.id"
+            (click)="selectTheme(theme.id)"
+            role="menuitem"
+            type="button"
+          >
+            <div class="theme-preview">
+              <span class="preview-bg" [style.background]="theme.preview.primary"></span>
+              <span class="preview-secondary" [style.background]="theme.preview.secondary"></span>
+              <span class="preview-accent" [style.background]="theme.preview.accent"></span>
+            </div>
+            <div class="theme-info">
+              <span class="theme-name">{{ theme.name }}</span>
+              <span class="theme-desc">{{ theme.description }}</span>
+            </div>
+            @if (currentTheme === theme.id) {
+              <app-icon name="check" [size]="16" class="check-icon"></app-icon>
+            }
+          </button>
+        }
+      </div>
+    </div>
   }
-</button>
+</div>

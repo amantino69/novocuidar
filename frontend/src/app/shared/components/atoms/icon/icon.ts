@@ -96,7 +96,9 @@ export type IconName =
   | 'trash-2'
   | 'info'
   | 'loader'
-  | 'folder';
+  | 'folder'
+  | 'sparkles'
+  | 'palette';
 
 export type IconSize = 'sm' | 'md' | 'lg' | 'xl' | number;
 
