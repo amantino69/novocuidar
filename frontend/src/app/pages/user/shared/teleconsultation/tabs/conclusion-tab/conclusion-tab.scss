@@ -1,20 +1,20 @@
 .conclusion-tab {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 16px;
+  gap: 12px;
+  padding: 12px;
   height: 100%;
-  overflow-y: auto;
+  overflow: hidden;
 
   .info-card {
     background-color: var(--bg-secondary);
-    border-radius: 12px;
-    padding: 16px;
+    border-radius: 8px;
+    padding: 12px;
     border: 1px solid var(--border-color);
 
     h3 {
-      margin: 0 0 16px;
-      font-size: 1.1rem;
+      margin: 0 0 10px;
+      font-size: 1rem;
       font-weight: 600;
       color: var(--text-primary);
     }
@@ -22,7 +22,7 @@
     .info-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
+      gap: 8px 16px;
 
       @media (max-width: 480px) {
         grid-template-columns: 1fr;
@@ -31,23 +31,23 @@
       .info-item {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 2px;
 
         label {
-          font-size: 0.85rem;
+          font-size: 0.75rem;
           color: var(--text-secondary);
         }
 
         span {
-          font-size: 0.95rem;
+          font-size: 0.85rem;
           color: var(--text-primary);
           font-weight: 500;
 
           &.status-badge {
             display: inline-block;
-            padding: 4px 8px;
+            padding: 2px 6px;
             border-radius: 4px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             width: fit-content;
             text-transform: capitalize;
 
@@ -65,25 +65,28 @@
   .observations-section {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     flex: 1;
+    min-height: 0;
 
     label {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-weight: 500;
       color: var(--text-primary);
     }
 
     textarea {
       width: 100%;
-      padding: 12px;
+      padding: 10px;
       border-radius: 8px;
       border: 1px solid var(--border-color);
       background-color: var(--bg-primary);
       color: var(--text-primary);
       font-family: inherit;
-      resize: vertical;
-      min-height: 120px;
+      font-size: 0.9rem;
+      resize: none;
+      flex: 1;
+      min-height: 80px;
       transition: border-color 0.2s;
 
       &:focus {
@@ -94,12 +97,23 @@
 
     .hint {
       margin: 0;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       color: var(--text-secondary);
+    }
+
+    .readonly-text {
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      padding: 10px;
+      background-color: var(--bg-secondary);
+      border-radius: 8px;
+      flex: 1;
+      min-height: 60px;
     }
   }
 
   .actions {
-    margin-top: auto;
+    margin-top: 8px;
+    flex-shrink: 0;
   }
 }

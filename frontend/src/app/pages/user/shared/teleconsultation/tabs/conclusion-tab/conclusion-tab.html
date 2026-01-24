@@ -8,10 +8,6 @@
         <span>{{ appointment.patientName }}</span>
       </div>
       <div class="info-item">
-        <label>Profissional</label>
-        <span>{{ appointment.professionalName }}</span>
-      </div>
-      <div class="info-item">
         <label>Especialidade</label>
         <span>{{ appointment.specialtyName }}</span>
       </div>
@@ -41,7 +37,7 @@
         id="final-observations"
         [(ngModel)]="observations"
         placeholder="Digite as observações finais da consulta..."
-        rows="6"
+        rows="4"
       ></textarea>
       <p class="hint">Estas observações ficarão visíveis no histórico para o profissional e o paciente.</p>
     </div>
