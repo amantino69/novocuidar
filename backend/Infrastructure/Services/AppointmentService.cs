@@ -405,13 +405,19 @@ public class AppointmentService : IAppointmentService
                 (a.Patient.Name + " " + a.Patient.LastName).ToLower().Contains(searchLower)
             );
 
+        // SQLite não suporta TimeSpan no ORDER BY, então ordenamos apenas por Date
         query = sortOrder == "asc" 
-            ? query.OrderBy(a => a.Date).ThenBy(a => a.Time)
-            : query.OrderByDescending(a => a.Date).ThenByDescending(a => a.Time);
+            ? query.OrderBy(a => a.Date)
+            : query.OrderByDescending(a => a.Date);
 
         var appointments = await query.ToListAsync();
+        
+        // Ordenação secundária por Time feita em memória
+        var sortedAppointments = sortOrder == "asc"
+            ? appointments.OrderBy(a => a.Date).ThenBy(a => a.Time)
+            : appointments.OrderByDescending(a => a.Date).ThenByDescending(a => a.Time);
 
-        return appointments.Select(a => new AppointmentDto
+        return sortedAppointments.Select(a => new AppointmentDto
         {
             Id = a.Id,
             PatientId = a.PatientId,
