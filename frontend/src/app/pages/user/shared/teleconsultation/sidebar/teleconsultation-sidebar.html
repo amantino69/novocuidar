@@ -71,7 +71,7 @@
               [class.active]="isTabActive(tab.label)"
               (click)="onTabChange(tab.label)">
               <app-icon [name]="tab.icon" [size]="20" />
-              <span class="icon-label">{{ tab.label }}</span>
+              <span class="icon-label">{{ getTabLabel(tab) }}</span>
             </button>
           }
         </div>

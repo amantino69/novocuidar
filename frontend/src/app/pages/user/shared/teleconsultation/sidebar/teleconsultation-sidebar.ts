@@ -25,7 +25,7 @@ import { PatientHistoryTabComponent } from '../tabs/patient-history-tab/patient-
 import { DictationService } from '@core/services/dictation.service';
 import { Appointment } from '@core/services/appointments.service';
 import { Subject, takeUntil } from 'rxjs';
-import { getTeleconsultationTabGroups, type TabGroup } from '../tabs/tab-config';
+import { getTeleconsultationTabGroups, type TabGroup, type TabConfig } from '../tabs/tab-config';
 
 @Component({
   selector: 'app-teleconsultation-sidebar',
@@ -203,5 +203,19 @@ export class TeleconsultationSidebarComponent implements OnInit, OnDestroy, OnCh
 
   onFinishConsultation(observations: string) {
     this.finishConsultation.emit(observations);
+  }
+
+  /**
+   * Retorna o label da tab, com tratamento especial para "Específico"
+   * que exibe também o nome da especialidade da consulta
+   */
+  getTabLabel(tab: TabConfig): string {
+    if (tab.id === 'specialty') {
+      const specialtyName = this.appointment?.specialtyName || this.appointment?.specialty?.name;
+      if (specialtyName) {
+        return `${specialtyName}`;
+      }
+    }
+    return tab.label;
   }
 }
