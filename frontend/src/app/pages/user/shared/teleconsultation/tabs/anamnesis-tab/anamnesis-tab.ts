@@ -7,6 +7,15 @@ import { AppointmentsService, Appointment } from '@core/services/appointments.se
 import { TeleconsultationRealTimeService, DataUpdatedEvent } from '@core/services/teleconsultation-realtime.service';
 import { Subject, takeUntil, debounceTime } from 'rxjs';
 
+export type SoapSection = 'subjective' | 'objective' | 'assessment' | 'plan';
+
+export interface SoapTabInfo {
+  id: SoapSection;
+  letter: string;
+  label: string;
+  color: string;
+}
+
 @Component({
   selector: 'app-anamnesis-tab',
   standalone: true,
@@ -23,6 +32,15 @@ export class AnamnesisTabComponent implements OnInit, OnDestroy, OnChanges {
   anamnesisForm: FormGroup;
   isSaving = false;
   lastSaved: Date | null = null;
+  activeSection: SoapSection = 'subjective';
+  
+  readonly soapTabs: SoapTabInfo[] = [
+    { id: 'subjective', letter: 'S', label: 'Subjetivo', color: 'blue' },
+    { id: 'objective', letter: 'O', label: 'Objetivo', color: 'green' },
+    { id: 'assessment', letter: 'A', label: 'Avaliação', color: 'amber' },
+    { id: 'plan', letter: 'P', label: 'Plano', color: 'purple' }
+  ];
+
   private destroy$ = new Subject<void>();
   private dataLoaded = false;
   private isReceivingUpdate = false; // Flag para evitar loop de atualizações
@@ -149,6 +167,14 @@ export class AnamnesisTabComponent implements OnInit, OnDestroy, OnChanges {
           this.saveAnamnesis();
         }
       });
+  }
+
+  setActiveSection(section: SoapSection): void {
+    this.activeSection = section;
+  }
+
+  getActiveTab(): SoapTabInfo {
+    return this.soapTabs.find(t => t.id === this.activeSection) || this.soapTabs[0];
   }
 
   ngOnChanges(changes: SimpleChanges) {

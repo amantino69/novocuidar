@@ -6,6 +6,16 @@ import { AppointmentsService, Appointment } from '@core/services/appointments.se
 import { TeleconsultationRealTimeService, DataUpdatedEvent } from '@core/services/teleconsultation-realtime.service';
 import { Subject, takeUntil, debounceTime } from 'rxjs';
 
+export type SoapSection = 'subjective' | 'objective' | 'assessment' | 'plan';
+
+export interface SoapTab {
+  id: SoapSection;
+  letter: string;
+  label: string;
+  placeholder: string;
+  color: string;
+}
+
 @Component({
   selector: 'app-soap-tab',
   standalone: true,
@@ -22,6 +32,15 @@ export class SoapTabComponent implements OnInit, OnDestroy, OnChanges {
   soapForm: FormGroup;
   isSaving = false;
   lastSaved: Date | null = null;
+  activeSection: SoapSection = 'subjective';
+  
+  readonly soapTabs: SoapTab[] = [
+    { id: 'subjective', letter: 'S', label: 'Subjetivo', placeholder: 'Queixa principal, história da moléstia atual, histórico...', color: 'blue' },
+    { id: 'objective', letter: 'O', label: 'Objetivo', placeholder: 'Exame físico, sinais vitais, exames complementares...', color: 'green' },
+    { id: 'assessment', letter: 'A', label: 'Avaliação', placeholder: 'Hipóteses diagnósticas, raciocínio clínico...', color: 'amber' },
+    { id: 'plan', letter: 'P', label: 'Plano', placeholder: 'Conduta, prescrição, orientações, encaminhamentos...', color: 'purple' }
+  ];
+
   private destroy$ = new Subject<void>();
   private dataLoaded = false;
   private isReceivingUpdate = false; // Flag para evitar loop de atualizações
@@ -38,6 +57,14 @@ export class SoapTabComponent implements OnInit, OnDestroy, OnChanges {
       assessment: [''],
       plan: ['']
     });
+  }
+
+  setActiveSection(section: SoapSection): void {
+    this.activeSection = section;
+  }
+
+  getActiveTab(): SoapTab {
+    return this.soapTabs.find(t => t.id === this.activeSection) || this.soapTabs[0];
   }
 
   ngOnInit() {

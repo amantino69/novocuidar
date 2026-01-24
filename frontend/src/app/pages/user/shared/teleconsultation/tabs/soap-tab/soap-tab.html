@@ -1,69 +1,51 @@
 <div class="soap-container">
+  <!-- Header compacto com abas e botão salvar -->
   <div class="soap-header">
-    <h3>Registro SOAP</h3>
-    <span class="last-saved" *ngIf="lastSaved">
-      Salvo às {{ lastSaved | date:'HH:mm' }}
-    </span>
+    <div class="soap-tabs">
+      @for (tab of soapTabs; track tab.id) {
+        <button 
+          type="button"
+          class="soap-tab-btn"
+          [class.active]="activeSection === tab.id"
+          [attr.data-color]="tab.color"
+          (click)="setActiveSection(tab.id)">
+          <span class="tab-letter">{{ tab.letter }}</span>
+          <span class="tab-label">{{ tab.label }}</span>
+        </button>
+      }
+    </div>
+    
+    @if (!readonly) {
+      <button 
+        type="button"
+        class="save-btn"
+        [class.saving]="isSaving"
+        [disabled]="isSaving"
+        (click)="saveSoap()">
+        @if (isSaving) {
+          <span class="spinner"></span>
+        } @else {
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        }
+        <span>{{ isSaving ? 'Salvando...' : 'Salvar' }}</span>
+      </button>
+    }
+    
+    @if (lastSaved) {
+      <span class="last-saved">{{ lastSaved | date:'HH:mm' }}</span>
+    }
   </div>
 
+  <!-- Área de conteúdo expandida -->
   <form [formGroup]="soapForm" class="soap-form">
-    <div class="form-group">
-      <label for="subjective" class="section-label subjective">
-        <span class="letter">S</span> Subjetivo
-      </label>
+    <div class="soap-content" [attr.data-color]="getActiveTab().color">
       <textarea 
-        id="subjective" 
-        formControlName="subjective" 
-        placeholder="Queixa principal, história da moléstia atual, histórico..."
-        rows="4">
+        [formControlName]="activeSection"
+        [placeholder]="getActiveTab().placeholder"
+        class="soap-textarea">
       </textarea>
     </div>
-
-    <div class="form-group">
-      <label for="objective" class="section-label objective">
-        <span class="letter">O</span> Objetivo
-      </label>
-      <textarea 
-        id="objective" 
-        formControlName="objective" 
-        placeholder="Exame físico, sinais vitais, exames complementares..."
-        rows="4">
-      </textarea>
-    </div>
-
-    <div class="form-group">
-      <label for="assessment" class="section-label assessment">
-        <span class="letter">A</span> Avaliação
-      </label>
-      <textarea 
-        id="assessment" 
-        formControlName="assessment" 
-        placeholder="Hipóteses diagnósticas, raciocínio clínico..."
-        rows="4">
-      </textarea>
-    </div>
-
-    <div class="form-group">
-      <label for="plan" class="section-label plan">
-        <span class="letter">P</span> Plano
-      </label>
-      <textarea 
-        id="plan" 
-        formControlName="plan" 
-        placeholder="Conduta, prescrição, orientações, encaminhamentos..."
-        rows="4">
-      </textarea>
-    </div>
-
-    @if (!readonly) {
-      <div class="form-actions">
-        <app-button 
-          variant="primary" 
-          (click)="saveSoap()" 
-          [disabled]="isSaving || soapForm.pristine">
-          {{ isSaving ? 'Salvando...' : 'Salvar Registro' }}
-        </app-button>
-      </div>
-    }
   </form>
 </div>
