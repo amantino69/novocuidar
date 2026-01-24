@@ -5,6 +5,7 @@ import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { BiometricsService, BiometricsData } from '@core/services/biometrics.service';
 import { TeleconsultationRealTimeService, DataUpdatedEvent } from '@core/services/teleconsultation-realtime.service';
 import { BluetoothDevicesService, VitalReading } from '@core/services/bluetooth-devices.service';
+import { Appointment } from '@core/services/appointments.service';
 import { Subject, takeUntil } from 'rxjs';
 
 @Component({
@@ -16,6 +17,7 @@ import { Subject, takeUntil } from 'rxjs';
 })
 export class BiometricsTabComponent implements OnInit, OnDestroy {
   @Input() appointmentId: string | null = null;
+  @Input() appointment: Appointment | null = null;
   @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' = 'PATIENT';
   @Input() readonly = false;
 

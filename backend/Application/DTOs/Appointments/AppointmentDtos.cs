@@ -31,6 +31,7 @@ public class AppointmentDto
     // Clinical Data (JSON)
     public string? AnamnesisJson { get; set; }
     public string? SoapJson { get; set; }
+    public string? BiometricsJson { get; set; }
     public string? SpecialtyFieldsJson { get; set; }
     
     // AI Generated Data

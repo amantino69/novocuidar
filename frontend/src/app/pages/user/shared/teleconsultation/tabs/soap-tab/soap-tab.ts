@@ -153,13 +153,16 @@ export class SoapTabComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   loadSoapData() {
-    // Primeiro verificar se há dados no cache local (mais recentes)
-    const cachedData = this.loadFromLocalCache();
-    if (cachedData) {
-      this.soapForm.patchValue(cachedData, { emitEvent: false });
-      this.soapForm.markAsPristine();
-      this.dataLoaded = true;
-      return;
+    // Em modo readonly, carregar direto do appointment (ignora cache)
+    // Cache só é usado durante edição ativa da teleconsulta
+    if (!this.readonly) {
+      const cachedData = this.loadFromLocalCache();
+      if (cachedData) {
+        this.soapForm.patchValue(cachedData, { emitEvent: false });
+        this.soapForm.markAsPristine();
+        this.dataLoaded = true;
+        return;
+      }
     }
     
     if (this.appointment?.soapJson) {

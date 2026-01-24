@@ -210,8 +210,8 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
     showInDetails: false,
-    order: 90,
-    group: 'standalone'
+    order: 6,
+    group: 'exame-fisico'
   },
   {
     id: 'cns',

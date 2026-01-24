@@ -120,10 +120,10 @@
             <app-soap-tab [appointmentId]="selectedAppointment()!.id" [appointment]="selectedAppointment()!" [readonly]="true"></app-soap-tab>
           }
           @case ('anamnesis') {
-            <app-anamnesis-tab [appointmentId]="selectedAppointment()!.id" [readonly]="true"></app-anamnesis-tab>
+            <app-anamnesis-tab [appointmentId]="selectedAppointment()!.id" [appointment]="selectedAppointment()!" [readonly]="true"></app-anamnesis-tab>
           }
           @case ('biometrics') {
-            <app-biometrics-tab [appointmentId]="selectedAppointment()!.id" [readonly]="true"></app-biometrics-tab>
+            <app-biometrics-tab [appointmentId]="selectedAppointment()!.id" [appointment]="selectedAppointment()!" [readonly]="true"></app-biometrics-tab>
           }
           @case ('receita') {
             <app-receita-tab [appointmentId]="selectedAppointment()!.id" [readonly]="true"></app-receita-tab>

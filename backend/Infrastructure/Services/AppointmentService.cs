@@ -389,7 +389,7 @@ public class AppointmentService : IAppointmentService
         return true;
     }
 
-    public async Task<IEnumerable<AppointmentDto>> SearchByPatientAsync(string search, string sortOrder = "desc")
+    public async Task<IEnumerable<AppointmentDto>> SearchByPatientAsync(string search, string sortOrder = "desc", Guid? professionalId = null)
     {
         var searchLower = search.Trim().ToLower();
         var searchClean = search.Replace(".", "").Replace("-", "").Replace(" ", "").Trim();
@@ -404,6 +404,12 @@ public class AppointmentService : IAppointmentService
                 a.Patient.LastName.ToLower().Contains(searchLower) ||
                 (a.Patient.Name + " " + a.Patient.LastName).ToLower().Contains(searchLower)
             );
+
+        // Filtrar por profissional logado se informado
+        if (professionalId.HasValue)
+        {
+            query = query.Where(a => a.ProfessionalId == professionalId.Value);
+        }
 
         // SQLite não suporta TimeSpan no ORDER BY, então ordenamos apenas por Date
         query = sortOrder == "asc" 
@@ -435,6 +441,7 @@ public class AppointmentService : IAppointmentService
             Observation = a.Observation,
             SoapJson = a.SoapJson,
             AnamnesisJson = a.AnamnesisJson,
+            BiometricsJson = a.BiometricsJson,
             SpecialtyFieldsJson = a.SpecialtyFieldsJson,
             PreConsultationJson = a.PreConsultationJson,
             AISummary = a.AISummary,

@@ -274,6 +274,7 @@ public class AppointmentsController : ControllerBase
 
     /// <summary>
     /// Busca consultas de um paciente por CPF ou nome (para médicos visualizarem histórico)
+    /// Filtra apenas consultas do profissional logado
     /// </summary>
     [HttpGet("search-by-patient")]
     [Authorize(Roles = "PROFESSIONAL,ADMIN")]
@@ -284,7 +285,11 @@ public class AppointmentsController : ControllerBase
         if (string.IsNullOrWhiteSpace(search))
             return BadRequest(new { message = "Termo de busca é obrigatório" });
 
-        var appointments = await _appointmentService.SearchByPatientAsync(search, sortOrder);
+        var professionalId = GetCurrentUserId();
+        if (professionalId == null)
+            return Unauthorized(new { message = "Usuário não identificado" });
+
+        var appointments = await _appointmentService.SearchByPatientAsync(search, sortOrder, professionalId.Value);
         return Ok(appointments);
     }
 }

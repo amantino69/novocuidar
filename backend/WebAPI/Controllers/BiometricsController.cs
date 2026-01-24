@@ -13,6 +13,11 @@ namespace WebAPI.Controllers;
 public class BiometricsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    };
 
     public BiometricsController(ApplicationDbContext context)
     {
@@ -33,7 +38,7 @@ public class BiometricsController : ControllerBase
         if (string.IsNullOrEmpty(appointment.BiometricsJson))
             return Ok(new BiometricsDto());
 
-        var biometrics = JsonSerializer.Deserialize<BiometricsDto>(appointment.BiometricsJson);
+        var biometrics = JsonSerializer.Deserialize<BiometricsDto>(appointment.BiometricsJson, _jsonOptions);
         return Ok(biometrics);
     }
 
@@ -49,7 +54,7 @@ public class BiometricsController : ControllerBase
             return NotFound(new { message = "Consulta não encontrada" });
 
         dto.LastUpdated = DateTime.UtcNow.ToString("o");
-        appointment.BiometricsJson = JsonSerializer.Serialize(dto);
+        appointment.BiometricsJson = JsonSerializer.Serialize(dto, _jsonOptions);
         
         await _context.SaveChangesAsync();
         
@@ -70,7 +75,7 @@ public class BiometricsController : ControllerBase
         if (string.IsNullOrEmpty(appointment.BiometricsJson))
             return NoContent(); // 204 - no data yet
 
-        var biometrics = JsonSerializer.Deserialize<BiometricsDto>(appointment.BiometricsJson);
+        var biometrics = JsonSerializer.Deserialize<BiometricsDto>(appointment.BiometricsJson, _jsonOptions);
         
         if (string.IsNullOrEmpty(since) || string.IsNullOrEmpty(biometrics?.LastUpdated))
             return Ok(); // Has data
