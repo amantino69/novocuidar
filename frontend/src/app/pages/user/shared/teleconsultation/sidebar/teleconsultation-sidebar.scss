@@ -68,14 +68,14 @@
     }
   }
 
-  // Quando header está visível, ajustar posição
+  // Sidebar sempre ocupa altura total, mesmo com header visível
   &.full-screen:not(.header-hidden) {
-    top: 80px;
-    height: calc(100% - 80px);
+    top: 0;
+    height: 100%;
     
     @include mobile {
-      top: 120px;
-      height: calc(100% - 120px);
+      top: 0;
+      height: 100%;
     }
   }
 
