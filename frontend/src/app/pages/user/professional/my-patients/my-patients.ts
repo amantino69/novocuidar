@@ -1,13 +1,12 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
-import { IconComponent } from '@shared/components/atoms/icon/icon';
+import { IconComponent, IconName } from '@shared/components/atoms/icon/icon';
 import { ButtonComponent } from '@shared/components/atoms/button/button';
-import { BadgeComponent } from '@shared/components/atoms/badge/badge';
+import { BadgeComponent, BadgeVariant } from '@shared/components/atoms/badge/badge';
 import { AppointmentsService, Appointment } from '@core/services/appointments.service';
 
-// Tabs para visualização de detalhes
+// Tabs clínicas para visualização do histórico
 import { SoapTabComponent } from '@pages/user/shared/teleconsultation/tabs/soap-tab/soap-tab';
 import { BiometricsTabComponent } from '@pages/user/shared/teleconsultation/tabs/biometrics-tab/biometrics-tab';
 import { AtestadoTabComponent } from '@pages/user/shared/teleconsultation/tabs/atestado-tab/atestado-tab';
@@ -15,14 +14,13 @@ import { ReceitaTabComponent } from '@pages/user/shared/teleconsultation/tabs/re
 import { ExameTabComponent } from '@pages/user/shared/teleconsultation/tabs/exame-tab/exame-tab';
 import { AttachmentsChatTabComponent } from '@pages/user/shared/teleconsultation/tabs/attachments-chat-tab/attachments-chat-tab';
 import { AnamnesisTabComponent } from '@pages/user/shared/teleconsultation/tabs/anamnesis-tab/anamnesis-tab';
-import { PatientDataTabComponent } from '@pages/user/shared/teleconsultation/tabs/patient-data-tab/patient-data-tab';
 
 type SortOrder = 'asc' | 'desc';
 
 interface TabConfig {
   id: string;
   label: string;
-  icon: string;
+  icon: IconName;
 }
 
 @Component({
@@ -31,7 +29,6 @@ interface TabConfig {
   imports: [
     CommonModule,
     FormsModule,
-    RouterModule,
     IconComponent,
     ButtonComponent,
     BadgeComponent,
@@ -41,8 +38,7 @@ interface TabConfig {
     ReceitaTabComponent,
     ExameTabComponent,
     AttachmentsChatTabComponent,
-    AnamnesisTabComponent,
-    PatientDataTabComponent
+    AnamnesisTabComponent
   ],
   templateUrl: './my-patients.html',
   styleUrl: './my-patients.scss'
@@ -63,17 +59,16 @@ export class MyPatientsComponent {
 
   // Detalhes da consulta
   selectedAppointment = signal<Appointment | null>(null);
-  activeTab = signal('info');
+  activeTab = signal('soap');
 
+  // Apenas tabs clínicas para visualização de histórico
   tabs: TabConfig[] = [
-    { id: 'info', label: 'Informações', icon: 'file' },
-    { id: 'patient-data', label: 'Dados Paciente', icon: 'user' },
     { id: 'soap', label: 'SOAP', icon: 'file-text' },
     { id: 'anamnesis', label: 'Anamnese', icon: 'book' },
     { id: 'biometrics', label: 'Biométricos', icon: 'heart' },
     { id: 'receita', label: 'Receitas', icon: 'file' },
     { id: 'atestado', label: 'Atestados', icon: 'file' },
-    { id: 'exame', label: 'Exames', icon: 'clipboard' },
+    { id: 'exame', label: 'Exames', icon: 'file-text' },
     { id: 'attachments', label: 'Anexos', icon: 'image' }
   ];
 
@@ -94,11 +89,11 @@ export class MyPatientsComponent {
       next: (data: Appointment[]) => {
         this.appointments.set(data);
         if (data.length > 0) {
-          this.patientName.set(data[0].patientName);
+          this.patientName.set(data[0].patientName ?? null);
         }
         this.isSearching.set(false);
       },
-      error: (_err: unknown) => {
+      error: () => {
         this.isSearching.set(false);
         this.searchError.set('Erro ao buscar paciente. Tente novamente.');
       }
@@ -114,7 +109,7 @@ export class MyPatientsComponent {
 
   openDetails(appointment: Appointment): void {
     this.selectedAppointment.set(appointment);
-    this.activeTab.set('info');
+    this.activeTab.set('soap');
   }
 
   closeDetails(): void {
@@ -131,6 +126,7 @@ export class MyPatientsComponent {
   }
 
   formatTime(time: string): string {
+    if (!time) return '';
     return time.substring(0, 5);
   }
 
@@ -146,16 +142,16 @@ export class MyPatientsComponent {
     return labels[status] || status;
   }
 
-  getStatusClass(status: string): string {
-    const classes: Record<string, string> = {
+  getStatusClass(status: string): BadgeVariant {
+    const classes: Record<string, BadgeVariant> = {
       'Scheduled': 'warning',
       'Confirmed': 'info',
       'InProgress': 'primary',
       'Completed': 'success',
-      'Cancelled': 'danger',
-      'NoShow': 'secondary'
+      'Cancelled': 'error',
+      'NoShow': 'neutral'
     };
-    return classes[status] || 'default';
+    return classes[status] || 'neutral';
   }
 
   getTypeLabel(type: string): string {
