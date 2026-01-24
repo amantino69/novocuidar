@@ -69,7 +69,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     icon: 'user',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
-    showInDetails: true,
+    showInDetails: false,
     order: 1,
     group: 'exame-fisico'
   },
@@ -89,7 +89,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     icon: 'book',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
-    showInDetails: true,
+    showInDetails: false,
     order: 2,
     group: 'exame-fisico'
   },
@@ -99,7 +99,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     icon: 'stethoscope',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
-    showInDetails: true,
+    showInDetails: false,
     order: 3,
     group: 'exame-fisico'
   },
@@ -139,7 +139,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     icon: 'heart',
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: true, // HABILITADO - Fonocardiograma em tempo real
-    showInDetails: true,
+    showInDetails: false,
     order: 1,
     group: 'exame-fisico'
   },
@@ -149,7 +149,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     icon: 'heart',
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: false, // REMOVIDO conforme solicitação
-    showInDetails: true,
+    showInDetails: false,
     order: 6,
     group: 'standalone'
   },
@@ -159,7 +159,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     icon: 'image',
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: true,
-    showInDetails: true,
+    showInDetails: false,
     order: 5,
     group: 'exame-fisico'
   },
@@ -169,7 +169,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     icon: 'file',
     roles: ['PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: true,
-    showInDetails: true,
+    showInDetails: false,
     order: 1,
     group: 'documentos'
   },
@@ -179,7 +179,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     icon: 'file',
     roles: ['PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: true,
-    showInDetails: true,
+    showInDetails: false,
     order: 2,
     group: 'documentos'
   },
@@ -189,7 +189,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     icon: 'calendar',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
-    showInDetails: true,
+    showInDetails: false,
     order: 3,
     group: 'documentos'
   },
@@ -199,7 +199,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     icon: 'arrow-right',
     roles: ['PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: true,
-    showInDetails: true,
+    showInDetails: false,
     order: 4,
     group: 'documentos'
   },
@@ -209,7 +209,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     icon: 'activity',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
-    showInDetails: true,
+    showInDetails: false,
     order: 90,
     group: 'standalone'
   },
@@ -229,7 +229,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     icon: 'book',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
-    showInDetails: true,
+    showInDetails: false,
     order: 92,
     group: 'standalone'
   },
@@ -239,7 +239,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     icon: 'check-circle',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
-    showInDetails: true,
+    showInDetails: false,
     order: 99,
     group: 'standalone'
   }

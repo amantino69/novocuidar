@@ -271,4 +271,20 @@ public class AppointmentsController : ControllerBase
 
         return Ok(new { message = "Appointment finished successfully" });
     }
+
+    /// <summary>
+    /// Busca consultas de um paciente por CPF ou nome (para médicos visualizarem histórico)
+    /// </summary>
+    [HttpGet("search-by-patient")]
+    [Authorize(Roles = "PROFESSIONAL,ADMIN")]
+    public async Task<ActionResult<IEnumerable<AppointmentDto>>> SearchByPatient(
+        [FromQuery] string search,
+        [FromQuery] string sortOrder = "desc")
+    {
+        if (string.IsNullOrWhiteSpace(search))
+            return BadRequest(new { message = "Termo de busca é obrigatório" });
+
+        var appointments = await _appointmentService.SearchByPatientAsync(search, sortOrder);
+        return Ok(appointments);
+    }
 }

@@ -388,4 +388,56 @@ public class AppointmentService : IAppointmentService
 
         return true;
     }
+
+    public async Task<IEnumerable<AppointmentDto>> SearchByPatientAsync(string search, string sortOrder = "desc")
+    {
+        var searchLower = search.Trim().ToLower();
+        var searchClean = search.Replace(".", "").Replace("-", "").Replace(" ", "").Trim();
+        
+        var query = _context.Appointments
+            .Include(a => a.Patient)
+            .Include(a => a.Professional)
+            .Include(a => a.Specialty)
+            .Where(a => 
+                a.Patient.Cpf.Replace(".", "").Replace("-", "") == searchClean ||
+                a.Patient.Name.ToLower().Contains(searchLower) ||
+                a.Patient.LastName.ToLower().Contains(searchLower) ||
+                (a.Patient.Name + " " + a.Patient.LastName).ToLower().Contains(searchLower)
+            );
+
+        query = sortOrder == "asc" 
+            ? query.OrderBy(a => a.Date).ThenBy(a => a.Time)
+            : query.OrderByDescending(a => a.Date).ThenByDescending(a => a.Time);
+
+        var appointments = await query.ToListAsync();
+
+        return appointments.Select(a => new AppointmentDto
+        {
+            Id = a.Id,
+            PatientId = a.PatientId,
+            PatientName = $"{a.Patient.Name} {a.Patient.LastName}",
+            PatientCpf = a.Patient.Cpf,
+            ProfessionalId = a.ProfessionalId,
+            ProfessionalName = $"{a.Professional.Name} {a.Professional.LastName}",
+            SpecialtyId = a.SpecialtyId,
+            SpecialtyName = a.Specialty.Name,
+            Date = a.Date,
+            Time = a.Time,
+            EndTime = a.EndTime,
+            Status = a.Status.ToString(),
+            Type = a.Type.ToString(),
+            MeetLink = a.MeetLink,
+            Observation = a.Observation,
+            SoapJson = a.SoapJson,
+            AnamnesisJson = a.AnamnesisJson,
+            BiometricsJson = a.BiometricsJson,
+            SpecialtyFieldsJson = a.SpecialtyFieldsJson,
+            AttachmentsChatJson = a.AttachmentsChatJson,
+            PreConsultationJson = a.PreConsultationJson,
+            AISummary = a.AISummary,
+            AIDiagnosticHypothesis = a.AIDiagnosticHypothesis,
+            CreatedAt = a.CreatedAt,
+            UpdatedAt = a.UpdatedAt
+        });
+    }
 }

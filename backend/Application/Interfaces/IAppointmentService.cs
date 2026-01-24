@@ -10,4 +10,5 @@ public interface IAppointmentService
     Task<AppointmentDto?> UpdateAppointmentAsync(Guid id, UpdateAppointmentDto dto);
     Task<bool> CancelAppointmentAsync(Guid id);
     Task<bool> FinishAppointmentAsync(Guid id);
+    Task<IEnumerable<AppointmentDto>> SearchByPatientAsync(string search, string sortOrder = "desc");
 }

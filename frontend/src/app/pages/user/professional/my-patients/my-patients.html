@@ -1,0 +1,190 @@
+<div class="my-patients-container">
+  <!-- Cabeçalho -->
+  <div class="header">
+    <h1>Meus Pacientes</h1>
+    <p>Pesquise por CPF ou nome para ver o histórico de consultas</p>
+  </div>
+
+  <!-- Barra de pesquisa -->
+  <div class="search-section">
+    <div class="search-box">
+      <app-icon name="search" class="search-icon"></app-icon>
+      <input
+        type="text"
+        placeholder="Digite o CPF ou nome do paciente..."
+        [(ngModel)]="searchTerm"
+        (keyup.enter)="search()"
+        [disabled]="isSearching()"
+      />
+      <app-button
+        label="Pesquisar"
+        variant="primary"
+        (click)="search()"
+        [disabled]="isSearching()"
+      ></app-button>
+    </div>
+
+    @if (searchError()) {
+      <div class="error-message">
+        <app-icon name="alert-triangle"></app-icon>
+        {{ searchError() }}
+      </div>
+    }
+  </div>
+
+  <!-- Área de resultados -->
+  @if (isSearching()) {
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Buscando...</p>
+    </div>
+  } @else if (hasSearched()) {
+    @if (appointments().length === 0) {
+      <div class="no-results">
+        <app-icon name="user-x" class="no-results-icon"></app-icon>
+        <h3>Paciente não tem consultas anteriores</h3>
+        <p>Não encontramos consultas para o termo pesquisado.</p>
+      </div>
+    } @else {
+      <!-- Lista de consultas -->
+      <div class="results-section">
+        <div class="results-header">
+          <h2>
+            <app-icon name="user"></app-icon>
+            {{ patientName() }}
+          </h2>
+          <div class="results-info">
+            <span class="count">{{ appointments().length }} consulta(s)</span>
+            <button class="sort-btn" (click)="toggleSortOrder()">
+              <app-icon [name]="sortOrder() === 'desc' ? 'arrow-down' : 'arrow-up'"></app-icon>
+              {{ sortOrder() === 'desc' ? 'Mais recentes' : 'Mais antigas' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="appointments-list">
+          @for (appt of appointments(); track appt.id) {
+            <div class="appointment-card" (click)="openDetails(appt)">
+              <div class="appointment-date">
+                <app-icon name="calendar"></app-icon>
+                <span class="date">{{ formatDate(appt.date) }}</span>
+                <span class="time">{{ formatTime(appt.startTime) }}</span>
+              </div>
+              <div class="appointment-info">
+                <span class="specialty">{{ appt.specialtyName }}</span>
+                <span class="professional">Dr(a). {{ appt.professionalName }}</span>
+              </div>
+              <div class="appointment-status">
+                <app-badge [label]="getStatusLabel(appt.status)" [variant]="getStatusClass(appt.status)"></app-badge>
+              </div>
+              <div class="appointment-action">
+                <app-icon name="chevron-right"></app-icon>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+</div>
+
+<!-- Modal de detalhes da consulta -->
+@if (selectedAppointment()) {
+  <div class="details-modal-overlay" (click)="closeDetails()">
+    <div class="details-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Detalhes da Consulta</h2>
+        <button class="close-btn" (click)="closeDetails()">
+          <app-icon name="x"></app-icon>
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs-container">
+        @for (tab of tabs; track tab.id) {
+          <button
+            class="tab-btn"
+            [class.active]="activeTab() === tab.id"
+            (click)="selectTab(tab.id)"
+          >
+            <app-icon [name]="tab.icon"></app-icon>
+            <span>{{ tab.label }}</span>
+          </button>
+        }
+      </div>
+
+      <!-- Conteúdo das tabs -->
+      <div class="tab-content">
+        @switch (activeTab()) {
+          @case ('info') {
+            <div class="info-tab">
+              <div class="info-grid">
+                <div class="info-item">
+                  <label>Paciente</label>
+                  <span>{{ selectedAppointment()?.patientName }}</span>
+                </div>
+                <div class="info-item">
+                  <label>Data</label>
+                  <span>{{ formatDate(selectedAppointment()?.date || '') }}</span>
+                </div>
+                <div class="info-item">
+                  <label>Horário</label>
+                  <span>{{ formatTime(selectedAppointment()?.startTime || '') }}</span>
+                </div>
+                <div class="info-item">
+                  <label>Especialidade</label>
+                  <span>{{ selectedAppointment()?.specialtyName }}</span>
+                </div>
+                <div class="info-item">
+                  <label>Profissional</label>
+                  <span>Dr(a). {{ selectedAppointment()?.professionalName }}</span>
+                </div>
+                <div class="info-item">
+                  <label>Status</label>
+                  <app-badge 
+                    [label]="getStatusLabel(selectedAppointment()?.status || '')" 
+                    [variant]="getStatusClass(selectedAppointment()?.status || '')"
+                  ></app-badge>
+                </div>
+                <div class="info-item">
+                  <label>Tipo</label>
+                  <span>{{ getTypeLabel(selectedAppointment()?.type || '') }}</span>
+                </div>
+                @if (selectedAppointment()?.notes) {
+                  <div class="info-item full-width">
+                    <label>Observações</label>
+                    <span>{{ selectedAppointment()?.notes }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+          @case ('patient-data') {
+            <app-patient-data-tab [appointment]="selectedAppointment()!" [readOnly]="true"></app-patient-data-tab>
+          }
+          @case ('soap') {
+            <app-soap-tab [appointment]="selectedAppointment()!" [readOnly]="true"></app-soap-tab>
+          }
+          @case ('anamnesis') {
+            <app-anamnesis-tab [appointment]="selectedAppointment()!" [readOnly]="true"></app-anamnesis-tab>
+          }
+          @case ('biometrics') {
+            <app-biometrics-tab [appointment]="selectedAppointment()!" [readOnly]="true"></app-biometrics-tab>
+          }
+          @case ('receita') {
+            <app-receita-tab [appointment]="selectedAppointment()!" [readOnly]="true"></app-receita-tab>
+          }
+          @case ('atestado') {
+            <app-atestado-tab [appointment]="selectedAppointment()!" [readOnly]="true"></app-atestado-tab>
+          }
+          @case ('exame') {
+            <app-exame-tab [appointment]="selectedAppointment()!" [readOnly]="true"></app-exame-tab>
+          }
+          @case ('attachments') {
+            <app-attachments-chat-tab [appointment]="selectedAppointment()!" [readOnly]="true"></app-attachments-chat-tab>
+          }
+        }
+      </div>
+    </div>
+  </div>
+}

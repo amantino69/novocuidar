@@ -22,6 +22,7 @@ import { AppointmentDetailsModalComponent } from '@pages/user/shared/appointment
 import { AppointmentDetailsComponent } from '@pages/user/shared/appointments/appointment-details/appointment-details';
 import { ScheduleBlocksComponent } from '@pages/user/shared/schedule-blocks/schedule-blocks';
 import { MyScheduleComponent } from '@pages/user/professional/my-schedule/my-schedule';
+import { MyPatientsComponent } from '@pages/user/professional/my-patients/my-patients';
 import { CertificatesComponent } from '@pages/user/professional/certificates/certificates';
 
 // Admin-specific components
@@ -105,6 +106,7 @@ export const routes: Routes = [
       // Professional only
       { path: 'bloqueios-agenda', component: ScheduleBlocksComponent, canActivate: [roleGuard(['PROFESSIONAL'])] },
       { path: 'minha-agenda', component: MyScheduleComponent, canActivate: [roleGuard(['PROFESSIONAL'])] },
+      { path: 'meus-pacientes', component: MyPatientsComponent, canActivate: [roleGuard(['PROFESSIONAL'])] },
       { path: 'certificados', component: CertificatesComponent, canActivate: [roleGuard(['PROFESSIONAL'])] },
       
       // Patient only

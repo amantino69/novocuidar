@@ -201,4 +201,11 @@ export class AppointmentsService {
   deleteAppointment(id: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
+
+  searchByPatient(search: string, sortOrder: string = 'desc'): Observable<Appointment[]> {
+    const params = new HttpParams()
+      .set('search', search)
+      .set('sortOrder', sortOrder);
+    return this.http.get<Appointment[]>(`${this.apiUrl}/search-by-patient`, { params });
+  }
 }

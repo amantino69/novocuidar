@@ -56,6 +56,10 @@
           <app-icon name="clock" [size]="20" />
           <span>Minha Agenda</span>
         </a>
+        <a routerLink="/meus-pacientes" routerLinkActive="admin-sidebar__link--active" class="admin-sidebar__link" (click)="closeSidebarOnMobile()">
+          <app-icon name="users" [size]="20" />
+          <span>Meus Pacientes</span>
+        </a>
         <a routerLink="/bloqueios-agenda" routerLinkActive="admin-sidebar__link--active" class="admin-sidebar__link" (click)="closeSidebarOnMobile()">
           <app-icon name="slash" [size]="20" />
           <span>Bloqueios de Agenda</span>
