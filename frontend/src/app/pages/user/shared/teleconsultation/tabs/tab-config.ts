@@ -65,7 +65,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
   },
   {
     id: 'patient-data',
-    label: 'Dados do Paciente',
+    label: 'Paciente',
     icon: 'user',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
@@ -86,7 +86,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
   {
     id: 'anamnesis',
     label: 'Anamnese',
-    icon: 'book',
+    icon: 'file-text',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
     showInDetails: false,
@@ -95,8 +95,8 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
   },
   {
     id: 'specialty',
-    label: 'Campos da Especialidade',
-    icon: 'stethoscope',
+    label: 'Específico',
+    icon: 'box',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
     showInDetails: false,
@@ -105,7 +105,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
   },
   {
     id: 'medical-devices',
-    label: 'Sinais Vitais',
+    label: 'Sinais',
     icon: 'activity',
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: true,
@@ -136,7 +136,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
   {
     id: 'phonocardiogram',
     label: 'Fonocardio',
-    icon: 'heart',
+    icon: 'headphones',
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: true, // HABILITADO - Fonocardiograma em tempo real
     showInDetails: false,
@@ -155,8 +155,8 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
   },
   {
     id: 'attachments',
-    label: 'Chat Anexos',
-    icon: 'image',
+    label: 'Anexos',
+    icon: 'upload-cloud',
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: true,
     showInDetails: false,
@@ -165,7 +165,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
   },
   {
     id: 'receita',
-    label: 'Receituário',
+    label: 'Receita',
     icon: 'file',
     roles: ['PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: true,
@@ -185,7 +185,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
   },
   {
     id: 'return',
-    label: 'Agendar Retorno',
+    label: 'Retorno',
     icon: 'calendar',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
@@ -195,8 +195,8 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
   },
   {
     id: 'referral',
-    label: 'Encaminhamento',
-    icon: 'arrow-right',
+    label: 'Encaminhar',
+    icon: 'external-link',
     roles: ['PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: true,
     showInDetails: false,
@@ -205,8 +205,8 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
   },
   {
     id: 'ai',
-    label: 'Análise Diagnóstica',
-    icon: 'activity',
+    label: 'IA',
+    icon: 'sparkles',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
     showInDetails: false,
@@ -215,17 +215,17 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
   },
   {
     id: 'cns',
-    label: 'Consulta CADSUS',
+    label: 'CADSUS',
     icon: 'user',
     roles: ['PROFESSIONAL', 'ADMIN'],
-    showInTeleconsultation: true,
+    showInTeleconsultation: false, // REMOVIDO conforme solicitação
     showInDetails: false,
     order: 91,
     group: 'standalone'
   },
   {
     id: 'patient-history',
-    label: 'Histórico Clínico',
+    label: 'Histórico',
     icon: 'book',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
@@ -235,7 +235,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
   },
   {
     id: 'conclusion',
-    label: 'Finalizar Consulta',
+    label: 'Finalizar',
     icon: 'check-circle',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
