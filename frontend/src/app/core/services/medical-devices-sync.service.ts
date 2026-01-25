@@ -20,6 +20,9 @@ export interface VitalSignsData {
     systolic?: number;
     diastolic?: number;
     heartRate?: number;
+    // Dados do paciente (somente leitura, carregados do perfil)
+    gender?: string;
+    birthDate?: string;
   };
 }
 
@@ -431,7 +434,11 @@ export class MedicalDevicesSyncService implements OnDestroy {
             systolic: (reading as any).bloodPressureSystolic,
             diastolic: (reading as any).bloodPressureDiastolic,
             temperature: (reading as any).temperature,
-            weight: (reading as any).weight
+            weight: (reading as any).weight,
+            height: (reading as any).height,
+            // Dados do paciente (do perfil)
+            gender: (reading as any).gender,
+            birthDate: (reading as any).birthDate
           };
 
       const data: VitalSignsData = {

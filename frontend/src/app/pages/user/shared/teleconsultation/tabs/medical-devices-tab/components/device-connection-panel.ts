@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -13,6 +13,8 @@ import {
   VitalReading 
 } from '@app/core/services/bluetooth-devices.service';
 import { MedicalDevicesSyncService } from '@app/core/services/medical-devices-sync.service';
+import { AuthService } from '@app/core/services/auth.service';
+import { Appointment } from '@core/services/appointments.service';
 import { environment } from '@env/environment';
 
 @Component({
@@ -35,6 +37,30 @@ import { environment } from '@env/environment';
       <p class="description">
         Digite os valores manualmente ou conecte os dispositivos Bluetooth para captura automática.
       </p>
+
+      <!-- Dados do Paciente (somente leitura, carregados do perfil) -->
+      @if (patientGender || patientBirthDate) {
+        <div class="patient-info-card">
+          <div class="patient-info-header">
+            <app-icon name="user" [size]="18" />
+            <span>Dados do Paciente</span>
+          </div>
+          <div class="patient-info-content">
+            @if (patientGender) {
+              <div class="patient-info-item">
+                <label>Sexo</label>
+                <span>{{ getGenderLabel(patientGender) }}</span>
+              </div>
+            }
+            @if (patientBirthDate) {
+              <div class="patient-info-item">
+                <label>Idade</label>
+                <span>{{ getPatientAge() }} anos</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
 
       @if (!bluetoothAvailable) {
         <div class="warning-banner">
@@ -250,6 +276,49 @@ import { environment } from '@env/environment';
       font-size: 13px;
       color: var(--text-secondary);
       margin: 0 0 16px 0;
+    }
+
+    .patient-info-card {
+      background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+      border: 1px solid #bae6fd;
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+
+      .patient-info-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #0369a1;
+        margin-bottom: 10px;
+      }
+
+      .patient-info-content {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+      }
+
+      .patient-info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        label {
+          font-size: 11px;
+          color: #0284c7;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        span {
+          font-size: 15px;
+          font-weight: 600;
+          color: #0c4a6e;
+        }
+      }
     }
 
     .warning-banner {
@@ -471,8 +540,9 @@ import { environment } from '@env/environment';
     }
   `]
 })
-export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
+export class DeviceConnectionPanelComponent implements OnInit, OnDestroy, OnChanges {
   @Input() appointmentId: string | null = null;
+  @Input() appointment: Appointment | null = null;
   @Input() userrole: string = '';
 
   vitalsForm: FormGroup;
@@ -484,6 +554,11 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
   connectingType: DeviceType | null = null;
   connectedDevices: BluetoothDevice[] = [];
   lastSent: Date | null = null;
+
+  // Dados do paciente (carregados do perfil)
+  patientGender: string | null = null;
+  patientBirthDate: string | null = null;
+  private patientProfileLoaded = false;
 
   private subscriptions = new Subscription();
   private formChanged$ = new Subject<void>();
@@ -498,7 +573,8 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private http: HttpClient,
     private bluetoothService: BluetoothDevicesService,
-    private syncService: MedicalDevicesSyncService
+    private syncService: MedicalDevicesSyncService,
+    private authService: AuthService
   ) {
     this.vitalsForm = this.fb.group({
       spo2: [null],
@@ -516,6 +592,11 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
 
     // Carrega do cache local primeiro (instantâneo)
     this.loadFromCache();
+    
+    // Tenta carregar dados do perfil do paciente se appointment já estiver disponível
+    if (this.appointment?.patientId && !this.patientProfileLoaded) {
+      this.loadPatientProfile();
+    }
     
     // Depois carrega dados existentes do banco (pode sobrescrever se mais recente)
     this.loadExistingData();
@@ -564,6 +645,14 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
     );
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    // Quando o appointment chegar/mudar, carregar dados do paciente
+    if (changes['appointment'] && this.appointment?.patientId && !this.patientProfileLoaded) {
+      console.log('[DeviceConnectionPanel] Appointment mudou, carregando perfil do paciente');
+      this.loadPatientProfile();
+    }
+  }
+
   private async loadExistingData(): Promise<void> {
     if (!this.appointmentId) return;
 
@@ -589,6 +678,70 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.warn('[DeviceConnectionPanel] Erro ao carregar dados existentes:', error);
     }
+  }
+
+  /**
+   * Carrega dados do perfil do paciente da consulta via API
+   */
+  private async loadPatientProfile(): Promise<void> {
+    try {
+      // Primeiro tenta obter do appointment (se disponível)
+      const patientId = this.appointment?.patientId;
+      
+      if (!patientId) {
+        console.log('[DeviceConnectionPanel] Nenhum patientId disponível no appointment');
+        return;
+      }
+      
+      console.log('[DeviceConnectionPanel] Buscando dados do paciente:', patientId);
+      
+      // Busca dados do paciente via API
+      const apiUrl = `${environment.apiUrl}/users/${patientId}`;
+      const user = await firstValueFrom(this.http.get<any>(apiUrl));
+      
+      if (user?.patientProfile) {
+        this.patientGender = user.patientProfile.gender || null;
+        this.patientBirthDate = user.patientProfile.birthDate || null;
+        this.patientProfileLoaded = true;
+        console.log('[DeviceConnectionPanel] Perfil do paciente carregado:', {
+          name: user.name,
+          gender: this.patientGender,
+          birthDate: this.patientBirthDate
+        });
+      } else {
+        console.log('[DeviceConnectionPanel] Usuário não tem patientProfile');
+      }
+    } catch (error) {
+      console.warn('[DeviceConnectionPanel] Erro ao carregar perfil do paciente:', error);
+    }
+  }
+
+  /**
+   * Retorna o label do sexo
+   */
+  getGenderLabel(gender: string | null): string {
+    if (!gender) return 'Não informado';
+    switch (gender) {
+      case 'M': return 'Masculino';
+      case 'F': return 'Feminino';
+      case 'O': return 'Outro';
+      default: return gender;
+    }
+  }
+
+  /**
+   * Calcula a idade do paciente
+   */
+  getPatientAge(): number | null {
+    if (!this.patientBirthDate) return null;
+    const today = new Date();
+    const birth = new Date(this.patientBirthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age > 0 ? age : null;
   }
 
   isDeviceConnected(type: DeviceType): boolean {
@@ -719,7 +872,10 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
       bloodPressureDiastolic: formValues.diastolic ? Number(formValues.diastolic) : null,
       temperature: formValues.temperature ? Number(formValues.temperature) : null,
       weight: formValues.weight ? Number(formValues.weight) : null,
-      height: formValues.height ? Number(formValues.height) : null
+      height: formValues.height ? Number(formValues.height) : null,
+      // Dados do paciente (somente leitura, do perfil)
+      gender: this.patientGender,
+      birthDate: this.patientBirthDate
     };
 
     // 1. Envia IMEDIATAMENTE via SignalR (instantâneo para o médico)

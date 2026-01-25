@@ -49,6 +49,7 @@ type SubTab = 'vitals' | 'auscultation' | 'exam';
           <!-- Interface do Paciente/Assistente/Admin (quem opera os dispositivos) -->
           <app-device-connection-panel
             [appointmentId]="appointmentId"
+            [appointment]="appointment"
             [userrole]="userrole">
           </app-device-connection-panel>
         } @else {

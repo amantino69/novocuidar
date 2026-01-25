@@ -37,6 +37,23 @@ interface VitalDisplay {
         </span>
       </div>
 
+      <!-- Dados do Paciente recebidos via SignalR -->
+      @if (syncedPatientGender || syncedPatientAge) {
+        <div class="patient-info-banner">
+          <app-icon name="user" [size]="16" />
+          <span class="patient-info-label">Paciente:</span>
+          @if (syncedPatientGender) {
+            <span class="patient-info-value">{{ getGenderLabel(syncedPatientGender) }}</span>
+          }
+          @if (syncedPatientGender && syncedPatientAge) {
+            <span class="patient-info-separator">•</span>
+          }
+          @if (syncedPatientAge) {
+            <span class="patient-info-value">{{ syncedPatientAge }} anos</span>
+          }
+        </div>
+      }
+
       @if (!hasAnyData) {
         <div class="waiting-state">
           <div class="waiting-icon">
@@ -254,6 +271,32 @@ interface VitalDisplay {
             animation: pulse-dot 2s infinite;
           }
         }
+      }
+    }
+
+    .patient-info-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+      border: 1px solid #bae6fd;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #0369a1;
+
+      .patient-info-label {
+        font-weight: 600;
+      }
+
+      .patient-info-value {
+        font-weight: 500;
+        color: #0c4a6e;
+      }
+
+      .patient-info-separator {
+        color: #7dd3fc;
       }
     }
 
@@ -736,6 +779,10 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
   imcClassification: string = '';
   imcStatus: 'normal' | 'warning' | 'critical' = 'normal';
   
+  // Dados do paciente recebidos via SignalR
+  syncedPatientGender: string | null = null;
+  syncedPatientAge: number | null = null;
+  
   // Alertas médicos
   alerts: { type: 'warning' | 'critical'; icon: string; message: string }[] = [];
   
@@ -800,7 +847,14 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
       this.usersService.getUserById(this.appointment.patientId).subscribe({
         next: (user) => {
           this.patientData = user;
-          console.log('[VitalSignsPanel] Dados do paciente carregados:', user.name, user.patientProfile?.gender, user.patientProfile?.birthDate);
+          // Preenche os dados para exibição no banner
+          if (user.patientProfile?.gender) {
+            this.syncedPatientGender = user.patientProfile.gender;
+          }
+          if (user.patientProfile?.birthDate) {
+            this.syncedPatientAge = this.calculateAge(user.patientProfile.birthDate);
+          }
+          console.log('[VitalSignsPanel] Dados do paciente carregados:', user.name, this.syncedPatientGender, this.syncedPatientAge);
         },
         error: (error) => {
           console.warn('[VitalSignsPanel] Erro ao carregar dados do paciente:', error);
@@ -850,6 +904,14 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
     this.lastUpdate = new Date(data.timestamp);
 
     const v = data.vitals;
+    
+    // Extrai dados do paciente enviados via SignalR
+    if (v.gender) {
+      this.syncedPatientGender = v.gender;
+    }
+    if (v.birthDate) {
+      this.syncedPatientAge = this.calculateAge(v.birthDate);
+    }
     
     // Armazena dados brutos para enviar à IA
     this.rawBiometrics = {
@@ -1180,6 +1242,9 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   private getPatientAge(): number | undefined {
+    // Prioriza idade recebida via SignalR
+    if (this.syncedPatientAge) return this.syncedPatientAge;
+    
     const birthDate = this.patientData?.patientProfile?.birthDate;
     if (!birthDate) return undefined;
     
@@ -1191,6 +1256,34 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
       age--;
     }
     return age > 0 ? age : undefined;
+  }
+
+  /**
+   * Calcula a idade a partir de uma data de nascimento
+   */
+  private calculateAge(birthDate: string): number | null {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age > 0 ? age : null;
+  }
+
+  /**
+   * Retorna o label do sexo para exibição
+   */
+  getGenderLabel(gender: string | null): string {
+    if (!gender) return 'Não informado';
+    switch (gender) {
+      case 'M': return 'Masculino';
+      case 'F': return 'Feminino';
+      case 'O': return 'Outro';
+      default: return gender;
+    }
   }
 
   private async requestAIAnalysis(): Promise<void> {
