@@ -25,10 +25,23 @@ import { environment } from '@env/environment';
   template: `
     <div class="device-connection-panel">
       <div class="panel-header">
-        <h4>
-          <app-icon name="activity" [size]="20" />
-          Sinais Vitais
-        </h4>
+        <div class="header-left">
+          <app-icon name="activity" [size]="16" />
+          <span class="title">Sinais Vitais</span>
+          @if (patientGender || patientBirthDate) {
+            <span class="patient-info-inline">
+              @if (patientGender) {
+                <span>{{ getGenderLabel(patientGender) }}</span>
+              }
+              @if (patientGender && patientBirthDate) {
+                <span class="sep">•</span>
+              }
+              @if (patientBirthDate) {
+                <span>{{ getPatientAge() }} anos</span>
+              }
+            </span>
+          }
+        </div>
         <span class="connection-status" [class.connected]="isHubConnected">
           {{ isHubConnected ? 'Sincronizado' : 'Offline' }}
         </span>
@@ -38,33 +51,9 @@ import { environment } from '@env/environment';
         Digite os valores manualmente ou conecte os dispositivos Bluetooth para captura automática.
       </p>
 
-      <!-- Dados do Paciente (somente leitura, carregados do perfil) -->
-      @if (patientGender || patientBirthDate) {
-        <div class="patient-info-card">
-          <div class="patient-info-header">
-            <app-icon name="user" [size]="18" />
-            <span>Dados do Paciente</span>
-          </div>
-          <div class="patient-info-content">
-            @if (patientGender) {
-              <div class="patient-info-item">
-                <label>Sexo</label>
-                <span>{{ getGenderLabel(patientGender) }}</span>
-              </div>
-            }
-            @if (patientBirthDate) {
-              <div class="patient-info-item">
-                <label>Idade</label>
-                <span>{{ getPatientAge() }} anos</span>
-              </div>
-            }
-          </div>
-        </div>
-      }
-
       @if (!bluetoothAvailable) {
         <div class="warning-banner">
-          <app-icon name="alert-triangle" [size]="18" />
+          <app-icon name="alert-triangle" [size]="16" />
           <span>Web Bluetooth não disponível. Use Chrome/Edge em HTTPS.</span>
         </div>
       }
@@ -237,7 +226,7 @@ import { environment } from '@env/environment';
   `,
   styles: [`
     .device-connection-panel {
-      padding: 16px;
+      padding: 12px;
       height: 100%;
       overflow-y: auto;
     }
@@ -248,20 +237,38 @@ import { environment } from '@env/environment';
       align-items: center;
       margin-bottom: 8px;
 
-      h4 {
+      .header-left {
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin: 0;
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--text-primary);
+        gap: 6px;
+        
+        .title {
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text-primary);
+        }
+
+        .patient-info-inline {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 11px;
+          color: #0369a1;
+          background: #e0f2fe;
+          padding: 2px 8px;
+          border-radius: 10px;
+          margin-left: 6px;
+
+          .sep {
+            color: #7dd3fc;
+          }
+        }
       }
 
       .connection-status {
-        font-size: 12px;
-        padding: 4px 10px;
-        border-radius: 12px;
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 10px;
         background: var(--bg-danger);
         color: var(--text-danger);
 
@@ -273,79 +280,36 @@ import { environment } from '@env/environment';
     }
 
     .description {
-      font-size: 13px;
+      font-size: 11px;
       color: var(--text-secondary);
-      margin: 0 0 16px 0;
-    }
-
-    .patient-info-card {
-      background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
-      border: 1px solid #bae6fd;
-      border-radius: 12px;
-      padding: 12px 16px;
-      margin-bottom: 16px;
-
-      .patient-info-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        color: #0369a1;
-        margin-bottom: 10px;
-      }
-
-      .patient-info-content {
-        display: flex;
-        gap: 24px;
-        flex-wrap: wrap;
-      }
-
-      .patient-info-item {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-
-        label {
-          font-size: 11px;
-          color: #0284c7;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        span {
-          font-size: 15px;
-          font-weight: 600;
-          color: #0c4a6e;
-        }
-      }
+      margin: 0 0 10px 0;
     }
 
     .warning-banner {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 12px;
+      gap: 6px;
+      padding: 8px;
       background: var(--bg-warning);
       color: var(--text-warning);
-      border-radius: 8px;
-      margin-bottom: 16px;
-      font-size: 13px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 11px;
     }
 
     .vitals-form {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
     }
 
     .vital-card {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 16px;
+      gap: 10px;
+      padding: 10px 12px;
       background: var(--bg-secondary);
-      border-radius: 12px;
+      border-radius: 10px;
       border: 1px solid var(--border-color);
     }
 
@@ -353,10 +317,10 @@ import { environment } from '@env/environment';
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 48px;
-      height: 48px;
-      min-width: 48px;
-      border-radius: 12px;
+      width: 36px;
+      height: 36px;
+      min-width: 36px;
+      border-radius: 8px;
       background: var(--bg-tertiary);
 
       &.spo2 { color: #ef4444; }
@@ -371,22 +335,23 @@ import { environment } from '@env/environment';
 
     .field-row {
       display: flex;
-      gap: 12px;
+      gap: 10px;
     }
 
     .field-group {
       flex: 1;
       
       &.full {
-        max-width: 180px;
+        max-width: 140px;
       }
 
       label {
         display: block;
-        font-size: 12px;
+        font-size: 10px;
         font-weight: 500;
         color: var(--text-secondary);
-        margin-bottom: 4px;
+        margin-bottom: 2px;
+        text-transform: uppercase;
       }
     }
 
@@ -395,17 +360,17 @@ import { environment } from '@env/environment';
       align-items: center;
       background: var(--bg-primary);
       border: 1px solid var(--border-color);
-      border-radius: 8px;
+      border-radius: 6px;
       overflow: hidden;
 
       input {
         flex: 1;
         width: 100%;
-        min-width: 60px;
-        padding: 8px 12px;
+        min-width: 50px;
+        padding: 6px 8px;
         border: none;
         background: transparent;
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 600;
         color: var(--text-primary);
         outline: none;
@@ -434,18 +399,18 @@ import { environment } from '@env/environment';
     .btn-connect {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 10px 16px;
+      gap: 4px;
+      padding: 6px 10px;
       border: 1px solid #3b82f6;
-      border-radius: 8px;
-      font-size: 13px;
+      border-radius: 6px;
+      font-size: 12px;
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s ease;
       background: #3b82f6;
       color: white;
       white-space: nowrap;
-      min-width: 110px;
+      min-width: 90px;
 
       &:hover:not(:disabled) {
         background: #2563eb;
@@ -469,9 +434,9 @@ import { environment } from '@env/environment';
     .save-section {
       display: flex;
       align-items: center;
-      gap: 16px;
-      margin-top: 8px;
-      padding-top: 16px;
+      gap: 12px;
+      margin-top: 6px;
+      padding-top: 10px;
       border-top: 1px solid var(--border-color);
     }
 
@@ -479,11 +444,11 @@ import { environment } from '@env/environment';
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      padding: 12px 24px;
+      gap: 6px;
+      padding: 8px 16px;
       border: none;
-      border-radius: 8px;
-      font-size: 15px;
+      border-radius: 6px;
+      font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
@@ -503,16 +468,16 @@ import { environment } from '@env/environment';
     }
 
     .sync-section {
-      padding: 8px 0;
+      padding: 6px 0;
     }
 
     .sync-status {
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      padding: 8px 12px;
-      border-radius: 8px;
+      gap: 4px;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 6px;
 
       &.sending {
         color: #3b82f6;

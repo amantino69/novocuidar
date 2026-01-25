@@ -27,50 +27,45 @@ interface VitalDisplay {
   template: `
     <div class="vital-signs-panel">
       <div class="panel-header">
-        <h4>
-          <app-icon name="activity" [size]="20" />
-          Sinais Vitais em Tempo Real
-        </h4>
-        <span class="connection-indicator" [class.connected]="isConnected">
-          <span class="indicator-dot"></span>
-          {{ isConnected ? 'Conectado' : 'Aguardando' }}
-        </span>
-      </div>
-
-      <!-- Dados do Paciente recebidos via SignalR -->
-      @if (syncedPatientGender || syncedPatientAge) {
-        <div class="patient-info-banner">
-          <app-icon name="user" [size]="16" />
-          <span class="patient-info-label">Paciente:</span>
-          @if (syncedPatientGender) {
-            <span class="patient-info-value">{{ getGenderLabel(syncedPatientGender) }}</span>
-          }
-          @if (syncedPatientGender && syncedPatientAge) {
-            <span class="patient-info-separator">•</span>
-          }
-          @if (syncedPatientAge) {
-            <span class="patient-info-value">{{ syncedPatientAge }} anos</span>
+        <div class="header-left">
+          <app-icon name="activity" [size]="16" />
+          <span class="title">Sinais Vitais</span>
+          @if (syncedPatientGender || syncedPatientAge) {
+            <span class="patient-info-inline">
+              @if (syncedPatientGender) {
+                <span>{{ getGenderLabel(syncedPatientGender) }}</span>
+              }
+              @if (syncedPatientGender && syncedPatientAge) {
+                <span class="sep">•</span>
+              }
+              @if (syncedPatientAge) {
+                <span>{{ syncedPatientAge }} anos</span>
+              }
+            </span>
           }
         </div>
-      }
+        <span class="connection-indicator" [class.connected]="isConnected">
+          <span class="indicator-dot"></span>
+          {{ isConnected ? 'Sincronizado' : 'Aguardando' }}
+        </span>
+      </div>
 
       @if (!hasAnyData) {
         <div class="waiting-state">
           <div class="waiting-icon">
-            <app-icon name="bluetooth" [size]="48" />
+            <app-icon name="bluetooth" [size]="32" />
           </div>
-          <h5>Aguardando dados do paciente...</h5>
-          <p>Os sinais vitais aparecerão aqui quando o paciente conectar os dispositivos</p>
+          <p>Aguardando dados do paciente...</p>
         </div>
       } @else {
-        <div class="vitals-grid">
+        <div class="vitals-grid compact">
           @if (vitals['spo2']) {
-            <div class="vital-card spo2" [class]="getStatusClass(vitals['spo2'])">
-              <div class="vital-icon">
-                <app-icon name="droplet" [size]="20" />
+            <div class="vital-card" [class]="getStatusClass(vitals['spo2'])">
+              <div class="vital-icon spo2">
+                <app-icon name="droplet" [size]="16" />
               </div>
               <div class="vital-info">
-                <span class="vital-label">SpO₂</span>
+                <span class="vital-label">SPO₂</span>
                 <span class="vital-value">{{ vitals['spo2'].value }}<small>{{ vitals['spo2'].unit }}</small></span>
               </div>
               <div class="vital-indicator" [class]="vitals['spo2'].status"></div>
@@ -78,12 +73,12 @@ interface VitalDisplay {
           }
 
           @if (vitals['pulseRate']) {
-            <div class="vital-card pulse" [class]="getStatusClass(vitals['pulseRate'])">
-              <div class="vital-icon pulse-animation">
-                <app-icon name="heart" [size]="20" />
+            <div class="vital-card" [class]="getStatusClass(vitals['pulseRate'])">
+              <div class="vital-icon pulse">
+                <app-icon name="heart" [size]="16" />
               </div>
               <div class="vital-info">
-                <span class="vital-label">Freq. Cardíaca</span>
+                <span class="vital-label">FREQ. CARDÍACA</span>
                 <span class="vital-value">{{ vitals['pulseRate'].value }}<small>{{ vitals['pulseRate'].unit }}</small></span>
               </div>
               <div class="vital-indicator" [class]="vitals['pulseRate'].status"></div>
@@ -91,12 +86,12 @@ interface VitalDisplay {
           }
 
           @if (vitals['temperature']) {
-            <div class="vital-card temp" [class]="getStatusClass(vitals['temperature'])">
-              <div class="vital-icon">
-                <app-icon name="thermometer" [size]="20" />
+            <div class="vital-card" [class]="getStatusClass(vitals['temperature'])">
+              <div class="vital-icon temp">
+                <app-icon name="thermometer" [size]="16" />
               </div>
               <div class="vital-info">
-                <span class="vital-label">Temperatura</span>
+                <span class="vital-label">TEMPERATURA</span>
                 <span class="vital-value">{{ vitals['temperature'].value }}<small>{{ vitals['temperature'].unit }}</small></span>
               </div>
               <div class="vital-indicator" [class]="vitals['temperature'].status"></div>
@@ -104,12 +99,12 @@ interface VitalDisplay {
           }
 
           @if (vitals['bloodPressure']) {
-            <div class="vital-card bp" [class]="getStatusClass(vitals['bloodPressure'])">
-              <div class="vital-icon">
-                <app-icon name="activity" [size]="20" />
+            <div class="vital-card" [class]="getStatusClass(vitals['bloodPressure'])">
+              <div class="vital-icon bp">
+                <app-icon name="activity" [size]="16" />
               </div>
               <div class="vital-info">
-                <span class="vital-label">Pressão Arterial</span>
+                <span class="vital-label">PRESSÃO ARTERIAL</span>
                 <span class="vital-value">{{ vitals['bloodPressure'].value }}<small>{{ vitals['bloodPressure'].unit }}</small></span>
               </div>
               <div class="vital-indicator" [class]="vitals['bloodPressure'].status"></div>
@@ -117,33 +112,33 @@ interface VitalDisplay {
           }
 
           @if (vitals['weight']) {
-            <div class="vital-card weight">
-              <div class="vital-icon">
-                <app-icon name="box" [size]="20" />
+            <div class="vital-card">
+              <div class="vital-icon weight">
+                <app-icon name="box" [size]="16" />
               </div>
               <div class="vital-info">
-                <span class="vital-label">Peso</span>
+                <span class="vital-label">PESO</span>
                 <span class="vital-value">{{ vitals['weight'].value }}<small>{{ vitals['weight'].unit }}</small></span>
               </div>
             </div>
           }
 
           @if (vitals['height']) {
-            <div class="vital-card height">
-              <div class="vital-icon">
-                <app-icon name="maximize" [size]="20" />
+            <div class="vital-card">
+              <div class="vital-icon height">
+                <app-icon name="maximize" [size]="16" />
               </div>
               <div class="vital-info">
-                <span class="vital-label">Altura</span>
+                <span class="vital-label">ALTURA</span>
                 <span class="vital-value">{{ vitals['height'].value }}<small>{{ vitals['height'].unit }}</small></span>
               </div>
             </div>
           }
 
           @if (imc) {
-            <div class="vital-card imc" [class]="getImcStatusClass()">
-              <div class="vital-icon">
-                <app-icon name="scale" [size]="20" />
+            <div class="vital-card" [class]="getImcStatusClass()">
+              <div class="vital-icon imc">
+                <app-icon name="scale" [size]="16" />
               </div>
               <div class="vital-info">
                 <span class="vital-label">IMC</span>
@@ -156,23 +151,21 @@ interface VitalDisplay {
         </div>
 
         <!-- Botão Análise IA -->
-        @if (hasAnyData) {
-          <div class="ai-analysis-section">
-            <button class="btn-ai-analysis" (click)="openAIAnalysis()" [disabled]="isAnalyzing">
-              @if (isAnalyzing) {
-                <app-icon name="loader" [size]="16" class="spin" />
-                <span>Analisando...</span>
-              } @else {
-                <app-icon name="sparkles" [size]="16" />
-                <span>Análise IA dos Sinais Vitais</span>
-              }
-            </button>
-          </div>
-        }
+        <div class="ai-analysis-section">
+          <button class="btn-ai-analysis" (click)="openAIAnalysis()" [disabled]="isAnalyzing">
+            @if (isAnalyzing) {
+              <app-icon name="loader" [size]="14" class="spin" />
+              <span>Analisando...</span>
+            } @else {
+              <app-icon name="sparkles" [size]="14" />
+              <span>Análise IA dos Sinais Vitais</span>
+            }
+          </button>
+        </div>
 
         @if (lastUpdate) {
           <div class="last-update">
-            <app-icon name="clock" [size]="14" />
+            <app-icon name="clock" [size]="12" />
             Última atualização: {{ formatTime(lastUpdate) }}
           </div>
         }
@@ -227,38 +220,58 @@ interface VitalDisplay {
   `,
   styles: [`
     .vital-signs-panel {
-      padding: 16px;
+      padding: 12px;
       height: 100%;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
     .panel-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
 
-      h4 {
+      .header-left {
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin: 0;
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--text-primary);
+        gap: 6px;
+        
+        .title {
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text-primary);
+        }
+
+        .patient-info-inline {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 12px;
+          color: #0369a1;
+          background: #e0f2fe;
+          padding: 2px 8px;
+          border-radius: 10px;
+          margin-left: 6px;
+
+          .sep {
+            color: #7dd3fc;
+          }
+        }
       }
 
       .connection-indicator {
         display: flex;
         align-items: center;
-        gap: 6px;
-        font-size: 12px;
+        gap: 4px;
+        font-size: 11px;
         color: var(--text-secondary);
 
         .indicator-dot {
-          width: 8px;
-          height: 8px;
+          width: 6px;
+          height: 6px;
           border-radius: 50%;
           background: var(--color-secondary);
         }
@@ -274,32 +287,6 @@ interface VitalDisplay {
       }
     }
 
-    .patient-info-banner {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
-      border: 1px solid #bae6fd;
-      border-radius: 8px;
-      padding: 10px 14px;
-      margin-bottom: 16px;
-      font-size: 13px;
-      color: #0369a1;
-
-      .patient-info-label {
-        font-weight: 600;
-      }
-
-      .patient-info-value {
-        font-weight: 500;
-        color: #0c4a6e;
-      }
-
-      .patient-info-separator {
-        color: #7dd3fc;
-      }
-    }
-
     .waiting-state {
       flex: 1;
       display: flex;
@@ -307,59 +294,44 @@ interface VitalDisplay {
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 40px 20px;
+      padding: 20px;
       color: var(--text-secondary);
 
       .waiting-icon {
-        width: 80px;
-        height: 80px;
+        width: 60px;
+        height: 60px;
         display: flex;
         align-items: center;
         justify-content: center;
         background: var(--bg-secondary);
         border-radius: 50%;
-        margin-bottom: 16px;
+        margin-bottom: 12px;
         animation: waiting-pulse 2s infinite;
-      }
-
-      h5 {
-        margin: 0 0 8px 0;
-        font-size: 16px;
-        color: var(--text-primary);
       }
 
       p {
         margin: 0;
-        font-size: 13px;
-        max-width: 280px;
+        font-size: 12px;
       }
     }
 
-    .vitals-grid {
+    .vitals-grid.compact {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
       flex: 1;
+      align-content: start;
     }
 
     .vital-card {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 12px 14px;
+      gap: 8px;
+      padding: 8px 10px;
       background: var(--bg-secondary);
-      border-radius: 12px;
-      border-left: 3px solid transparent;
+      border-radius: 8px;
       position: relative;
       transition: all 0.3s ease;
-
-      &.spo2 { border-left-color: #3b82f6; }
-      &.pulse { border-left-color: #ef4444; }
-      &.temp { border-left-color: #f97316; }
-      &.bp { border-left-color: #10b981; }
-      &.weight { border-left-color: #8b5cf6; }
-      &.height { border-left-color: #06b6d4; }
-      &.imc { border-left-color: #ec4899; }
 
       &.warning {
         background: var(--bg-warning-subtle);
@@ -367,54 +339,57 @@ interface VitalDisplay {
 
       &.critical {
         background: var(--bg-danger-subtle);
-        animation: critical-pulse 1s infinite;
       }
 
       .vital-icon {
-        width: 40px;
-        height: 40px;
+        width: 28px;
+        height: 28px;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--bg-tertiary);
-        border-radius: 10px;
-
-        &.pulse-animation {
-          animation: heartbeat 1s infinite;
-        }
+        border-radius: 6px;
+        
+        &.spo2 { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+        &.pulse { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        &.temp { background: rgba(249, 115, 22, 0.15); color: #f97316; }
+        &.bp { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+        &.weight { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
+        &.height { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
+        &.imc { background: rgba(236, 72, 153, 0.15); color: #ec4899; }
       }
 
       .vital-info {
         flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 1px;
+        min-width: 0;
 
         .vital-label {
-          font-size: 11px;
+          font-size: 9px;
           color: var(--text-secondary);
           text-transform: uppercase;
           letter-spacing: 0.3px;
-          font-weight: 500;
+          font-weight: 600;
         }
 
         .vital-value {
-          font-size: 20px;
-          font-weight: 600;
+          font-size: 18px;
+          font-weight: 700;
           color: var(--text-primary);
-          line-height: 1.2;
+          line-height: 1.1;
           font-variant-numeric: tabular-nums;
 
           small {
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 400;
-            margin-left: 2px;
+            margin-left: 1px;
             color: var(--text-tertiary);
           }
         }
 
         .imc-classification {
-          font-size: 10px;
+          font-size: 9px;
           color: var(--text-secondary);
           font-weight: 500;
         }
@@ -422,10 +397,10 @@ interface VitalDisplay {
 
       .vital-indicator {
         position: absolute;
-        top: 8px;
-        right: 8px;
-        width: 10px;
-        height: 10px;
+        top: 6px;
+        right: 6px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
 
         &.normal { background: #10b981; }
@@ -434,16 +409,47 @@ interface VitalDisplay {
       }
     }
 
+    .ai-analysis-section {
+      margin-top: 10px;
+      flex-shrink: 0;
+
+      .btn-ai-analysis {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 10px 16px;
+        background: linear-gradient(135deg, #0ea5e9 0%, #3b82f6 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+        }
+
+        &:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+      }
+    }
+
     .last-update {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border-color);
-      font-size: 12px;
+      gap: 4px;
+      margin-top: 8px;
+      font-size: 10px;
       color: var(--text-secondary);
+      flex-shrink: 0;
     }
 
     .medical-analysis {

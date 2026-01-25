@@ -100,49 +100,6 @@ import { TeleconsultationRealTimeService } from '@core/services/teleconsultation
           </div>
         </div>
 
-        <!-- Envelope Fonocardiograma - Áudio da Teleconsulta -->
-        <div class="envelope-section">
-          <div class="envelope-header">
-            <h5>
-              <app-icon name="activity" [size]="16" />
-              Fonocardiograma (Áudio Remoto)
-            </h5>
-            <div class="envelope-controls">
-              @if (!isEnvelopeActive) {
-                <button class="btn-envelope-start" (click)="startEnvelopeCapture()">
-                  <app-icon name="play" [size]="14" />
-                  Iniciar
-                </button>
-              } @else {
-                <button class="btn-envelope-stop" (click)="stopEnvelopeCapture()">
-                  <app-icon name="square" [size]="14" />
-                  Parar
-                </button>
-              }
-            </div>
-          </div>
-          <div class="envelope-canvas-container">
-            <canvas #envelopeCanvas width="800" height="200"></canvas>
-            @if (!isEnvelopeActive) {
-              <div class="envelope-placeholder">
-                <app-icon name="heart" [size]="32" />
-                <span>Clique em "Iniciar" para visualizar o fonocardiograma do áudio remoto</span>
-              </div>
-            }
-          </div>
-          <div class="envelope-legend">
-            <span class="legend-item">
-              <span class="legend-dot s1"></span> S1 (Tum)
-            </span>
-            <span class="legend-item">
-              <span class="legend-dot s2"></span> S2 (Dum)
-            </span>
-            <span class="bpm-display" *ngIf="envelopeBPM > 0">
-              ❤️ {{ envelopeBPM }} BPM (estimado)
-            </span>
-          </div>
-        </div>
-
         <!-- Status de Conexão -->
         @if (isOperator && isCapturing) {
           <div class="connection-status">
@@ -151,20 +108,7 @@ import { TeleconsultationRealTimeService } from '@core/services/teleconsultation
           </div>
         }
 
-        <!-- DEBUG LOG - ÁREA VISÍVEL -->
-        <div class="debug-area">
-          <div class="debug-header">
-            <strong>🔧 DEBUG LOG (copie e envie para análise):</strong>
-            <button class="btn-copy" (click)="copyDebugLog()">📋 Copiar</button>
-            <button class="btn-clear" (click)="clearDebugLog()">🗑️ Limpar</button>
-          </div>
-          <textarea 
-            class="debug-log" 
-            readonly 
-            [value]="debugLogText"
-            #debugTextarea
-          ></textarea>
-        </div>
+
       </div>
     </div>
   `,
@@ -792,13 +736,14 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
     const ctx = this.ctx;
     const width = canvas.width;
     const height = canvas.height;
+    const baseline = height / 2;
 
-    // Limpar completamente (sem fade para ECG mais limpo)
-    ctx.fillStyle = '#0a0a14';
+    // Limpar com fundo escuro estilo monitor médico
+    ctx.fillStyle = 'rgb(10, 10, 20)';
     ctx.fillRect(0, 0, width, height);
 
-    // Desenhar grade
-    ctx.strokeStyle = 'rgba(34, 197, 94, 0.1)';
+    // Desenhar grade de fundo
+    ctx.strokeStyle = 'rgba(34, 197, 94, 0.08)';
     ctx.lineWidth = 0.5;
     for (let y = 0; y < height; y += 20) {
       ctx.beginPath();
@@ -816,61 +761,122 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
       ctx.stroke();
     }
 
-    // Desenhar linha central
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    // Desenhar linha base central
+    ctx.strokeStyle = 'rgba(34, 197, 94, 0.3)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(0, height / 2);
-    ctx.lineTo(width, height / 2);
+    ctx.moveTo(0, baseline);
+    ctx.lineTo(width, baseline);
     ctx.stroke();
 
-    if (this.waveformHistory.length === 0) {
-      // Mostrar linha plana quando não há dados
+    // ========== USAR DADOS REAIS DO WAVEFORM HISTORY ==========
+    
+    // Se não há dados, mostrar linha plana
+    if (this.waveformHistory.length === 0 || !this.isReceiving) {
       ctx.strokeStyle = 'rgba(34, 197, 94, 0.3)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(0, height / 2);
-      ctx.lineTo(width, height / 2);
+      ctx.moveTo(0, baseline);
+      ctx.lineTo(width, baseline);
       ctx.stroke();
       return;
     }
 
-    // Flatten todos os pontos
+    // Flatten todos os pontos de waveform em um array contínuo
     const flatData = this.waveformHistory.flat();
     if (flatData.length === 0) return;
 
-    // Desenhar forma de onda com scrolling
+    // Calcular o offset baseado no tempo para scroll contínuo
+    const now = performance.now();
+    const pixelsPerSecond = 100; // Velocidade mais lenta para melhor visualização
+    const timeOffset = (now / 1000) * pixelsPerSecond;
+    
+    // Calcular quantos pontos de dados correspondem a um pixel
+    const totalDataPoints = flatData.length;
+    const dataPointsPerPixel = Math.max(1, totalDataPoints / width);
+    
+    // Offset do scroll no array de dados
+    const scrollDataOffset = Math.floor((timeOffset * dataPointsPerPixel) / pixelsPerSecond);
+
+    // Encontrar min/max para normalização dinâmica
+    let minVal = Infinity, maxVal = -Infinity;
+    for (const val of flatData) {
+      if (val < minVal) minVal = val;
+      if (val > maxVal) maxVal = val;
+    }
+    const range = Math.max(0.01, maxVal - minVal);
+    
+    // Calcular média para threshold
+    let sum = 0;
+    for (const val of flatData) {
+      sum += val;
+    }
+    const average = sum / flatData.length;
+
+    // ========== DESENHAR O TRAÇADO COM PICOS DESTACADOS ==========
     ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
 
-    // Calcular quantos pontos cabem na tela
-    const pointsPerPixel = flatData.length / width;
-    const scrolledPoints = Math.floor(this.scrollOffset * pointsPerPixel) % flatData.length;
+    let firstPoint = true;
+    let prevY = baseline;
+    
+    // Threshold: valores abaixo ficam na linha base
+    const noiseThreshold = 0.25; // 25% da amplitude máxima é considerado ruído
+    
+    // Fator de amplificação dos picos
+    const peakAmplification = 0.55; // Maior altura dos picos
 
     for (let x = 0; x < width; x++) {
-      const dataIndex = (x + scrolledPoints) % flatData.length;
-      const value = flatData[dataIndex] || 0;
-      const y = height / 2 - value * height * 2.5;
-
-      if (x === 0) {
-        ctx.moveTo(x, y);
+      // Calcular índice no array de dados com wrap-around
+      const dataIndex = (Math.floor(x * dataPointsPerPixel) + scrollDataOffset) % totalDataPoints;
+      const rawValue = flatData[dataIndex] || 0;
+      
+      // Normalizar valor para 0 a 1
+      const normalized = (rawValue - minVal) / range;
+      
+      // Aplicar threshold: se abaixo do limiar, fica na linha base
+      let amplitude = 0;
+      if (normalized > noiseThreshold) {
+        // Acima do threshold: amplificar o pico
+        // Remapear de [threshold, 1] para [0, 1] e depois amplificar
+        const peakValue = (normalized - noiseThreshold) / (1 - noiseThreshold);
+        amplitude = Math.pow(peakValue, 0.7) * peakAmplification; // Curva para destacar picos
+      }
+      
+      // Calcular posição Y (picos vão para cima)
+      const targetY = baseline - (amplitude * height);
+      
+      // Suavização leve para transições naturais
+      const smoothingFactor = 0.4;
+      const smoothedY = prevY + (targetY - prevY) * (1 - smoothingFactor);
+      prevY = smoothedY;
+      
+      if (firstPoint) {
+        ctx.moveTo(x, smoothedY);
+        firstPoint = false;
       } else {
-        ctx.lineTo(x, y);
+        ctx.lineTo(x, smoothedY);
       }
     }
     ctx.stroke();
 
-    // Glow effect
+    // Glow effect para visual de monitor
     ctx.shadowColor = '#22c55e';
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 10;
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Linha de scan (indicador de posição atual)
-    const scanX = (this.scrollOffset % width);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-    ctx.lineWidth = 2;
+    // Indicador de posição atual (linha de scan vertical)
+    const scanX = (timeOffset % width);
+    
+    // Apagar área à frente do scan (efeito de "limpeza")
+    ctx.fillStyle = 'rgb(10, 10, 20)';
+    ctx.fillRect(scanX, 0, 25, height);
+    
+    // Linha de scan
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(scanX, 0);
     ctx.lineTo(scanX, height);
