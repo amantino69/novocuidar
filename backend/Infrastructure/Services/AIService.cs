@@ -98,6 +98,82 @@ public class AIService : IAIService
         return true;
     }
 
+    public async Task<AnalyzeVitalsResponseDto> AnalyzeVitalsAsync(AnalyzeVitalsRequestDto request)
+    {
+        var prompt = BuildVitalsAnalysisPrompt(request);
+        var response = await CallDeepSeekAPIAsync(prompt);
+        
+        return new AnalyzeVitalsResponseDto
+        {
+            Analysis = response,
+            GeneratedAt = DateTime.UtcNow
+        };
+    }
+
+    private string BuildVitalsAnalysisPrompt(AnalyzeVitalsRequestDto request)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Analise os seguintes SINAIS VITAIS de um paciente e forneça uma avaliação clínica concisa:");
+        sb.AppendLine();
+
+        // Dados demográficos do paciente
+        if (!string.IsNullOrEmpty(request.PatientName))
+            sb.AppendLine($"Paciente: {request.PatientName}");
+        if (request.PatientAge.HasValue)
+            sb.AppendLine($"Idade: {request.PatientAge} anos");
+        if (!string.IsNullOrEmpty(request.PatientGender))
+        {
+            var genderLabel = request.PatientGender switch
+            {
+                "M" => "Masculino",
+                "F" => "Feminino",
+                "O" => "Outro",
+                _ => request.PatientGender
+            };
+            sb.AppendLine($"Sexo: {genderLabel}");
+        }
+        sb.AppendLine();
+
+        sb.AppendLine("=== SINAIS VITAIS ===");
+        var bio = request.Biometrics;
+        if (bio != null)
+        {
+            if (bio.OxygenSaturation.HasValue)
+                sb.AppendLine($"SpO₂: {bio.OxygenSaturation}%");
+            if (bio.HeartRate.HasValue)
+                sb.AppendLine($"Frequência Cardíaca: {bio.HeartRate} bpm");
+            if (bio.BloodPressureSystolic.HasValue && bio.BloodPressureDiastolic.HasValue)
+                sb.AppendLine($"Pressão Arterial: {bio.BloodPressureSystolic}/{bio.BloodPressureDiastolic} mmHg");
+            if (bio.Temperature.HasValue)
+                sb.AppendLine($"Temperatura: {bio.Temperature}°C");
+            if (bio.RespiratoryRate.HasValue)
+                sb.AppendLine($"Frequência Respiratória: {bio.RespiratoryRate} rpm");
+            if (bio.Weight.HasValue)
+                sb.AppendLine($"Peso: {bio.Weight} kg");
+            if (bio.Height.HasValue)
+                sb.AppendLine($"Altura: {bio.Height} cm");
+            if (bio.Weight.HasValue && bio.Height.HasValue && bio.Height > 0)
+            {
+                var heightM = bio.Height.Value / 100m;
+                var imc = bio.Weight.Value / (heightM * heightM);
+                sb.AppendLine($"IMC calculado: {imc:F1} kg/m²");
+            }
+            if (bio.Glucose.HasValue)
+                sb.AppendLine($"Glicemia: {bio.Glucose} mg/dL");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine(@"Por favor, forneça uma análise médica CONCISA (máximo 200 palavras) incluindo:
+1. **Resumo Geral**: Avaliação geral dos sinais vitais
+2. **Alertas**: Valores fora da normalidade que requerem atenção (se houver)
+3. **IMC**: Classificação e considerações (se peso e altura disponíveis)
+4. **Recomendações**: Sugestões breves para o médico
+
+IMPORTANTE: Esta é uma análise de apoio. O médico responsável deve validar todas as conclusões.");
+
+        return sb.ToString();
+    }
+
     private async Task SaveSummaryToAppointment(Guid appointmentId, string summary)
     {
         var appointment = await _context.Appointments.FindAsync(appointmentId);

@@ -149,18 +149,25 @@ import { environment } from '@env/environment';
           </button>
         </div>
 
-        <!-- Peso (Balança) -->
+        <!-- Peso e Altura -->
         <div class="vital-card">
           <div class="vital-icon weight">
             <app-icon name="scale" [size]="24" />
           </div>
           <div class="vital-fields">
             <div class="field-row">
-              <div class="field-group full">
+              <div class="field-group">
                 <label>Peso</label>
                 <div class="input-wrapper">
                   <input type="number" formControlName="weight" placeholder="--" min="0" max="500" step="0.1">
                   <span class="unit">kg</span>
+                </div>
+              </div>
+              <div class="field-group">
+                <label>Altura</label>
+                <div class="input-wrapper">
+                  <input type="number" formControlName="height" placeholder="--" min="0" max="300">
+                  <span class="unit">cm</span>
                 </div>
               </div>
             </div>
@@ -499,7 +506,8 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
       systolic: [null],
       diastolic: [null],
       temperature: [null],
-      weight: [null]
+      weight: [null],
+      height: [null]
     });
   }
 
@@ -570,7 +578,8 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
           systolic: data.bloodPressureSystolic,
           diastolic: data.bloodPressureDiastolic,
           temperature: data.temperature,
-          weight: data.weight
+          weight: data.weight,
+          height: data.height
         }, { emitEvent: false }); // Não dispara envio automático ao carregar
         
         if (data.lastUpdated) {
@@ -709,7 +718,8 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy {
       bloodPressureSystolic: formValues.systolic ? Number(formValues.systolic) : null,
       bloodPressureDiastolic: formValues.diastolic ? Number(formValues.diastolic) : null,
       temperature: formValues.temperature ? Number(formValues.temperature) : null,
-      weight: formValues.weight ? Number(formValues.weight) : null
+      weight: formValues.weight ? Number(formValues.weight) : null,
+      height: formValues.height ? Number(formValues.height) : null
     };
 
     // 1. Envia IMEDIATAMENTE via SignalR (instantâneo para o médico)

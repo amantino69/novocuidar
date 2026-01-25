@@ -4,6 +4,7 @@ import { Subscription } from 'rxjs';
 
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { MedicalDevicesSyncService } from '@app/core/services/medical-devices-sync.service';
+import { Appointment } from '@core/services/appointments.service';
 
 // Componentes do paciente/operador
 import { DeviceConnectionPanelComponent } from './components/device-connection-panel';
@@ -54,6 +55,7 @@ type SubTab = 'vitals' | 'auscultation' | 'exam';
           <!-- Interface do Médico (quem recebe os dados) -->
           <app-vital-signs-panel
             [appointmentId]="appointmentId"
+            [appointment]="appointment"
             [userrole]="userrole">
           </app-vital-signs-panel>
         }
@@ -208,6 +210,7 @@ type SubTab = 'vitals' | 'auscultation' | 'exam';
 })
 export class MedicalDevicesTabComponent implements OnInit, OnDestroy {
   @Input() appointmentId: string | null = null;
+  @Input() appointment: Appointment | null = null;
   @Input() userrole: string = '';
 
   activeSubTab: SubTab = 'vitals';

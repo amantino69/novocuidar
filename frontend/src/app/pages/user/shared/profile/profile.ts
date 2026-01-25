@@ -62,7 +62,8 @@ export class ProfileComponent implements OnInit {
       name: updatedUser.name,
       lastName: updatedUser.lastName,
       phone: updatedUser.phone,
-      avatar: updatedUser.avatar
+      avatar: updatedUser.avatar,
+      patientProfile: updatedUser.patientProfile
     };
 
     this.usersService.updateUser(this.user.id, updateDto).subscribe({
@@ -168,6 +169,16 @@ export class ProfileComponent implements OnInit {
       inactive: 'Inativo'
     };
     return labels[status] || status;
+  }
+
+  getGenderLabel(gender: string | undefined): string {
+    if (!gender) return 'Não informado';
+    const labels: Record<string, string> = {
+      'M': 'Masculino',
+      'F': 'Feminino',
+      'O': 'Outro'
+    };
+    return labels[gender] || gender;
   }
 
   onChangePassword(): void {

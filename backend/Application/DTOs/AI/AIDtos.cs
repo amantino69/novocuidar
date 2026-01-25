@@ -181,3 +181,17 @@ public class SaveAIDataDto
     public string? Summary { get; set; }
     public string? DiagnosticHypothesis { get; set; }
 }
+
+public class AnalyzeVitalsRequestDto
+{
+    public BiometricsDataDto? Biometrics { get; set; }
+    public string? PatientName { get; set; }
+    public int? PatientAge { get; set; }
+    public string? PatientGender { get; set; }
+}
+
+public class AnalyzeVitalsResponseDto
+{
+    public string Analysis { get; set; } = string.Empty;
+    public DateTime GeneratedAt { get; set; }
+}

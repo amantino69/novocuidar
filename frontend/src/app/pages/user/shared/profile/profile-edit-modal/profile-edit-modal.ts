@@ -4,7 +4,7 @@ import { IconComponent } from '@app/shared/components/atoms/icon/icon';
 import { ButtonComponent } from '@app/shared/components/atoms/button/button';
 import { AvatarUploadComponent } from '@app/shared/components/molecules/avatar-upload/avatar-upload';
 import { PhoneMaskDirective } from '@app/core/directives/phone-mask.directive';
-import { User } from '@app/core/services/users.service';
+import { User, CreateUpdatePatientProfile } from '@app/core/services/users.service';
 
 @Component({
   selector: 'app-profile-edit-modal',
@@ -21,11 +21,27 @@ export class ProfileEditModalComponent implements OnChanges {
   @Output() changeEmail = new EventEmitter<void>();
 
   editedUser: Partial<User> = {};
+  
+  // Campos do perfil do paciente
+  patientGender: string = '';
+  patientBirthDate: string = '';
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['user'] && this.user) {
       this.editedUser = { ...this.user };
+      
+      // Carrega dados do perfil do paciente
+      if (this.user.patientProfile) {
+        this.patientGender = this.user.patientProfile.gender || '';
+        this.patientBirthDate = this.user.patientProfile.birthDate 
+          ? this.user.patientProfile.birthDate.split('T')[0] 
+          : '';
+      }
     }
+  }
+
+  get isPatient(): boolean {
+    return this.user?.role === 'PATIENT';
   }
 
   onBackdropClick(): void {
@@ -38,6 +54,15 @@ export class ProfileEditModalComponent implements OnChanges {
 
   onSave(): void {
     if (this.editedUser && this.isFormValid()) {
+      // Inclui dados do perfil do paciente se for paciente
+      if (this.isPatient) {
+        const patientProfile: CreateUpdatePatientProfile = {
+          ...(this.editedUser.patientProfile || {}),
+          gender: this.patientGender || undefined,
+          birthDate: this.patientBirthDate || undefined
+        };
+        this.editedUser.patientProfile = patientProfile;
+      }
       this.save.emit(this.editedUser);
     }
   }

@@ -219,6 +219,18 @@
       }
     }
   }
+
+  &__section-title {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-top: $spacing-md;
+    padding-top: $spacing-lg;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: #3b82f6;
+  }
 }
 
 @keyframes fadeIn {

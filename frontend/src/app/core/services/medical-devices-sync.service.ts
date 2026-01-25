@@ -16,6 +16,7 @@ export interface VitalSignsData {
     pulseRate?: number;
     temperature?: number;
     weight?: number;
+    height?: number;
     systolic?: number;
     diastolic?: number;
     heartRate?: number;

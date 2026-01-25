@@ -33,6 +33,21 @@
               <p>{{ patientData.name }} {{ patientData.lastName }}</p>
             </div>
             <div class="info-item">
+              <label>Sexo</label>
+              <p>{{ getGenderLabel(patientData.patientProfile?.gender) }}</p>
+            </div>
+            <div class="info-item">
+              <label>Data de Nascimento</label>
+              <p>
+                @if (patientData.patientProfile?.birthDate) {
+                  {{ patientData.patientProfile?.birthDate | date:'dd/MM/yyyy':'':'pt-BR' }}
+                  ({{ getAge(patientData.patientProfile?.birthDate) }} anos)
+                } @else {
+                  Não informado
+                }
+              </p>
+            </div>
+            <div class="info-item">
               <label>CPF</label>
               <p>{{ patientData.cpf }}</p>
             </div>

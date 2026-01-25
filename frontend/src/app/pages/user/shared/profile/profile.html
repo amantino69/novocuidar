@@ -59,6 +59,16 @@
               <span class="profile__field-label">Telefone</span>
               <span class="profile__field-value">{{ user.phone }}</span>
             </div>
+            @if (user.role === 'PATIENT' && user.patientProfile) {
+              <div class="profile__field">
+                <span class="profile__field-label">Sexo</span>
+                <span class="profile__field-value">{{ getGenderLabel(user.patientProfile.gender) }}</span>
+              </div>
+              <div class="profile__field">
+                <span class="profile__field-label">Data de Nascimento</span>
+                <span class="profile__field-value">{{ user.patientProfile.birthDate | date:'dd/MM/yyyy' }}</span>
+              </div>
+            }
           </div>
         </div>
 

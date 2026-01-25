@@ -86,6 +86,7 @@
     <div class="tab-content" *ngIf="activeTab === 'Sinais' || activeTab === 'Sinais Vitais'" style="height: 100%">
       <app-medical-devices-tab
         [appointmentId]="appointmentId"
+        [appointment]="appointment"
         [userrole]="userrole">
       </app-medical-devices-tab>
     </div>
@@ -132,6 +133,7 @@
     <div class="tab-content" *ngIf="activeTab === 'Dispositivos Médicos'" style="height: 100%">
       <app-medical-devices-tab
         [appointmentId]="appointmentId"
+        [appointment]="appointment"
         [userrole]="userrole">
       </app-medical-devices-tab>
     </div>

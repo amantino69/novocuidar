@@ -68,4 +68,14 @@ export class PatientDataTabComponent implements OnInit, OnChanges {
     if (!phone) return 'Não informado';
     return phone;
   }
+
+  getGenderLabel(gender: string | undefined): string {
+    if (!gender) return 'Não informado';
+    switch (gender) {
+      case 'M': return 'Masculino';
+      case 'F': return 'Feminino';
+      case 'O': return 'Outro';
+      default: return gender;
+    }
+  }
 }

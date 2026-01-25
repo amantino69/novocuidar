@@ -113,6 +113,42 @@
               />
             </div>
           </div>
+
+          <!-- Campos adicionais para Pacientes -->
+          @if (isPatient) {
+            <div class="user-form__section-title">
+              <app-icon name="heart" [size]="18" />
+              <span>Dados de Saúde</span>
+            </div>
+
+            <div class="user-form__row">
+              <div class="user-form__field">
+                <label for="profile-gender" class="user-form__label">Sexo</label>
+                <select
+                  id="profile-gender"
+                  class="user-form__input"
+                  [(ngModel)]="patientGender"
+                  name="gender"
+                >
+                  <option value="">Selecione...</option>
+                  <option value="M">Masculino</option>
+                  <option value="F">Feminino</option>
+                  <option value="O">Outro</option>
+                </select>
+              </div>
+
+              <div class="user-form__field">
+                <label for="profile-birthdate" class="user-form__label">Data de Nascimento</label>
+                <input
+                  id="profile-birthdate"
+                  type="date"
+                  class="user-form__input"
+                  [(ngModel)]="patientBirthDate"
+                  name="birthDate"
+                />
+              </div>
+            </div>
+          }
         </form>
       </div>
 

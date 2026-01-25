@@ -86,4 +86,25 @@ public class AIController : ControllerBase
 
         return Ok(new { message = "Dados de IA salvos com sucesso" });
     }
+
+    /// <summary>
+    /// Analisa sinais vitais usando IA DeepSeek
+    /// </summary>
+    [HttpPost("analyze-vitals")]
+    public async Task<ActionResult<AnalyzeVitalsResponseDto>> AnalyzeVitals([FromBody] AnalyzeVitalsRequestDto request)
+    {
+        try
+        {
+            var result = await _aiService.AnalyzeVitalsAsync(request);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(503, new { message = "Erro ao comunicar com o serviço de IA: " + ex.Message });
+        }
+    }
 }

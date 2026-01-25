@@ -51,11 +51,8 @@ RUN adduser -D -s /bin/sh appuser
 COPY package*.json ./
 RUN npm ci --omit=dev --legacy-peer-deps && npm cache clean --force
 
-# Copiar build de produção (do novo caminho)
-COPY --from=build /telecuidar/frontend/dist/frontend ./dist
-
-# Ajustar permissões
-RUN chown -R appuser:appuser /app
+# Copiar build de produção (do novo caminho) com permissões corretas
+COPY --from=build --chown=appuser:appuser /telecuidar/frontend/dist/frontend ./dist
 
 # Mudar para usuário não-root
 USER appuser

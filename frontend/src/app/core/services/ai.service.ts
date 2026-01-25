@@ -110,6 +110,18 @@ export interface BiometricsData {
   glucose?: number;
 }
 
+export interface AnalyzeVitalsRequest {
+  biometrics?: BiometricsData;
+  patientName?: string;
+  patientAge?: number;
+  patientGender?: string;
+}
+
+export interface AnalyzeVitalsResponse {
+  analysis: string;
+  generatedAt: string;
+}
+
 export interface SoapData {
   subjective?: string;
   objective?: string;
@@ -199,5 +211,12 @@ export class AIService {
    */
   saveAIData(appointmentId: string, data: SaveAIData): Observable<{ message: string }> {
     return this.http.put<{ message: string }>(`${this.apiUrl}/appointment/${appointmentId}`, data);
+  }
+
+  /**
+   * Analisa sinais vitais usando IA
+   */
+  analyzeVitals(request: AnalyzeVitalsRequest): Observable<AnalyzeVitalsResponse> {
+    return this.http.post<AnalyzeVitalsResponse>(`${this.apiUrl}/analyze-vitals`, request);
   }
 }
