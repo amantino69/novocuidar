@@ -38,6 +38,10 @@ export class ReceitaTabComponent implements OnInit, OnDestroy, OnChanges {
   isSaving = false;
   isGeneratingPdf = false;
   
+  // Propriedades de permissão (computadas)
+  isProfessional = false;
+  canEdit = false;
+  
   // Estado do formulário de itens
   showItemForm = false;
   currentPrescriptionId: string | null = null;
@@ -114,6 +118,9 @@ export class ReceitaTabComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   ngOnInit() {
+    // Atualiza permissões imediatamente
+    this.updatePermissions();
+    
     if (this.appointmentId) {
       this.loadPrescriptions();
     }
@@ -134,9 +141,11 @@ export class ReceitaTabComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    // Força atualização da view quando userrole ou readonly mudam
+    // Atualiza permissões quando userrole ou readonly mudam
     if (changes['userrole'] || changes['readonly']) {
-      this.cdr.detectChanges();
+      this.updatePermissions();
+      // Força atualização no próximo ciclo
+      setTimeout(() => this.cdr.detectChanges(), 0);
     }
     
     // Recarrega receitas se o appointmentId mudar
@@ -188,7 +197,8 @@ export class ReceitaTabComponent implements OnInit, OnDestroy, OnChanges {
       next: (prescriptions) => {
         this.prescriptions = prescriptions;
         this.isLoading = false;
-        // Força atualização no próximo ciclo para garantir que botões apareçam
+        // Garante que permissões estejam atualizadas e força re-render
+        this.updatePermissions();
         setTimeout(() => this.cdr.detectChanges(), 0);
       },
       error: (err) => {
@@ -200,12 +210,10 @@ export class ReceitaTabComponent implements OnInit, OnDestroy, OnChanges {
     });
   }
 
-  get isProfessional(): boolean {
-    return this.userrole === 'PROFESSIONAL' || this.userrole === 'ADMIN';
-  }
-
-  get canEdit(): boolean {
-    return this.isProfessional && !this.readonly;
+  // Atualiza permissões baseado no userrole
+  private updatePermissions() {
+    this.isProfessional = this.userrole === 'PROFESSIONAL' || this.userrole === 'ADMIN';
+    this.canEdit = this.isProfessional && !this.readonly;
   }
 
   // === Criação de nova receita ===
