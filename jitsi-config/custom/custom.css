@@ -1,7 +1,9 @@
 ﻿/* TeleCuidar - CSS Customizado para Jitsi Meet */
-/* Remove completamente watermarks, logos e branding do Jitsi */
+/* Remove completamente watermarks, logos, branding e subject do Jitsi */
 
-/* Esconder todas as watermarks */
+/* ========================================
+   WATERMARKS - Ocultar completamente
+   ======================================== */
 .watermark,
 .leftwatermark,
 .rightwatermark,
@@ -52,4 +54,55 @@ img[src*="watermark"],
 div[style*="watermark"] {
     display: none !important;
     visibility: hidden !important;
+}
+
+/* ========================================
+   SUBJECT/TÍTULO DA CONFERÊNCIA - Ocultar
+   (número da sala que aparece no topo)
+   ======================================== */
+.subject,
+.oknj7u-subject,
+.oknj7u-subject-info-container,
+.subject-info-container,
+[class*="subject"],
+[data-testid="subject"],
+.oknj7u > .oknj7u > span,
+.oknj7u > div > span {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* Ocultar container do subject no header */
+.oknj7u.oknj7u-subject-container,
+[class*="subject-container"],
+[class*="SubjectText"] {
+    display: none !important;
+}
+
+/* ========================================
+   HEADER BAR - Ajustes para limpar
+   ======================================== */
+/* Ocultar meeting info/room name no topo */
+.oknj7u-info,
+.oknj7u-info-container,
+.oknj7u-meeting-info,
+[class*="meeting-info"],
+[class*="MeetingInfo"],
+[class*="conference-info"] {
+    display: none !important;
+}
+
+/* Ocultar ícone de cópia de link da sala */
+.oknj7u-copy-meeting,
+[class*="copy-meeting"],
+[data-testid="copy-meeting-link"] {
+    display: none !important;
+}
+
+/* ========================================
+   AJUSTES VISUAIS GERAIS
+   ======================================== */
+/* Dar mais espaço para os participantes no header */
+.oknj7u-conference-header {
+    justify-content: flex-end !important;
 }
