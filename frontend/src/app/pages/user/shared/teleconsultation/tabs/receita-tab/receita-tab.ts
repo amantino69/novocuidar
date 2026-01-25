@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
@@ -28,7 +28,7 @@ import {
   templateUrl: './receita-tab.html',
   styleUrls: ['./receita-tab.scss']
 })
-export class ReceitaTabComponent implements OnInit, OnDestroy {
+export class ReceitaTabComponent implements OnInit, OnDestroy, OnChanges {
   @Input() appointmentId: string | null = null;
   @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' = 'PATIENT';
   @Input() readonly = false;
@@ -133,6 +133,18 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
     });
   }
 
+  ngOnChanges(changes: SimpleChanges) {
+    // Força atualização da view quando userrole ou readonly mudam
+    if (changes['userrole'] || changes['readonly']) {
+      this.cdr.detectChanges();
+    }
+    
+    // Recarrega receitas se o appointmentId mudar
+    if (changes['appointmentId'] && !changes['appointmentId'].firstChange) {
+      this.loadPrescriptions();
+    }
+  }
+
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
@@ -170,11 +182,14 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
     if (!this.appointmentId) return;
 
     this.isLoading = true;
+    this.cdr.detectChanges();
+    
     this.prescriptionService.getPrescriptionsByAppointment(this.appointmentId).subscribe({
       next: (prescriptions) => {
         this.prescriptions = prescriptions;
         this.isLoading = false;
-        this.cdr.detectChanges();
+        // Força atualização no próximo ciclo para garantir que botões apareçam
+        setTimeout(() => this.cdr.detectChanges(), 0);
       },
       error: (err) => {
         console.error('Erro ao carregar receitas:', err);
