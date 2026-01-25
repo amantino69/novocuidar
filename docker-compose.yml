@@ -79,6 +79,8 @@ services:
       - ./jitsi-config/custom/custom-interface_config.js:/usr/share/jitsi-meet/interface_config.js:ro
       - ./jitsi-config/custom/custom-config.js:/defaults/config.js:ro
       - ./jitsi-config/custom/custom.css:/usr/share/jitsi-meet/css/all.css:ro
+      # Substitui a imagem da watermark por uma vazia
+      - ./jitsi-config/custom/watermark.svg:/usr/share/jitsi-meet/images/watermark.svg:ro
     networks:
       meet.jitsi:
         aliases:
