@@ -100,12 +100,12 @@ import { TeleconsultationRealTimeService } from '@core/services/teleconsultation
           </div>
         </div>
 
-        <!-- Envelope Simplificado do Áudio do Sistema -->
+        <!-- Envelope Fonocardiograma - Áudio da Teleconsulta -->
         <div class="envelope-section">
           <div class="envelope-header">
             <h5>
               <app-icon name="activity" [size]="16" />
-              Envelope Fonocardiograma (Áudio do Sistema)
+              Fonocardiograma (Áudio Remoto)
             </h5>
             <div class="envelope-controls">
               @if (!isEnvelopeActive) {
@@ -122,11 +122,11 @@ import { TeleconsultationRealTimeService } from '@core/services/teleconsultation
             </div>
           </div>
           <div class="envelope-canvas-container">
-            <canvas #envelopeCanvas width="600" height="150"></canvas>
+            <canvas #envelopeCanvas width="800" height="200"></canvas>
             @if (!isEnvelopeActive) {
               <div class="envelope-placeholder">
-                <app-icon name="volume-2" [size]="32" />
-                <span>Clique em "Iniciar" para capturar o áudio do sistema</span>
+                <app-icon name="heart" [size]="32" />
+                <span>Clique em "Iniciar" para visualizar o fonocardiograma do áudio remoto</span>
               </div>
             }
           </div>
@@ -138,7 +138,7 @@ import { TeleconsultationRealTimeService } from '@core/services/teleconsultation
               <span class="legend-dot s2"></span> S2 (Dum)
             </span>
             <span class="bpm-display" *ngIf="envelopeBPM > 0">
-              ❤️ {{ envelopeBPM }} BPM
+              ❤️ {{ envelopeBPM }} BPM (estimado)
             </span>
           </div>
         </div>
@@ -597,7 +597,7 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
   s1Amplitude = 0;
   s2Amplitude = 0;
 
-  // Envelope do Áudio do Sistema
+  // Fonocardiograma do Áudio Remoto
   isEnvelopeActive = false;
   envelopeBPM = 0;
   private envelopeCtx: CanvasRenderingContext2D | null = null;
@@ -607,6 +607,8 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
   private dataArray: Uint8Array<ArrayBuffer> | null = null;
   private envelopeHistory: number[] = [];
   private readonly ENVELOPE_HISTORY_SIZE = 300;
+  private lastBeatTime = 0;
+  private peakHistory: { time: number; index: number; amplitude: number }[] = [];
 
   // DEBUG
   debugLogText = '';
@@ -877,55 +879,56 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
 
   // ======== DEBUG METHODS ========
   
-  // ========== ENVELOPE DO ÁUDIO DO SISTEMA ==========
+  // ========== FONOCARDIOGRAMA DO ÁUDIO REMOTO ==========
   
   async startEnvelopeCapture(): Promise<void> {
     if (!this.isBrowser) return;
 
-    this.addDebugLog('ENVELOPE', 'Iniciando captura do áudio do sistema...');
+    this.addDebugLog('ENVELOPE', 'Iniciando captura do áudio remoto...');
 
     try {
-      // Solicita captura do áudio do sistema (compartilhar tela com áudio)
-      const displayStream = await navigator.mediaDevices.getDisplayMedia({
-        video: true, // Precisa de video para funcionar
-        audio: {
-          // @ts-ignore - propriedades específicas do Chrome
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false
-        }
-      });
-
-      // Verifica se tem track de áudio
-      const audioTracks = displayStream.getAudioTracks();
-      if (audioTracks.length === 0) {
-        this.addDebugLog('ENVELOPE', 'ERRO: Nenhuma faixa de áudio. Marque "Compartilhar áudio do sistema".');
-        displayStream.getTracks().forEach(t => t.stop());
+      // Tenta encontrar o elemento de áudio/vídeo do Jitsi
+      let audioElement: HTMLMediaElement | null = null;
+      
+      // Procura por elementos de vídeo/áudio do Jitsi
+      const jitsiFrame = document.querySelector('iframe[src*="meet"]') as HTMLIFrameElement;
+      if (jitsiFrame && jitsiFrame.contentDocument) {
+        audioElement = jitsiFrame.contentDocument.querySelector('audio, video') as HTMLMediaElement;
+      }
+      
+      // Se não encontrar no iframe, procura na página
+      if (!audioElement) {
+        audioElement = document.querySelector('audio[autoplay], video[autoplay]') as HTMLMediaElement;
+      }
+      
+      // Se ainda não encontrar, usa getDisplayMedia como fallback
+      if (!audioElement) {
+        this.addDebugLog('ENVELOPE', 'Elemento de áudio não encontrado. Usando captura do sistema...');
+        await this.startDisplayMediaCapture();
         return;
       }
 
-      this.addDebugLog('ENVELOPE', `Áudio capturado: ${audioTracks[0].label}`);
-
-      // Para o vídeo pois só precisamos do áudio
-      displayStream.getVideoTracks().forEach(t => t.stop());
+      this.addDebugLog('ENVELOPE', `Elemento de áudio encontrado: ${audioElement.tagName}`);
 
       // Cria contexto de áudio
       this.audioContext = new AudioContext();
-      const source = this.audioContext.createMediaStreamSource(
-        new MediaStream(audioTracks)
-      );
+      const source = this.audioContext.createMediaElementSource(audioElement);
       
       // Cria analisador
       this.analyser = this.audioContext.createAnalyser();
-      this.analyser.fftSize = 256;
-      this.analyser.smoothingTimeConstant = 0.8;
+      this.analyser.fftSize = 512;
+      this.analyser.smoothingTimeConstant = 0.85;
+      
+      // Conecta: source -> analyser -> destination (para continuar ouvindo)
       source.connect(this.analyser);
+      this.analyser.connect(this.audioContext.destination);
 
-      // Buffer para dados de frequência
+      // Buffer para dados de frequência (foco em baixas frequências - som cardíaco)
       this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
       
-      // Inicializa histórico
+      // Inicializa histórico de amplitude
       this.envelopeHistory = [];
+      this.peakHistory = [];
 
       // Inicializa canvas
       if (this.envelopeCanvasRef) {
@@ -933,15 +936,70 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
       }
 
       this.isEnvelopeActive = true;
-      this.addDebugLog('ENVELOPE', 'Captura iniciada com sucesso!');
+      this.lastBeatTime = 0;
+      this.addDebugLog('ENVELOPE', 'Captura de áudio remoto iniciada!');
       
-      // Inicia animação do envelope
+      // Inicia animação do fonocardiograma
       this.startEnvelopeAnimation();
       this.cdr.detectChanges();
 
     } catch (error: any) {
       console.error('[Envelope] Erro ao iniciar captura:', error);
-      this.addDebugLog('ENVELOPE', `ERRO: ${error.message || 'Falha ao capturar áudio do sistema'}`);
+      this.addDebugLog('ENVELOPE', `ERRO: ${error.message}`);
+      // Fallback para getDisplayMedia
+      await this.startDisplayMediaCapture();
+    }
+  }
+
+  private async startDisplayMediaCapture(): Promise<void> {
+    try {
+      this.addDebugLog('ENVELOPE', 'Iniciando captura via compartilhamento de tela...');
+      
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: {
+          // @ts-ignore
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        }
+      });
+
+      const audioTracks = displayStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        this.addDebugLog('ENVELOPE', 'ERRO: Marque "Compartilhar áudio do sistema" na janela de compartilhamento.');
+        displayStream.getTracks().forEach(t => t.stop());
+        return;
+      }
+
+      this.addDebugLog('ENVELOPE', `Áudio capturado: ${audioTracks[0].label}`);
+      displayStream.getVideoTracks().forEach(t => t.stop());
+
+      this.audioContext = new AudioContext();
+      const source = this.audioContext.createMediaStreamSource(new MediaStream(audioTracks));
+      
+      this.analyser = this.audioContext.createAnalyser();
+      this.analyser.fftSize = 512;
+      this.analyser.smoothingTimeConstant = 0.85;
+      source.connect(this.analyser);
+
+      this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+      this.envelopeHistory = [];
+      this.peakHistory = [];
+
+      if (this.envelopeCanvasRef) {
+        this.envelopeCtx = this.envelopeCanvasRef.nativeElement.getContext('2d');
+      }
+
+      this.isEnvelopeActive = true;
+      this.lastBeatTime = 0;
+      this.addDebugLog('ENVELOPE', 'Captura iniciada com sucesso!');
+      
+      this.startEnvelopeAnimation();
+      this.cdr.detectChanges();
+
+    } catch (error: any) {
+      this.addDebugLog('ENVELOPE', `ERRO: ${error.message || 'Falha ao capturar áudio'}`);
     }
   }
 
@@ -963,6 +1021,7 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
     this.isEnvelopeActive = false;
     this.envelopeBPM = 0;
     this.envelopeHistory = [];
+    this.peakHistory = [];
     
     this.cdr.detectChanges();
   }
@@ -973,69 +1032,89 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
     const animate = () => {
       if (!this.isEnvelopeActive) return;
       
-      this.drawEnvelope();
+      this.drawPhonocardiogram();
       this.envelopeAnimationId = requestAnimationFrame(animate);
     };
 
     animate();
   }
 
-  private drawEnvelope(): void {
+  private drawPhonocardiogram(): void {
     if (!this.analyser || !this.dataArray || !this.envelopeCtx) return;
 
     const canvas = this.envelopeCanvasRef.nativeElement;
     const ctx = this.envelopeCtx;
     const WIDTH = canvas.width;
     const HEIGHT = canvas.height;
+    const BASELINE = HEIGHT / 2;
 
-    // Obtém dados de frequência do áudio
+    // Obtém dados de frequência (foco em baixas frequências para som cardíaco)
     this.analyser.getByteFrequencyData(this.dataArray);
 
-    // Calcula nível médio (envelope)
-    let sum = 0;
-    for (let i = 0; i < this.dataArray.length; i++) {
-      sum += this.dataArray[i];
+    // Calcula amplitude focando em baixas frequências (20-200 Hz) - som cardíaco
+    let lowFreqSum = 0;
+    const lowFreqBins = Math.floor(this.dataArray.length * 0.15); // ~15% inferiores
+    for (let i = 0; i < lowFreqBins; i++) {
+      lowFreqSum += this.dataArray[i];
     }
-    const average = sum / this.dataArray.length;
-    const level = average / 255; // 0 a 1
+    const amplitude = lowFreqSum / (lowFreqBins * 255); // 0 a 1
 
     // Adiciona ao histórico
-    this.envelopeHistory.push(level);
+    this.envelopeHistory.push(amplitude);
     if (this.envelopeHistory.length > this.ENVELOPE_HISTORY_SIZE) {
       this.envelopeHistory.shift();
     }
 
-    // Limpa o canvas com fundo escuro
-    ctx.fillStyle = '#0a0a14';
+    // Detecta picos (batimentos)
+    this.detectBeats(amplitude);
+
+    // === DESENHO DO FONOCARDIOGRAMA ===
+    
+    // Limpa canvas com fundo escuro estilo monitor médico
+    ctx.fillStyle = 'rgb(10, 15, 12)';
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-    // Desenha grade de fundo
-    ctx.strokeStyle = 'rgba(50, 50, 80, 0.3)';
+    // Grade de fundo
+    ctx.strokeStyle = 'rgba(40, 80, 60, 0.3)';
     ctx.lineWidth = 0.5;
-    for (let i = 0; i < WIDTH; i += 30) {
+    for (let x = 0; x < WIDTH; x += 40) {
       ctx.beginPath();
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i, HEIGHT);
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, HEIGHT);
       ctx.stroke();
     }
-    for (let i = 0; i < HEIGHT; i += 30) {
+    for (let y = 0; y < HEIGHT; y += 40) {
       ctx.beginPath();
-      ctx.moveTo(0, i);
-      ctx.lineTo(WIDTH, i);
+      ctx.moveTo(0, y);
+      ctx.lineTo(WIDTH, y);
       ctx.stroke();
     }
 
-    // Desenha o envelope
+    // Linha base horizontal
+    ctx.strokeStyle = 'rgba(40, 100, 70, 0.6)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, BASELINE);
+    ctx.lineTo(WIDTH, BASELINE);
+    ctx.stroke();
+
+    // Desenha o traçado do fonocardiograma
     if (this.envelopeHistory.length > 1) {
-      ctx.beginPath();
-      ctx.strokeStyle = '#22c55e';
-      ctx.lineWidth = 2;
-
       const step = WIDTH / this.ENVELOPE_HISTORY_SIZE;
-      
+
+      // Traçado principal verde brilhante
+      ctx.strokeStyle = 'rgb(0, 255, 120)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+
       for (let i = 0; i < this.envelopeHistory.length; i++) {
         const x = i * step;
-        const y = HEIGHT - (this.envelopeHistory[i] * HEIGHT * 0.9) - 10;
+        // Amplitude para cima e para baixo da linha base
+        const amp = this.envelopeHistory[i];
+        const deviation = amp * HEIGHT * 0.4;
+        
+        // Cria formato de onda cardíaca (picos para cima)
+        const y = BASELINE - deviation;
         
         if (i === 0) {
           ctx.moveTo(x, y);
@@ -1045,50 +1124,114 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
       }
       ctx.stroke();
 
-      // Preenchimento gradiente
-      ctx.lineTo((this.envelopeHistory.length - 1) * step, HEIGHT);
-      ctx.lineTo(0, HEIGHT);
-      ctx.closePath();
-      
-      const gradient = ctx.createLinearGradient(0, 0, 0, HEIGHT);
-      gradient.addColorStop(0, 'rgba(34, 197, 94, 0.4)');
-      gradient.addColorStop(1, 'rgba(34, 197, 94, 0.05)');
-      ctx.fillStyle = gradient;
-      ctx.fill();
+      // Glow effect
+      ctx.strokeStyle = 'rgba(0, 255, 120, 0.3)';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      for (let i = 0; i < this.envelopeHistory.length; i++) {
+        const x = i * step;
+        const amp = this.envelopeHistory[i];
+        const y = BASELINE - (amp * HEIGHT * 0.4);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Marcadores de picos S1/S2
+      this.drawBeatMarkers(ctx, step, BASELINE, HEIGHT);
     }
 
-    // Detecta BPM a cada 60 frames
-    if (this.envelopeHistory.length > 100 && this.envelopeHistory.length % 60 === 0) {
-      this.detectBPM();
+    // Indicador de nível atual (barra vertical à direita)
+    const currentLevel = this.envelopeHistory[this.envelopeHistory.length - 1] || 0;
+    const barHeight = currentLevel * HEIGHT * 0.8;
+    ctx.fillStyle = `rgba(0, ${Math.floor(180 + currentLevel * 75)}, 100, 0.8)`;
+    ctx.fillRect(WIDTH - 20, HEIGHT - barHeight - 10, 15, barHeight);
+
+    // Atualiza BPM periodicamente
+    if (this.envelopeHistory.length % 30 === 0) {
+      this.calculateBPM();
     }
   }
 
-  private detectBPM(): void {
-    if (this.envelopeHistory.length < 100) return;
+  private detectBeats(amplitude: number): void {
+    const now = performance.now();
+    const threshold = 0.25; // Limiar de detecção
+    const minInterval = 300; // Mínimo 300ms entre batimentos (~200 BPM máximo)
 
-    // Encontra picos no envelope (batimentos)
-    const threshold = 0.3;
-    let peaks = 0;
-    let lastPeakIndex = -10;
+    // Detecta pico
+    if (amplitude > threshold && (now - this.lastBeatTime) > minInterval) {
+      const histLen = this.envelopeHistory.length;
+      if (histLen >= 2) {
+        const prev = this.envelopeHistory[histLen - 2];
+        // É um pico se subiu em relação ao anterior
+        if (amplitude > prev * 1.2) {
+          this.lastBeatTime = now;
+          this.peakHistory.push({
+            time: now,
+            index: histLen - 1,
+            amplitude: amplitude
+          });
+          // Mantém apenas últimos 20 picos
+          if (this.peakHistory.length > 20) {
+            this.peakHistory.shift();
+          }
+        }
+      }
+    }
+  }
 
-    for (let i = 1; i < this.envelopeHistory.length - 1; i++) {
-      if (this.envelopeHistory[i] > threshold &&
-          this.envelopeHistory[i] > this.envelopeHistory[i - 1] &&
-          this.envelopeHistory[i] > this.envelopeHistory[i + 1] &&
-          i - lastPeakIndex > 10) {
-        peaks++;
-        lastPeakIndex = i;
+  private drawBeatMarkers(ctx: CanvasRenderingContext2D, step: number, baseline: number, height: number): void {
+    if (!this.peakHistory || this.peakHistory.length === 0) return;
+
+    const currentHistoryStart = this.envelopeHistory.length - this.ENVELOPE_HISTORY_SIZE;
+
+    for (const peak of this.peakHistory) {
+      const relativeIndex = peak.index - currentHistoryStart;
+      if (relativeIndex >= 0 && relativeIndex < this.envelopeHistory.length) {
+        const x = relativeIndex * step;
+        const y = baseline - (peak.amplitude * height * 0.4);
+
+        // Marcador S1 (pico principal)
+        ctx.fillStyle = 'rgba(0, 255, 120, 0.8)';
+        ctx.beginPath();
+        ctx.arc(x, y - 10, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Label S1
+        ctx.fillStyle = 'rgba(0, 255, 120, 0.6)';
+        ctx.font = '10px monospace';
+        ctx.fillText('S1', x - 6, y - 18);
+      }
+    }
+  }
+
+  private calculateBPM(): void {
+    if (this.peakHistory.length < 3) {
+      this.envelopeBPM = 0;
+      return;
+    }
+
+    // Calcula intervalos entre os últimos picos
+    const intervals: number[] = [];
+    for (let i = 1; i < this.peakHistory.length; i++) {
+      const interval = this.peakHistory[i].time - this.peakHistory[i - 1].time;
+      if (interval > 300 && interval < 2000) { // Entre 30 e 200 BPM
+        intervals.push(interval);
       }
     }
 
-    // Calcula BPM baseado nos picos detectados
-    // Assumindo ~60fps, 300 frames = 5 segundos
-    const secondsOfData = this.envelopeHistory.length / 60;
-    if (secondsOfData > 0 && peaks > 0) {
-      this.envelopeBPM = Math.round((peaks / secondsOfData) * 60);
-      // Limita a valores razoáveis
-      if (this.envelopeBPM < 40) this.envelopeBPM = 0;
-      if (this.envelopeBPM > 200) this.envelopeBPM = 0;
+    if (intervals.length === 0) {
+      this.envelopeBPM = 0;
+      return;
+    }
+
+    // Média dos intervalos
+    const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    this.envelopeBPM = Math.round(60000 / avgInterval);
+
+    // Limita a valores razoáveis
+    if (this.envelopeBPM < 40 || this.envelopeBPM > 180) {
+      this.envelopeBPM = 0;
     }
   }
 
