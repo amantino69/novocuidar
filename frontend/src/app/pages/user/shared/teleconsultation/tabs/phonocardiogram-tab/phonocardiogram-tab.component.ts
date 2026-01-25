@@ -100,6 +100,49 @@ import { TeleconsultationRealTimeService } from '@core/services/teleconsultation
           </div>
         </div>
 
+        <!-- Envelope Simplificado do Áudio do Sistema -->
+        <div class="envelope-section">
+          <div class="envelope-header">
+            <h5>
+              <app-icon name="activity" [size]="16" />
+              Envelope Fonocardiograma (Áudio do Sistema)
+            </h5>
+            <div class="envelope-controls">
+              @if (!isEnvelopeActive) {
+                <button class="btn-envelope-start" (click)="startEnvelopeCapture()">
+                  <app-icon name="play" [size]="14" />
+                  Iniciar
+                </button>
+              } @else {
+                <button class="btn-envelope-stop" (click)="stopEnvelopeCapture()">
+                  <app-icon name="square" [size]="14" />
+                  Parar
+                </button>
+              }
+            </div>
+          </div>
+          <div class="envelope-canvas-container">
+            <canvas #envelopeCanvas width="600" height="150"></canvas>
+            @if (!isEnvelopeActive) {
+              <div class="envelope-placeholder">
+                <app-icon name="volume-2" [size]="32" />
+                <span>Clique em "Iniciar" para capturar o áudio do sistema</span>
+              </div>
+            }
+          </div>
+          <div class="envelope-legend">
+            <span class="legend-item">
+              <span class="legend-dot s1"></span> S1 (Tum)
+            </span>
+            <span class="legend-item">
+              <span class="legend-dot s2"></span> S2 (Dum)
+            </span>
+            <span class="bpm-display" *ngIf="envelopeBPM > 0">
+              ❤️ {{ envelopeBPM }} BPM
+            </span>
+          </div>
+        </div>
+
         <!-- Status de Conexão -->
         @if (isOperator && isCapturing) {
           <div class="connection-status">
@@ -361,6 +404,122 @@ import { TeleconsultationRealTimeService } from '@core/services/teleconsultation
       }
     }
 
+    /* Envelope Section Styles */
+    .envelope-section {
+      margin-top: 20px;
+      padding: 16px;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .envelope-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+
+      h5 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+    }
+
+    .envelope-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-envelope-start, .btn-envelope-stop {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-envelope-start {
+      background: #ef4444;
+      color: white;
+      &:hover { background: #dc2626; }
+    }
+
+    .btn-envelope-stop {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      &:hover { background: var(--bg-hover); }
+    }
+
+    .envelope-canvas-container {
+      position: relative;
+      background: #0a0a14;
+      border-radius: 6px;
+      overflow: hidden;
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 150px;
+      }
+    }
+
+    .envelope-placeholder {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--text-tertiary);
+      font-size: 12px;
+    }
+
+    .envelope-legend {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      &.s1 { background: #22c55e; }
+      &.s2 { background: #3b82f6; }
+    }
+
+    .bpm-display {
+      margin-left: auto;
+      font-size: 14px;
+      font-weight: 600;
+      color: #ef4444;
+    }
+
     .connection-status {
       display: flex;
       align-items: center;
@@ -425,6 +584,7 @@ import { TeleconsultationRealTimeService } from '@core/services/teleconsultation
 })
 export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('waveformCanvas', { static: false }) canvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('envelopeCanvas', { static: false }) envelopeCanvasRef!: ElementRef<HTMLCanvasElement>;
   @ViewChild('debugTextarea', { static: false }) debugTextareaRef!: ElementRef<HTMLTextAreaElement>;
   
   @Input() appointmentId: string | null = null;
@@ -436,6 +596,17 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
   currentHeartRate = 0;
   s1Amplitude = 0;
   s2Amplitude = 0;
+
+  // Envelope do Áudio do Sistema
+  isEnvelopeActive = false;
+  envelopeBPM = 0;
+  private envelopeCtx: CanvasRenderingContext2D | null = null;
+  private envelopeAnimationId: number | null = null;
+  private audioContext: AudioContext | null = null;
+  private analyser: AnalyserNode | null = null;
+  private dataArray: Uint8Array<ArrayBuffer> | null = null;
+  private envelopeHistory: number[] = [];
+  private readonly ENVELOPE_HISTORY_SIZE = 300;
 
   // DEBUG
   debugLogText = '';
@@ -706,6 +877,221 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
 
   // ======== DEBUG METHODS ========
   
+  // ========== ENVELOPE DO ÁUDIO DO SISTEMA ==========
+  
+  async startEnvelopeCapture(): Promise<void> {
+    if (!this.isBrowser) return;
+
+    this.addDebugLog('ENVELOPE', 'Iniciando captura do áudio do sistema...');
+
+    try {
+      // Solicita captura do áudio do sistema (compartilhar tela com áudio)
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true, // Precisa de video para funcionar
+        audio: {
+          // @ts-ignore - propriedades específicas do Chrome
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        }
+      });
+
+      // Verifica se tem track de áudio
+      const audioTracks = displayStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        this.addDebugLog('ENVELOPE', 'ERRO: Nenhuma faixa de áudio. Marque "Compartilhar áudio do sistema".');
+        displayStream.getTracks().forEach(t => t.stop());
+        return;
+      }
+
+      this.addDebugLog('ENVELOPE', `Áudio capturado: ${audioTracks[0].label}`);
+
+      // Para o vídeo pois só precisamos do áudio
+      displayStream.getVideoTracks().forEach(t => t.stop());
+
+      // Cria contexto de áudio
+      this.audioContext = new AudioContext();
+      const source = this.audioContext.createMediaStreamSource(
+        new MediaStream(audioTracks)
+      );
+      
+      // Cria analisador
+      this.analyser = this.audioContext.createAnalyser();
+      this.analyser.fftSize = 256;
+      this.analyser.smoothingTimeConstant = 0.8;
+      source.connect(this.analyser);
+
+      // Buffer para dados de frequência
+      this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+      
+      // Inicializa histórico
+      this.envelopeHistory = [];
+
+      // Inicializa canvas
+      if (this.envelopeCanvasRef) {
+        this.envelopeCtx = this.envelopeCanvasRef.nativeElement.getContext('2d');
+      }
+
+      this.isEnvelopeActive = true;
+      this.addDebugLog('ENVELOPE', 'Captura iniciada com sucesso!');
+      
+      // Inicia animação do envelope
+      this.startEnvelopeAnimation();
+      this.cdr.detectChanges();
+
+    } catch (error: any) {
+      console.error('[Envelope] Erro ao iniciar captura:', error);
+      this.addDebugLog('ENVELOPE', `ERRO: ${error.message || 'Falha ao capturar áudio do sistema'}`);
+    }
+  }
+
+  stopEnvelopeCapture(): void {
+    this.addDebugLog('ENVELOPE', 'Parando captura...');
+    
+    if (this.envelopeAnimationId) {
+      cancelAnimationFrame(this.envelopeAnimationId);
+      this.envelopeAnimationId = null;
+    }
+
+    if (this.audioContext) {
+      this.audioContext.close();
+      this.audioContext = null;
+    }
+
+    this.analyser = null;
+    this.dataArray = null;
+    this.isEnvelopeActive = false;
+    this.envelopeBPM = 0;
+    this.envelopeHistory = [];
+    
+    this.cdr.detectChanges();
+  }
+
+  private startEnvelopeAnimation(): void {
+    if (!this.isBrowser || !this.analyser || !this.dataArray) return;
+
+    const animate = () => {
+      if (!this.isEnvelopeActive) return;
+      
+      this.drawEnvelope();
+      this.envelopeAnimationId = requestAnimationFrame(animate);
+    };
+
+    animate();
+  }
+
+  private drawEnvelope(): void {
+    if (!this.analyser || !this.dataArray || !this.envelopeCtx) return;
+
+    const canvas = this.envelopeCanvasRef.nativeElement;
+    const ctx = this.envelopeCtx;
+    const WIDTH = canvas.width;
+    const HEIGHT = canvas.height;
+
+    // Obtém dados de frequência do áudio
+    this.analyser.getByteFrequencyData(this.dataArray);
+
+    // Calcula nível médio (envelope)
+    let sum = 0;
+    for (let i = 0; i < this.dataArray.length; i++) {
+      sum += this.dataArray[i];
+    }
+    const average = sum / this.dataArray.length;
+    const level = average / 255; // 0 a 1
+
+    // Adiciona ao histórico
+    this.envelopeHistory.push(level);
+    if (this.envelopeHistory.length > this.ENVELOPE_HISTORY_SIZE) {
+      this.envelopeHistory.shift();
+    }
+
+    // Limpa o canvas com fundo escuro
+    ctx.fillStyle = '#0a0a14';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    // Desenha grade de fundo
+    ctx.strokeStyle = 'rgba(50, 50, 80, 0.3)';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < WIDTH; i += 30) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, HEIGHT);
+      ctx.stroke();
+    }
+    for (let i = 0; i < HEIGHT; i += 30) {
+      ctx.beginPath();
+      ctx.moveTo(0, i);
+      ctx.lineTo(WIDTH, i);
+      ctx.stroke();
+    }
+
+    // Desenha o envelope
+    if (this.envelopeHistory.length > 1) {
+      ctx.beginPath();
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 2;
+
+      const step = WIDTH / this.ENVELOPE_HISTORY_SIZE;
+      
+      for (let i = 0; i < this.envelopeHistory.length; i++) {
+        const x = i * step;
+        const y = HEIGHT - (this.envelopeHistory[i] * HEIGHT * 0.9) - 10;
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+
+      // Preenchimento gradiente
+      ctx.lineTo((this.envelopeHistory.length - 1) * step, HEIGHT);
+      ctx.lineTo(0, HEIGHT);
+      ctx.closePath();
+      
+      const gradient = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+      gradient.addColorStop(0, 'rgba(34, 197, 94, 0.4)');
+      gradient.addColorStop(1, 'rgba(34, 197, 94, 0.05)');
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    }
+
+    // Detecta BPM a cada 60 frames
+    if (this.envelopeHistory.length > 100 && this.envelopeHistory.length % 60 === 0) {
+      this.detectBPM();
+    }
+  }
+
+  private detectBPM(): void {
+    if (this.envelopeHistory.length < 100) return;
+
+    // Encontra picos no envelope (batimentos)
+    const threshold = 0.3;
+    let peaks = 0;
+    let lastPeakIndex = -10;
+
+    for (let i = 1; i < this.envelopeHistory.length - 1; i++) {
+      if (this.envelopeHistory[i] > threshold &&
+          this.envelopeHistory[i] > this.envelopeHistory[i - 1] &&
+          this.envelopeHistory[i] > this.envelopeHistory[i + 1] &&
+          i - lastPeakIndex > 10) {
+        peaks++;
+        lastPeakIndex = i;
+      }
+    }
+
+    // Calcula BPM baseado nos picos detectados
+    // Assumindo ~60fps, 300 frames = 5 segundos
+    const secondsOfData = this.envelopeHistory.length / 60;
+    if (secondsOfData > 0 && peaks > 0) {
+      this.envelopeBPM = Math.round((peaks / secondsOfData) * 60);
+      // Limita a valores razoáveis
+      if (this.envelopeBPM < 40) this.envelopeBPM = 0;
+      if (this.envelopeBPM > 200) this.envelopeBPM = 0;
+    }
+  }
+
   private addDebugLog(tag: string, message: string): void {
     const elapsed = ((Date.now() - this.startTime) / 1000).toFixed(1);
     const timestamp = new Date().toLocaleTimeString('pt-BR');
