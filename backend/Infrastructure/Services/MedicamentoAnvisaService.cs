@@ -138,11 +138,46 @@ public class MedicamentoAnvisaService : IMedicamentoAnvisaService
 
         var queryNormalized = NormalizeString(query);
 
+        // PADRÃO RENAME/DATASUS: Prioriza busca por princípio ativo
+        // Agrupa medicamentos pelo princípio ativo para evitar duplicatas de nomes comerciais
         var results = _medicamentos
             .Where(m => 
-                NormalizeString(m.Nome).Contains(queryNormalized) ||
+                // Busca primeiro em princípio ativo (padrão SUS)
                 (m.PrincipioAtivo != null && NormalizeString(m.PrincipioAtivo).Contains(queryNormalized)) ||
+                // Também busca em nome comercial para facilidade
+                NormalizeString(m.Nome).Contains(queryNormalized) ||
                 m.Codigo.Contains(query))
+            // Agrupa por princípio ativo para mostrar apenas uma entrada por substância
+            .GroupBy(m => NormalizeString(m.PrincipioAtivo ?? m.Nome))
+            .Select(g => {
+                var primeiro = g.First();
+                // Combina concentrações disponíveis se houver múltiplas
+                var concentracoes = g
+                    .Where(m => !string.IsNullOrEmpty(m.Concentracao))
+                    .Select(m => m.Concentracao)
+                    .Distinct()
+                    .Take(5)
+                    .ToList();
+                
+                return new MedicamentoAnvisaDto
+                {
+                    Codigo = primeiro.Codigo,
+                    // RENAME: Usa princípio ativo como nome principal
+                    Nome = primeiro.PrincipioAtivo?.ToUpperInvariant() ?? primeiro.Nome.ToUpperInvariant(),
+                    PrincipioAtivo = primeiro.PrincipioAtivo?.ToUpperInvariant(),
+                    ClasseTerapeutica = primeiro.ClasseTerapeutica,
+                    CategoriaRegulatoria = primeiro.CategoriaRegulatoria,
+                    Empresa = null, // Não mostra laboratório no padrão RENAME
+                    Laboratorio = null,
+                    Concentracao = concentracoes.Any() ? string.Join(" | ", concentracoes) : null,
+                    ViaAdministracao = primeiro.ViaAdministracao,
+                    FormaFarmaceutica = primeiro.FormaFarmaceutica,
+                    CodigoCatmat = primeiro.CodigoCatmat,
+                    IsControlado = primeiro.IsControlado,
+                    TipoReceita = primeiro.TipoReceita
+                };
+            })
+            // Ordena por princípio ativo
             .OrderBy(m => m.Nome)
             .ToList();
 

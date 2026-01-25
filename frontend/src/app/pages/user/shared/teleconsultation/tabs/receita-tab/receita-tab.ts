@@ -426,18 +426,21 @@ export class ReceitaTabComponent implements OnInit, OnDestroy {
   }
 
   selectMedicamento(medicamento: MedicamentoAnvisa) {
+    // PADRÃO RENAME/DATASUS: Usa princípio ativo como nome principal
+    const nomePrincipal = medicamento.principioAtivo || medicamento.nome;
+    
     this.itemForm.patchValue({
-      medicamento: medicamento.nome,
+      medicamento: nomePrincipal,
       principioAtivo: medicamento.principioAtivo || '',
       codigoAnvisa: medicamento.codigo,
       codigoCatmat: medicamento.codigoCatmat || '',
-      laboratorio: medicamento.laboratorio || '',
+      laboratorio: '', // Não usa laboratório no padrão RENAME
       formaFarmaceutica: medicamento.formaFarmaceutica || '',
       concentracao: medicamento.concentracao || '',
       apresentacao: medicamento.apresentacao || '',
       viaAdministracao: medicamento.viaAdministracao || 'Oral'
     });
-    this.medicamentoSearch = medicamento.nome;
+    this.medicamentoSearch = nomePrincipal;
     this.showMedicamentoDropdown = false;
   }
 

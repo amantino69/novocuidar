@@ -68,13 +68,14 @@
                   <div class="autocomplete-dropdown">
                     @for (med of medicamentoResults; track med.codigo) {
                       <div class="dropdown-item" (mousedown)="selectMedicamento(med)">
-                        <div class="med-name">{{ med.nome }}</div>
+                        <div class="med-name">{{ med.principioAtivo || med.nome }}</div>
                         <div class="med-info">
-                          <span class="principle">{{ med.principioAtivo }}</span>
                           @if (med.concentracao) {
                             <span class="concentration">{{ med.concentracao }}</span>
                           }
-                          <span class="lab">{{ med.empresa }}</span>
+                          @if (med.classeTerapeutica) {
+                            <span class="class">{{ med.classeTerapeutica }}</span>
+                          }
                         </div>
                       </div>
                     }
@@ -85,7 +86,7 @@
                   </div>
                 }
               </div>
-              <small class="hint">Busca na base oficial ANVISA (~14.000 medicamentos)</small>
+              <small class="hint">Busca por princípio ativo (Padrão RENAME/DATASUS)</small>
             </div>
           </div>
 
