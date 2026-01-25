@@ -396,9 +396,21 @@
                 </span>
                 
                 <div class="prescription-actions">
+                  <!-- Botão Visualizar - sempre visível se tiver itens -->
+                  @if (hasItems(prescription)) {
+                    <button 
+                      class="action-btn view" 
+                      (click)="generatePdf(prescription)" 
+                      [disabled]="isGeneratingPdf"
+                      title="Visualizar Receita">
+                      <app-icon name="eye" [size]="16" />
+                      <span class="btn-label">Visualizar</span>
+                    </button>
+                  }
+                  
                   <!-- Ações do profissional -->
-                  @if (isProfessional) {
-                    @if (!prescription.isSigned && canEdit) {
+                  @if (isProfessional && canEdit) {
+                    @if (!prescription.isSigned) {
                       <button class="action-btn delete" (click)="deletePrescription(prescription)" title="Excluir">
                         <app-icon name="trash" [size]="16" />
                       </button>
@@ -408,17 +420,9 @@
                           (click)="openSignModal(prescription)"
                           title="Assinar Digitalmente">
                           <app-icon name="shield" [size]="16" />
+                          <span class="btn-label">Assinar</span>
                         </button>
                       }
-                    }
-                    @if (hasItems(prescription) && !prescription.isSigned && canEdit) {
-                      <button 
-                        class="action-btn pdf" 
-                        (click)="generatePdf(prescription)" 
-                        [disabled]="isGeneratingPdf"
-                        title="Gerar PDF Prévia">
-                        <app-icon name="download" [size]="16" />
-                      </button>
                     }
                   }
                   

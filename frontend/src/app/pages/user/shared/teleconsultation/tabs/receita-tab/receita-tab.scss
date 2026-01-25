@@ -687,6 +687,28 @@
             background: var(--neutral-100);
           }
 
+          &.view {
+            background: var(--blue-50);
+            color: var(--blue-600);
+            
+            .btn-label {
+              display: inline;
+              margin-left: $spacing-xs;
+            }
+
+            &:hover {
+              background: var(--blue-100);
+              color: var(--blue-700);
+            }
+          }
+
+          &.sign {
+            .btn-label {
+              display: inline;
+              margin-left: $spacing-xs;
+            }
+          }
+
           &.delete:hover {
             color: var(--red-600);
           }
