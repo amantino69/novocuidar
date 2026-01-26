@@ -25,6 +25,7 @@ export class BiometricsTabComponent implements OnInit, OnDestroy {
   lastUpdated: Date | null = null;
   private destroy$ = new Subject<void>();
   isSaving = false;
+  isRefreshing = false;
 
   // Bluetooth
   bluetoothAvailable = false;
@@ -59,9 +60,15 @@ export class BiometricsTabComponent implements OnInit, OnDestroy {
     this.bluetoothAvailable = this.bluetoothService.isBluetoothAvailable();
 
     if (this.appointmentId) {
-      this.loadData();
+      // 1. Carregar do cache IMEDIATAMENTE (síncrono)
+      this.loadFromCacheImmediately();
+      
+      // 2. Configurar subscriptions para atualizações em tempo real
       this.setupRealTimeSubscriptions();
       this.setupBluetoothSubscriptions();
+      
+      // 3. Buscar dados atualizados da API em background
+      this.loadData();
       
       if (this.readonly || this.isProfessional) {
         this.biometricsForm.disable();
@@ -72,6 +79,49 @@ export class BiometricsTabComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  /**
+   * Carrega dados do cache de forma síncrona - aparece instantaneamente
+   */
+  private loadFromCacheImmediately(): void {
+    if (!this.appointmentId) return;
+    
+    const cached = this.biometricsService.getCachedBiometrics(this.appointmentId);
+    if (cached) {
+      this.biometricsForm.patchValue(cached, { emitEvent: false });
+      if (cached.lastUpdated) {
+        this.lastUpdated = new Date(cached.lastUpdated);
+      }
+      this.cdr.detectChanges();
+      console.log('[Biometrics] Dados carregados do cache instantaneamente:', cached);
+    }
+  }
+
+  /**
+   * Força atualização dos dados do servidor
+   */
+  forceRefresh(): void {
+    if (!this.appointmentId) return;
+    this.isRefreshing = true;
+    this.cdr.detectChanges();
+    
+    this.biometricsService.forceRefresh(this.appointmentId).subscribe({
+      next: (data) => {
+        if (data) {
+          this.biometricsForm.patchValue(data, { emitEvent: false });
+          if (data.lastUpdated) {
+            this.lastUpdated = new Date(data.lastUpdated);
+          }
+        }
+        this.isRefreshing = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.isRefreshing = false;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   get isProfessional(): boolean {
@@ -86,6 +136,10 @@ export class BiometricsTabComponent implements OnInit, OnDestroy {
           this.biometricsForm.patchValue(event.data, { emitEvent: false });
           if (event.data.lastUpdated) {
             this.lastUpdated = new Date(event.data.lastUpdated);
+          }
+          // Salvar no cache do serviço para persistir entre mudanças de aba
+          if (this.appointmentId) {
+            this.biometricsService.updateCache(this.appointmentId, event.data);
           }
           this.cdr.detectChanges();
         }

@@ -5,6 +5,11 @@
       Sinais Vitais
     </h3>
     <div class="header-actions">
+      @if (isProfessional) {
+        <button type="button" class="btn-refresh" (click)="forceRefresh()" [disabled]="isRefreshing" title="Atualizar dados">
+          <app-icon [name]="isRefreshing ? 'loader' : 'refresh-cw'" [size]="16" [class.spin]="isRefreshing"></app-icon>
+        </button>
+      }
       @if (lastUpdated) {
         <span class="updated-at">
           <app-icon name="clock" [size]="14"></app-icon>

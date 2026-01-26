@@ -28,6 +28,34 @@
       display: flex;
       align-items: center;
       gap: $spacing-md;
+
+      .btn-refresh {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border: none;
+        border-radius: $border-radius-md;
+        background: var(--primary-100);
+        color: var(--primary-600);
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover:not(:disabled) {
+          background: var(--primary-200);
+          color: var(--primary-700);
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+      }
       
       .updated-at {
         display: flex;

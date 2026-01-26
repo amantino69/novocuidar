@@ -44,10 +44,15 @@ interface VitalDisplay {
             </span>
           }
         </div>
-        <span class="connection-indicator" [class.connected]="isConnected">
-          <span class="indicator-dot"></span>
-          {{ isConnected ? 'Sincronizado' : 'Aguardando' }}
-        </span>
+        <div class="header-right">
+          <button class="btn-refresh" (click)="forceRefresh()" [disabled]="isRefreshing" title="Atualizar dados">
+            <app-icon [name]="isRefreshing ? 'loader' : 'refresh-cw'" [size]="14" [class.spin]="isRefreshing" />
+          </button>
+          <span class="connection-indicator" [class.connected]="isConnected">
+            <span class="indicator-dot"></span>
+            {{ isConnected ? 'Sincronizado' : 'Conectando...' }}
+          </span>
+        </div>
       </div>
 
       @if (!hasAnyData) {
@@ -259,6 +264,40 @@ interface VitalDisplay {
           .sep {
             color: #7dd3fc;
           }
+        }
+      }
+
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .btn-refresh {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 6px;
+        background: var(--primary-100, #e0f2fe);
+        color: var(--primary-600, #0284c7);
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover:not(:disabled) {
+          background: var(--primary-200, #bae6fd);
+          color: var(--primary-700, #0369a1);
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .spin {
+          animation: spin 1s linear infinite;
         }
       }
 
@@ -777,6 +816,10 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
   isConnected = false;
   hasAnyData = false;
   lastUpdate: Date | null = null;
+  isRefreshing = false;
+  
+  // Cache key para sessionStorage
+  private readonly CACHE_KEY_PREFIX = 'vitalsigns_cache_';
   
   vitals: Record<string, VitalDisplay> = {};
   
@@ -816,13 +859,13 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
   ) {}
 
   ngOnInit(): void {
-    // Carrega dados existentes do banco
-    this.loadExistingData();
+    // 1. Carrega do cache IMEDIATAMENTE (instantâneo)
+    this.loadFromCache();
     
-    // Carrega dados do paciente
+    // 2. Carrega dados do paciente
     this.loadPatientData();
     
-    // Conecta ao hub
+    // 3. Conecta ao hub
     if (this.appointmentId) {
       this.syncService.connect(this.appointmentId);
     }
@@ -838,8 +881,12 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
     this.subscriptions.add(
       this.syncService.vitalSignsReceived$.subscribe(data => {
         this.processVitalSigns(data);
+        this.saveToCache(data); // Salva no cache
       })
     );
+    
+    // 4. Carrega dados atualizados do servidor em background
+    this.loadExistingData();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -894,6 +941,7 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
           }
         };
         this.processVitalSigns(vitalSignsData);
+        this.saveToCache(vitalSignsData); // Salva no cache para próximas vezes
       }
     } catch (error) {
       console.warn('[VitalSignsPanel] Erro ao carregar dados existentes:', error);
@@ -1338,6 +1386,78 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
       .replace(/\n/gim, '<br>');
     
     return html;
+  }
+
+  /**
+   * Carrega dados do cache local (instantâneo)
+   */
+  private loadFromCache(): void {
+    if (!this.appointmentId) return;
+    
+    try {
+      const cached = sessionStorage.getItem(this.CACHE_KEY_PREFIX + this.appointmentId);
+      if (cached) {
+        const data = JSON.parse(cached) as VitalSignsData;
+        this.processVitalSigns(data);
+        console.log('[VitalSignsPanel] Dados carregados do cache instantaneamente');
+      }
+    } catch (e) {
+      console.warn('[VitalSignsPanel] Erro ao carregar cache:', e);
+    }
+  }
+
+  /**
+   * Salva dados no cache local
+   */
+  private saveToCache(data: VitalSignsData): void {
+    if (!this.appointmentId) return;
+    
+    try {
+      sessionStorage.setItem(
+        this.CACHE_KEY_PREFIX + this.appointmentId,
+        JSON.stringify(data)
+      );
+    } catch (e) {
+      console.warn('[VitalSignsPanel] Erro ao salvar cache:', e);
+    }
+  }
+
+  /**
+   * Força atualização dos dados do servidor
+   */
+  async forceRefresh(): Promise<void> {
+    if (!this.appointmentId || this.isRefreshing) return;
+    
+    this.isRefreshing = true;
+    
+    try {
+      const apiUrl = `${environment.apiUrl}/appointments/${this.appointmentId}/biometrics`;
+      const data = await firstValueFrom(this.http.get<any>(apiUrl));
+      
+      if (data && this.hasAnyVitalData(data)) {
+        const vitalSignsData: VitalSignsData = {
+          appointmentId: this.appointmentId,
+          senderRole: 'loaded',
+          timestamp: data.lastUpdated ? new Date(data.lastUpdated) : new Date(),
+          vitals: {
+            spo2: data.oxygenSaturation,
+            pulseRate: data.heartRate,
+            heartRate: data.heartRate,
+            systolic: data.bloodPressureSystolic,
+            diastolic: data.bloodPressureDiastolic,
+            temperature: data.temperature,
+            weight: data.weight,
+            height: data.height
+          }
+        };
+        this.processVitalSigns(vitalSignsData);
+        this.saveToCache(vitalSignsData);
+      }
+    } catch (error) {
+      console.error('[VitalSignsPanel] Erro ao atualizar:', error);
+    } finally {
+      this.isRefreshing = false;
+    }
   }
 
   ngOnDestroy(): void {
