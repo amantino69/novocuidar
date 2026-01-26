@@ -203,7 +203,7 @@
     </div>
 
     <!-- Receituário -->
-    <div class="tab-content" *ngIf="activeTab === 'Receituário' || activeTab === 'Receita'" style="height: 100%">
+    <div class="tab-content" *ngIf="(activeTab === 'Receituário' || activeTab === 'Receita') && receitaTabReady" style="height: 100%">
       <app-receita-tab
         [appointmentId]="appointmentId"
         [userrole]="userrole"

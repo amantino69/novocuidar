@@ -89,6 +89,9 @@ export class TeleconsultationSidebarComponent implements OnInit, OnDestroy, OnCh
   tabGroups: TabGroup[] = [];
   activeGroup: 'exame-fisico' | 'documentos' | 'standalone' | null = null;
   standaloneTabsVisible: { [key: string]: boolean } = {};
+  
+  // Flag para forçar recriação do componente receita-tab
+  receitaTabReady = false;
 
   constructor(private dictationService: DictationService, private cdr: ChangeDetectorRef) {}
 
@@ -96,6 +99,20 @@ export class TeleconsultationSidebarComponent implements OnInit, OnDestroy, OnCh
     if (changes['userrole']) {
       this.loadTabGroups();
     }
+    
+    // Quando a aba muda para Receita, força recriação do componente
+    if (changes['activeTab']) {
+      const newTab = changes['activeTab'].currentValue;
+      if (newTab === 'Receituário' || newTab === 'Receita') {
+        this.receitaTabReady = false;
+        this.cdr.detectChanges();
+        setTimeout(() => {
+          this.receitaTabReady = true;
+          this.cdr.detectChanges();
+        }, 50);
+      }
+    }
+    
     if (changes['tabs'] || changes['activeTab'] || changes['appointment'] || changes['isOpen']) {
       try {
         this.cdr.detectChanges();
