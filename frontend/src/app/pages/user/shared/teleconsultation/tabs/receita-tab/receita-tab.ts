@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, OnChanges, AfterViewInit, SimpleChanges, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
@@ -28,7 +28,7 @@ import {
   templateUrl: './receita-tab.html',
   styleUrls: ['./receita-tab.scss']
 })
-export class ReceitaTabComponent implements OnInit, OnDestroy, OnChanges {
+export class ReceitaTabComponent implements OnInit, OnDestroy, OnChanges, AfterViewInit {
   @Input() appointmentId: string | null = null;
   @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' = 'PATIENT';
   @Input() readonly = false;
@@ -154,6 +154,15 @@ export class ReceitaTabComponent implements OnInit, OnDestroy, OnChanges {
     }
   }
 
+  ngAfterViewInit() {
+    // Garante que a view seja atualizada após a renderização inicial
+    // Isso resolve o problema de layout incorreto na primeira abertura
+    setTimeout(() => {
+      this.updatePermissions();
+      this.cdr.detectChanges();
+    }, 50);
+  }
+
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
@@ -199,13 +208,19 @@ export class ReceitaTabComponent implements OnInit, OnDestroy, OnChanges {
         this.isLoading = false;
         // Garante que permissões estejam atualizadas e força re-render
         this.updatePermissions();
-        setTimeout(() => this.cdr.detectChanges(), 0);
+        // Usa timeout maior para garantir que o layout seja atualizado
+        setTimeout(() => {
+          this.cdr.detectChanges();
+        }, 50);
       },
       error: (err) => {
         console.error('Erro ao carregar receitas:', err);
         this.prescriptions = [];
         this.isLoading = false;
-        this.cdr.detectChanges();
+        this.updatePermissions();
+        setTimeout(() => {
+          this.cdr.detectChanges();
+        }, 50);
       }
     });
   }
