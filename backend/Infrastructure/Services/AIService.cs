@@ -271,9 +271,24 @@ IMPORTANTE:
             if (!string.IsNullOrEmpty(request.PatientData.Name))
                 sb.AppendLine($"Nome: {request.PatientData.Name}");
             if (!string.IsNullOrEmpty(request.PatientData.BirthDate))
+            {
                 sb.AppendLine($"Data de Nascimento: {request.PatientData.BirthDate}");
+                // Calcular e incluir a idade
+                var age = CalculateAge(request.PatientData.BirthDate);
+                if (age.HasValue)
+                    sb.AppendLine($"Idade: {age} anos");
+            }
             if (!string.IsNullOrEmpty(request.PatientData.Gender))
-                sb.AppendLine($"Gênero: {request.PatientData.Gender}");
+            {
+                var genderLabel = request.PatientData.Gender switch
+                {
+                    "M" => "Masculino",
+                    "F" => "Feminino",
+                    "O" => "Outro",
+                    _ => request.PatientData.Gender
+                };
+                sb.AppendLine($"Sexo: {genderLabel}");
+            }
             if (!string.IsNullOrEmpty(request.PatientData.BloodType))
                 sb.AppendLine($"Tipo Sanguíneo: {request.PatientData.BloodType}");
             sb.AppendLine();
@@ -399,7 +414,7 @@ IMPORTANTE:
 
         if (request.BiometricsData != null)
         {
-            sb.AppendLine("=== DADOS BIOMÉTRICOS ===");
+            sb.AppendLine("=== DADOS BIOMÉTRICOS / SINAIS VITAIS ===");
             if (request.BiometricsData.HeartRate.HasValue)
                 sb.AppendLine($"Frequência Cardíaca: {request.BiometricsData.HeartRate} bpm");
             if (request.BiometricsData.BloodPressureSystolic.HasValue && request.BiometricsData.BloodPressureDiastolic.HasValue)
@@ -412,6 +427,16 @@ IMPORTANTE:
                 sb.AppendLine($"Frequência Respiratória: {request.BiometricsData.RespiratoryRate} rpm");
             if (request.BiometricsData.Glucose.HasValue)
                 sb.AppendLine($"Glicemia: {request.BiometricsData.Glucose} mg/dL");
+            if (request.BiometricsData.Weight.HasValue)
+                sb.AppendLine($"Peso: {request.BiometricsData.Weight} kg");
+            if (request.BiometricsData.Height.HasValue)
+                sb.AppendLine($"Altura: {request.BiometricsData.Height} cm");
+            if (request.BiometricsData.Weight.HasValue && request.BiometricsData.Height.HasValue && request.BiometricsData.Height > 0)
+            {
+                var heightM = request.BiometricsData.Height.Value / 100m;
+                var imc = request.BiometricsData.Weight.Value / (heightM * heightM);
+                sb.AppendLine($"IMC calculado: {imc:F1} kg/m²");
+            }
             sb.AppendLine();
         }
 
@@ -442,12 +467,16 @@ IMPORTANTE:
             sb.AppendLine();
         }
 
-        sb.AppendLine("Por favor, gere um resumo clínico estruturado incluindo:");
-        sb.AppendLine("1. Identificação resumida do paciente");
-        sb.AppendLine("2. Motivo da consulta");
-        sb.AppendLine("3. Histórico relevante");
-        sb.AppendLine("4. Dados clínicos observados");
-        sb.AppendLine("5. Pontos de atenção identificados");
+        sb.AppendLine("Por favor, gere um RESUMO CLÍNICO ESTRUTURADO incluindo OBRIGATORIAMENTE:");
+        sb.AppendLine("1. **Identificação do Paciente**: Nome, idade, sexo");
+        sb.AppendLine("2. **Dados Antropométricos**: Peso, altura e IMC (se disponíveis)");
+        sb.AppendLine("3. **Sinais Vitais**: FC, PA, SpO₂, temperatura, FR, glicemia (listar os valores informados)");
+        sb.AppendLine("4. **Motivo da Consulta / Queixa Principal**");
+        sb.AppendLine("5. **Histórico Relevante**: Antecedentes pessoais e familiares pertinentes");
+        sb.AppendLine("6. **Avaliação Clínica**: Análise dos dados apresentados");
+        sb.AppendLine("7. **Pontos de Atenção**: Alertas ou valores fora da normalidade identificados");
+        sb.AppendLine();
+        sb.AppendLine("IMPORTANTE: Inclua explicitamente os valores dos sinais vitais e dados antropométricos no resumo para documentar que foram considerados na avaliação.");
 
         return sb.ToString();
     }
@@ -465,10 +494,40 @@ IMPORTANTE:
             if (!string.IsNullOrEmpty(request.PatientData.Name))
                 sb.AppendLine($"Nome: {request.PatientData.Name}");
             if (!string.IsNullOrEmpty(request.PatientData.BirthDate))
+            {
                 sb.AppendLine($"Data de Nascimento: {request.PatientData.BirthDate}");
+                // Calcular e incluir a idade
+                var age = CalculateAge(request.PatientData.BirthDate);
+                if (age.HasValue)
+                    sb.AppendLine($"Idade: {age} anos");
+            }
             if (!string.IsNullOrEmpty(request.PatientData.Gender))
-                sb.AppendLine($"Gênero: {request.PatientData.Gender}");
+            {
+                var genderLabel = request.PatientData.Gender switch
+                {
+                    "M" => "Masculino",
+                    "F" => "Feminino",
+                    "O" => "Outro",
+                    _ => request.PatientData.Gender
+                };
+                sb.AppendLine($"Sexo: {genderLabel}");
+            }
             sb.AppendLine();
+        }
+
+        // Incluir peso e altura da pré-consulta
+        if (request.PreConsultationData?.PersonalInfo != null)
+        {
+            var pi = request.PreConsultationData.PersonalInfo;
+            if (!string.IsNullOrEmpty(pi.Weight) || !string.IsNullOrEmpty(pi.Height))
+            {
+                sb.AppendLine("=== DADOS ANTROPOMÉTRICOS ===");
+                if (!string.IsNullOrEmpty(pi.Weight))
+                    sb.AppendLine($"Peso: {pi.Weight}");
+                if (!string.IsNullOrEmpty(pi.Height))
+                    sb.AppendLine($"Altura: {pi.Height}");
+                sb.AppendLine();
+            }
         }
 
         if (request.PreConsultationData?.CurrentSymptoms != null)
@@ -537,13 +596,29 @@ IMPORTANTE:
 
         if (request.BiometricsData != null)
         {
-            sb.AppendLine("=== SINAIS VITAIS ===");
+            sb.AppendLine("=== SINAIS VITAIS E MEDIDAS ===");
             if (request.BiometricsData.HeartRate.HasValue)
-                sb.AppendLine($"FC: {request.BiometricsData.HeartRate} bpm");
+                sb.AppendLine($"Frequência Cardíaca: {request.BiometricsData.HeartRate} bpm");
             if (request.BiometricsData.BloodPressureSystolic.HasValue && request.BiometricsData.BloodPressureDiastolic.HasValue)
-                sb.AppendLine($"PA: {request.BiometricsData.BloodPressureSystolic}/{request.BiometricsData.BloodPressureDiastolic} mmHg");
+                sb.AppendLine($"Pressão Arterial: {request.BiometricsData.BloodPressureSystolic}/{request.BiometricsData.BloodPressureDiastolic} mmHg");
+            if (request.BiometricsData.OxygenSaturation.HasValue)
+                sb.AppendLine($"SpO₂: {request.BiometricsData.OxygenSaturation}%");
             if (request.BiometricsData.Temperature.HasValue)
-                sb.AppendLine($"Temp: {request.BiometricsData.Temperature}°C");
+                sb.AppendLine($"Temperatura: {request.BiometricsData.Temperature}°C");
+            if (request.BiometricsData.RespiratoryRate.HasValue)
+                sb.AppendLine($"Frequência Respiratória: {request.BiometricsData.RespiratoryRate} rpm");
+            if (request.BiometricsData.Glucose.HasValue)
+                sb.AppendLine($"Glicemia: {request.BiometricsData.Glucose} mg/dL");
+            if (request.BiometricsData.Weight.HasValue)
+                sb.AppendLine($"Peso: {request.BiometricsData.Weight} kg");
+            if (request.BiometricsData.Height.HasValue)
+                sb.AppendLine($"Altura: {request.BiometricsData.Height} cm");
+            if (request.BiometricsData.Weight.HasValue && request.BiometricsData.Height.HasValue && request.BiometricsData.Height > 0)
+            {
+                var heightM = request.BiometricsData.Height.Value / 100m;
+                var imc = request.BiometricsData.Weight.Value / (heightM * heightM);
+                sb.AppendLine($"IMC calculado: {imc:F1} kg/m²");
+            }
             sb.AppendLine();
         }
 
@@ -579,14 +654,47 @@ IMPORTANTE:
             sb.AppendLine();
         }
 
-        sb.AppendLine("Por favor, elabore hipóteses diagnósticas incluindo:");
-        sb.AppendLine("1. Diagnóstico(s) mais provável(is) com justificativa");
-        sb.AppendLine("2. Diagnósticos diferenciais a considerar");
-        sb.AppendLine("3. Exames complementares sugeridos (se aplicável)");
-        sb.AppendLine("4. Red flags ou sinais de alarme identificados");
+        sb.AppendLine("Por favor, elabore HIPÓTESES DIAGNÓSTICAS estruturadas incluindo:");
+        sb.AppendLine();
+        sb.AppendLine("1. **Dados Considerados na Análise**:");
+        sb.AppendLine("   - Perfil do paciente (idade, sexo)");
+        sb.AppendLine("   - Dados antropométricos (peso, altura, IMC) se disponíveis");
+        sb.AppendLine("   - Sinais vitais relevantes (citar valores alterados ou normais)");
+        sb.AppendLine();
+        sb.AppendLine("2. **Hipótese Diagnóstica Principal**: Diagnóstico mais provável com justificativa baseada nos dados");
+        sb.AppendLine();
+        sb.AppendLine("3. **Diagnósticos Diferenciais**: Outras possibilidades a considerar");
+        sb.AppendLine();
+        sb.AppendLine("4. **Correlação com Sinais Vitais**: Como os valores de FC, PA, SpO₂, temperatura, etc. se relacionam com a hipótese");
+        sb.AppendLine();
+        sb.AppendLine("5. **Exames Complementares Sugeridos** (se aplicável)");
+        sb.AppendLine();
+        sb.AppendLine("6. **Red Flags / Sinais de Alarme**: Alertas identificados nos dados");
+        sb.AppendLine();
+        sb.AppendLine("IMPORTANTE: Mencione explicitamente os valores dos sinais vitais e dados antropométricos que fundamentam sua análise.");
         sb.AppendLine();
         sb.AppendLine("NOTA: Estas são sugestões para auxiliar a decisão clínica do profissional de saúde, que deve validar e confirmar os diagnósticos.");
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Calcula a idade a partir de uma string de data de nascimento
+    /// </summary>
+    private int? CalculateAge(string? birthDateString)
+    {
+        if (string.IsNullOrEmpty(birthDateString))
+            return null;
+
+        if (DateTime.TryParse(birthDateString, out var birthDate))
+        {
+            var today = DateTime.Today;
+            var age = today.Year - birthDate.Year;
+            if (birthDate.Date > today.AddYears(-age))
+                age--;
+            return age;
+        }
+
+        return null;
     }
 }

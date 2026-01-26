@@ -5,6 +5,7 @@ import { MarkdownModule } from 'ngx-markdown';
 import { ButtonComponent } from '@shared/components/atoms/button/button';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { AIService, GenerateSummaryRequest, GenerateDiagnosisRequest, AIData } from '@core/services/ai.service';
+import { BiometricsService, BiometricsData } from '@core/services/biometrics.service';
 import { Appointment } from '@core/services/appointments.service';
 
 @Component({
@@ -44,9 +45,13 @@ export class AITabComponent implements OnInit {
   isLoading = true;
   errorMessage: string = '';
   private isBrowser: boolean;
+  
+  // Cached biometrics loaded directly from service
+  private loadedBiometrics: BiometricsData | null = null;
 
   constructor(
     private aiService: AIService,
+    private biometricsService: BiometricsService,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) platformId: Object
   ) {
@@ -55,6 +60,7 @@ export class AITabComponent implements OnInit {
 
   ngOnInit() {
     this.loadExistingData();
+    this.loadBiometricsData();
   }
 
   loadExistingData() {
@@ -78,6 +84,26 @@ export class AITabComponent implements OnInit {
         console.error('Error loading AI data:', err);
         this.isLoading = false;
         this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /**
+   * Carrega dados biométricos diretamente do BiometricsService
+   * Isso garante que tenhamos os dados mais recentes, independentemente do @Input
+   */
+  private loadBiometricsData(): void {
+    if (!this.appointmentId) return;
+    
+    this.biometricsService.getBiometrics(this.appointmentId).subscribe({
+      next: (data: BiometricsData | null) => {
+        if (data) {
+          this.loadedBiometrics = data;
+          console.log('[AI Tab] Biometrics carregados diretamente:', data);
+        }
+      },
+      error: (err) => {
+        console.error('Error loading biometrics for AI:', err);
       }
     });
   }
@@ -165,8 +191,9 @@ export class AITabComponent implements OnInit {
       specialtyFieldsData = { specialtyName: this.appointment?.specialtyName };
     }
 
-    // Biométricos (vem do Input, já que é carregado via API)
-    const biometricsData = this.biometricsData;
+    // Biométricos - usar dados carregados diretamente do serviço, ou fallback para @Input
+    const biometricsData = this.loadedBiometrics || this.biometricsData;
+    console.log('[AI Tab] BiometricsData para IA:', biometricsData);
 
     // Log para debug
     console.log('[AI Tab] Dados coletados para IA:', {

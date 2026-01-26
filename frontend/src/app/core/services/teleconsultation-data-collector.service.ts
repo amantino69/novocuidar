@@ -3,8 +3,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { Appointment } from './appointments.service';
 import { UsersService } from './users.service';
 import { BiometricsService } from './biometrics.service';
-import { forkJoin, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { forkJoin, of, timer } from 'rxjs';
+import { catchError, map, take, switchMap, first } from 'rxjs/operators';
 
 /**
  * Serviço para coletar dados de todas as abas para usar na IA
@@ -125,15 +125,21 @@ export class TeleconsultationDataCollectorService {
 
   /**
    * Extrai dados biométricos
-   * Fonte: Aba "Biométricos"
+   * Fonte: Aba "Biométricos" / "Sinais Vitais"
+   * Nota: biometricsService.getBiometrics retorna um BehaviorSubject que nunca completa,
+   * então usamos first() para pegar o primeiro valor (mesmo que seja null) e completar
    */
   private getBiometricsData(appointmentId: string) {
     if (!appointmentId) {
       return of(null);
     }
 
-    return this.biometricsService.getBiometrics(appointmentId).pipe(
-      catchError(() => of(null))
+    // Aguarda 500ms para dar tempo do biometrics service buscar os dados
+    return timer(500).pipe(
+      switchMap(() => this.biometricsService.getBiometrics(appointmentId).pipe(
+        first(), // Pega o valor atual e completa
+        catchError(() => of(null))
+      ))
     );
   }
 
