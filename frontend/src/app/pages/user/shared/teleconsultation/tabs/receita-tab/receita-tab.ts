@@ -380,8 +380,10 @@ export class ReceitaTabComponent implements OnInit, OnDestroy, OnChanges, AfterV
           this.isSaving = false;
           this.resetFormToDefaults();
           this.medicamentoSearch = '';
+          this.showItemForm = false;  // Fecha o formulário após adicionar
+          this.currentPrescriptionId = null;
           this.loadPrescriptions();
-          this.showToast('Medicamento adicionado! Você pode adicionar mais ou fechar o formulário.');
+          this.showToast('Medicamento adicionado com sucesso!');
           this.cdr.detectChanges();
         },
         error: (err) => {
