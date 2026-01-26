@@ -42,6 +42,9 @@ export class ReceitaTabComponent implements OnInit, OnDestroy, OnChanges, AfterV
   isProfessional = false;
   canEdit = false;
   
+  // Controle de renderização - força recriação do componente
+  isReady = false;
+  
   // Estado do formulário de itens
   showItemForm = false;
   currentPrescriptionId: string | null = null;
@@ -155,12 +158,16 @@ export class ReceitaTabComponent implements OnInit, OnDestroy, OnChanges, AfterV
   }
 
   ngAfterViewInit() {
-    // Garante que a view seja atualizada após a renderização inicial
-    // Isso resolve o problema de layout incorreto na primeira abertura
+    // Solução definitiva: simula sair e voltar da aba
+    // Primeiro esconde tudo, depois mostra com estado correto
+    this.isReady = false;
+    this.cdr.detectChanges();
+    
     setTimeout(() => {
       this.updatePermissions();
+      this.isReady = true;
       this.cdr.detectChanges();
-    }, 50);
+    }, 100);
   }
 
   ngOnDestroy() {
