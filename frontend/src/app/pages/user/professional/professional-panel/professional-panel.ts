@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, effect, untracked, PLATFORM_ID, Inject, ChangeDetectorRef } from '@angular/core';
-import { CommonModule, DatePipe, isPlatformBrowser } from '@angular/common';
+import { CommonModule, DatePipe, isPlatformBrowser, registerLocaleData } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { IconComponent, IconName } from '@app/shared/components/atoms/icon/icon';
 import { AvatarComponent } from '@app/shared/components/atoms/avatar/avatar';
@@ -8,6 +8,10 @@ import { ThemeToggleComponent } from '@app/shared/components/atoms/theme-toggle/
 import { AuthService } from '@app/core/services/auth.service';
 import { AppointmentsService } from '@app/core/services/appointments.service';
 import { User as AuthUser } from '@app/core/models/auth.model';
+import localePtBr from '@angular/common/locales/pt';
+
+// Registrar locale português brasileiro para DatePipe
+registerLocaleData(localePtBr, 'pt-BR');
 
 interface PanelButton {
   id: string;
@@ -151,7 +155,19 @@ export class ProfessionalPanelComponent implements OnInit, OnDestroy {
   private updateTime(): void {
     const now = new Date();
     this.currentTime = this.datePipe.transform(now, 'HH:mm:ss') || '';
-    this.currentDate = this.datePipe.transform(now, 'EEEE, dd \'de\' MMMM \'de\' yyyy', 'pt-BR') || '';
+    this.currentDate = this.formatDatePtBr(now);
+  }
+
+  private formatDatePtBr(date: Date): string {
+    const diasSemana = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    
+    const diaSemana = diasSemana[date.getDay()];
+    const dia = date.getDate().toString().padStart(2, '0');
+    const mes = meses[date.getMonth()];
+    const ano = date.getFullYear();
+    
+    return `${diaSemana}, ${dia} de ${mes} de ${ano}`;
   }
 
   private loadStats(): void {
