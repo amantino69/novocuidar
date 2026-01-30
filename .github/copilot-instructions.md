@@ -38,7 +38,83 @@ git remote add novocuidar https://$GITHUB_TOKEN@github.com/amantino69/novocuidar
 
 ---
 
-## 🐳 Containers Docker
+## � ATIVAR SISTEMA DE HOMOLOGAÇÃO (LOCAL)
+
+### ⚠️ IMPORTANTE - Leia antes de executar!
+Esta seção explica como iniciar o sistema TeleCuidar localmente para testes/homologação.
+- **Frontend**: Angular na porta 4200
+- **Backend**: .NET na porta 5239
+- **Pasta local**: `C:\telecuidar`
+
+### Método 1: Usar Task do VS Code (RECOMENDADO)
+```
+1. Abrir VS Code na pasta C:\telecuidar
+2. Pressionar Ctrl+Shift+P
+3. Digitar "Tasks: Run Task"
+4. Selecionar "Iniciar Sem Jitsi"
+```
+
+Ou usar a ferramenta `run_task`:
+```
+run_task com id="Iniciar Sem Jitsi" e workspaceFolder="c:\telecuidar"
+```
+
+### Método 2: Comandos Manuais (se a task falhar)
+
+**Passo 1 - Matar processos existentes nas portas:**
+```powershell
+# Verificar se portas estão ocupadas
+netstat -ano | findstr ":4200"
+netstat -ano | findstr ":5239"
+
+# Se houver processos, matar pelo PID (substituir XXXX pelo número)
+Stop-Process -Id XXXX -Force
+```
+
+**Passo 2 - Iniciar Frontend:**
+```powershell
+cd C:\telecuidar\frontend
+ng serve --host 0.0.0.0 --port 4200
+```
+> Aguardar aparecer: `➜ Local: http://localhost:4200/`
+
+**Passo 3 - Iniciar Backend (em outro terminal):**
+```powershell
+cd C:\telecuidar
+dotnet run --project backend/WebAPI/WebAPI.csproj
+```
+> Aguardar aparecer: `Now listening on: http://0.0.0.0:5239`
+
+### Credenciais de Teste (senha: `123`)
+| Tipo | Email |
+|------|-------|
+| Médico | med_gt@telecuidar.com |
+| Paciente | pac_aj@telecuidar.com |
+| Enfermeira | enf_do@telecuidar.com |
+| Admin | adm_ca@telecuidar.com |
+
+### Problemas Comuns
+
+**Porta 4200 ocupada:**
+```powershell
+netstat -ano | findstr ":4200"
+# Pegar o PID da última coluna e matar:
+Stop-Process -Id <PID> -Force
+```
+
+**Banco de dados corrompido:**
+```powershell
+Remove-Item "C:\telecuidar\backend\WebAPI\telecuidar.db" -Force
+# Reiniciar backend - o banco será recriado automaticamente
+```
+
+**Backend fecha sozinho:**
+- NÃO executar outros comandos no mesmo terminal do backend
+- Usar terminais separados para frontend e backend
+
+---
+
+## �🐳 Containers Docker
 
 ### Arquitetura de Containers
 ```

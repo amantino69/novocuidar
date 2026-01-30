@@ -1,0 +1,34 @@
+{
+    "patient_id": null,
+    "patient_email": null,
+    "auth_token": null,
+    "devices": {
+        "scale": {
+            "mac": "F8:8F:C8:3A:B7:92",
+            "name": "Balança OKOK",
+            "enabled": true
+        },
+        "blood_pressure": {
+            "mac": "00:5F:BF:9A:64:DF",
+            "name": "Omron HEM-7156T",
+            "enabled": true
+        },
+        "oximeter": {
+            "mac": null,
+            "name": "Oxímetro",
+            "enabled": false
+        },
+        "thermometer": {
+            "mac": null,
+            "name": "Termômetro",
+            "enabled": false
+        },
+        "stethoscope": {
+            "mac": null,
+            "name": "Estetoscópio Digital",
+            "enabled": false
+        }
+    },
+    "backend_url": "https://www.telecuidar.com.br",
+    "notes": "Este arquivo é gerado automaticamente pelo setup da maleta. NÃO edite manualmente."
+}

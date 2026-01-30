@@ -48,7 +48,7 @@ import { environment } from '@env/environment';
       </div>
 
       <p class="description">
-        Digite os valores manualmente ou conecte os dispositivos Bluetooth para captura automática.
+        Os valores são capturados automaticamente da maleta ou podem ser digitados manualmente.
       </p>
 
       @if (!bluetoothAvailable) {
@@ -83,18 +83,6 @@ import { environment } from '@env/environment';
               </div>
             </div>
           </div>
-          <button type="button" class="btn-connect" 
-                  [class.connected]="isDeviceConnected('oximeter')"
-                  [disabled]="!bluetoothAvailable || isConnecting"
-                  [title]="!bluetoothAvailable ? 'Bluetooth não disponível' : 'Conectar oxímetro'"
-                  (click)="connectDevice('oximeter')">
-            @if (connectingType === 'oximeter') {
-              <app-icon name="loader" [size]="16" class="spin" />
-            } @else {
-              <app-icon [name]="isDeviceConnected('oximeter') ? 'check' : 'bluetooth'" [size]="16" />
-            }
-            {{ isDeviceConnected('oximeter') ? 'Conectado' : 'Conectar' }}
-          </button>
         </div>
 
         <!-- Pressão Arterial -->
@@ -120,18 +108,6 @@ import { environment } from '@env/environment';
               </div>
             </div>
           </div>
-          <button type="button" class="btn-connect" 
-                  [class.connected]="isDeviceConnected('blood_pressure')"
-                  [disabled]="!bluetoothAvailable || isConnecting"
-                  [title]="!bluetoothAvailable ? 'Bluetooth não disponível' : 'Conectar medidor de pressão'"
-                  (click)="connectDevice('blood_pressure')">
-            @if (connectingType === 'blood_pressure') {
-              <app-icon name="loader" [size]="16" class="spin" />
-            } @else {
-              <app-icon [name]="isDeviceConnected('blood_pressure') ? 'check' : 'bluetooth'" [size]="16" />
-            }
-            {{ isDeviceConnected('blood_pressure') ? 'Conectado' : 'Conectar' }}
-          </button>
         </div>
 
         <!-- Temperatura -->
@@ -150,18 +126,6 @@ import { environment } from '@env/environment';
               </div>
             </div>
           </div>
-          <button type="button" class="btn-connect" 
-                  [class.connected]="isDeviceConnected('thermometer')"
-                  [disabled]="!bluetoothAvailable || isConnecting"
-                  [title]="!bluetoothAvailable ? 'Bluetooth não disponível' : 'Conectar termômetro'"
-                  (click)="connectDevice('thermometer')">
-            @if (connectingType === 'thermometer') {
-              <app-icon name="loader" [size]="16" class="spin" />
-            } @else {
-              <app-icon [name]="isDeviceConnected('thermometer') ? 'check' : 'bluetooth'" [size]="16" />
-            }
-            {{ isDeviceConnected('thermometer') ? 'Conectado' : 'Conectar' }}
-          </button>
         </div>
 
         <!-- Peso e Altura -->
@@ -187,18 +151,6 @@ import { environment } from '@env/environment';
               </div>
             </div>
           </div>
-          <button type="button" class="btn-connect" 
-                  [class.connected]="isDeviceConnected('scale')"
-                  [disabled]="!bluetoothAvailable || isConnecting"
-                  [title]="!bluetoothAvailable ? 'Bluetooth não disponível' : 'Conectar balança'"
-                  (click)="connectDevice('scale')">
-            @if (connectingType === 'scale') {
-              <app-icon name="loader" [size]="16" class="spin" />
-            } @else {
-              <app-icon [name]="isDeviceConnected('scale') ? 'check' : 'bluetooth'" [size]="16" />
-            }
-            {{ isDeviceConnected('scale') ? 'Conectado' : 'Conectar' }}
-          </button>
         </div>
 
         <!-- Status de Sincronização -->

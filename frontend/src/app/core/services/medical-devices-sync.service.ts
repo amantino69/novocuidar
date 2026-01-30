@@ -283,6 +283,44 @@ export class MedicalDevicesSyncService implements OnDestroy {
       });
     });
 
+    // Recebe atualizações de biometria do BLE Bridge (Python)
+    this.hubConnection.on('BiometricsUpdated', (data: any) => {
+      this.ngZone.run(() => {
+        console.log('[MedicalDevicesSync] 📡 BiometricsUpdated recebido do BLE Bridge:', data);
+        
+        // Converte para o formato VitalSignsData
+        const vitalData: VitalSignsData = {
+          appointmentId: data.appointmentId,
+          senderRole: 'device', // Indica que veio de dispositivo
+          timestamp: new Date(data.timestamp),
+          vitals: {}
+        };
+
+        // Mapeia os valores do biometrics
+        if (data.biometrics) {
+          if (data.biometrics.bloodPressureSystolic) vitalData.vitals.systolic = data.biometrics.bloodPressureSystolic;
+          if (data.biometrics.bloodPressureDiastolic) vitalData.vitals.diastolic = data.biometrics.bloodPressureDiastolic;
+          if (data.biometrics.heartRate) vitalData.vitals.heartRate = data.biometrics.heartRate;
+          if (data.biometrics.oxygenSaturation) vitalData.vitals.spo2 = data.biometrics.oxygenSaturation;
+          if (data.biometrics.weight) vitalData.vitals.weight = data.biometrics.weight;
+          if (data.biometrics.temperature) vitalData.vitals.temperature = data.biometrics.temperature;
+        }
+
+        // Também mapeia valores diretos do dispositivo
+        if (data.values) {
+          if (data.values.systolic) vitalData.vitals.systolic = data.values.systolic;
+          if (data.values.diastolic) vitalData.vitals.diastolic = data.values.diastolic;
+          if (data.values.heartRate || data.values.pulse) vitalData.vitals.heartRate = data.values.heartRate || data.values.pulse;
+          if (data.values.spo2) vitalData.vitals.spo2 = data.values.spo2;
+          if (data.values.weight) vitalData.vitals.weight = data.values.weight;
+          if (data.values.temperature) vitalData.vitals.temperature = data.values.temperature;
+        }
+
+        console.log('[MedicalDevicesSync] 💓 Dados convertidos:', vitalData.vitals);
+        this._vitalSignsReceived$.next(vitalData);
+      });
+    });
+
     // Quando outro usuário entra na sala, reenvia a oferta se estiver transmitindo
     this.hubConnection.on('UserJoinedDeviceRoom', (userId: string) => {
       this.ngZone.run(async () => {

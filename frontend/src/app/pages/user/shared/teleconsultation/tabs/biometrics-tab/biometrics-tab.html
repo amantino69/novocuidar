@@ -27,7 +27,7 @@
 
   @if (!isProfessional) {
     <p class="description">
-      Digite os valores manualmente ou conecte os dispositivos Bluetooth para captura automática.
+      Os valores são capturados automaticamente da maleta ou podem ser digitados manualmente.
     </p>
   } @else {
     <p class="description">
@@ -49,15 +49,6 @@
             <input type="number" formControlName="oxygenSaturation" placeholder="--" [readonly]="isProfessional">
             <span class="unit">%</span>
           </div>
-          @if (!isProfessional && bluetoothAvailable) {
-            <button type="button" class="btn-connect" 
-                    [class.connected]="oxConnected"
-                    [disabled]="isConnecting"
-                    (click)="connectOximeter()">
-              <app-icon [name]="oxConnected ? 'check' : 'bluetooth'" [size]="16"></app-icon>
-              {{ oxConnected ? 'Conectado' : 'Conectar' }}
-            </button>
-          }
         </div>
       </div>
     </div>
@@ -95,15 +86,6 @@
             <input type="number" formControlName="bloodPressureDiastolic" placeholder="Diast." [readonly]="isProfessional">
             <span class="unit">mmHg</span>
           </div>
-          @if (!isProfessional && bluetoothAvailable) {
-            <button type="button" class="btn-connect" 
-                    [class.connected]="bpConnected"
-                    [disabled]="isConnecting"
-                    (click)="connectBloodPressure()">
-              <app-icon [name]="bpConnected ? 'check' : 'bluetooth'" [size]="16"></app-icon>
-              {{ bpConnected ? 'Conectado' : 'Conectar' }}
-            </button>
-          }
         </div>
       </div>
     </div>
@@ -120,15 +102,6 @@
             <input type="number" formControlName="temperature" placeholder="--" step="0.1" [readonly]="isProfessional">
             <span class="unit">°C</span>
           </div>
-          @if (!isProfessional && bluetoothAvailable) {
-            <button type="button" class="btn-connect" 
-                    [class.connected]="thermConnected"
-                    [disabled]="isConnecting"
-                    (click)="connectThermometer()">
-              <app-icon [name]="thermConnected ? 'check' : 'bluetooth'" [size]="16"></app-icon>
-              {{ thermConnected ? 'Conectado' : 'Conectar' }}
-            </button>
-          }
         </div>
       </div>
     </div>
@@ -145,15 +118,6 @@
             <input type="number" formControlName="weight" placeholder="--" step="0.1" [readonly]="isProfessional">
             <span class="unit">kg</span>
           </div>
-          @if (!isProfessional && bluetoothAvailable) {
-            <button type="button" class="btn-connect" 
-                    [class.connected]="scaleConnected"
-                    [disabled]="isConnecting"
-                    (click)="connectScale()">
-              <app-icon [name]="scaleConnected ? 'check' : 'bluetooth'" [size]="16"></app-icon>
-              {{ scaleConnected ? 'Conectado' : 'Conectar' }}
-            </button>
-          }
         </div>
       </div>
     </div>

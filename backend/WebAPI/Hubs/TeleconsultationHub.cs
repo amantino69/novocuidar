@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
+using Infrastructure.Data;
+using Domain.Enums;
 
 namespace WebAPI.Hubs;
 
@@ -9,10 +11,12 @@ namespace WebAPI.Hubs;
 public class TeleconsultationHub : Hub
 {
     private readonly ILogger<TeleconsultationHub> _logger;
+    private readonly ApplicationDbContext _context;
 
-    public TeleconsultationHub(ILogger<TeleconsultationHub> logger)
+    public TeleconsultationHub(ILogger<TeleconsultationHub> logger, ApplicationDbContext context)
     {
         _logger = logger;
+        _context = context;
     }
 
     public override async Task OnConnectedAsync()
@@ -29,11 +33,27 @@ public class TeleconsultationHub : Hub
 
     /// <summary>
     /// Entra na sala da teleconsulta (appointment)
+    /// Também atualiza o status para InProgress se estiver Scheduled/Confirmed
     /// </summary>
     public async Task JoinConsultation(string appointmentId)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, $"consultation_{appointmentId}");
         _logger.LogInformation("Cliente {ConnectionId} entrou na consulta {AppointmentId}", Context.ConnectionId, appointmentId);
+        
+        // Atualizar status para InProgress se a consulta existir e não estiver finalizada
+        if (Guid.TryParse(appointmentId, out var id))
+        {
+            var appointment = await _context.Appointments.FindAsync(id);
+            if (appointment != null && 
+                (appointment.Status == AppointmentStatus.Scheduled || 
+                 appointment.Status == AppointmentStatus.Confirmed))
+            {
+                appointment.Status = AppointmentStatus.InProgress;
+                appointment.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("[Teleconsulta] Status atualizado para InProgress: {AppointmentId}", appointmentId);
+            }
+        }
         
         // Notificar outros participantes
         await Clients.OthersInGroup($"consultation_{appointmentId}").SendAsync("ParticipantJoined", new

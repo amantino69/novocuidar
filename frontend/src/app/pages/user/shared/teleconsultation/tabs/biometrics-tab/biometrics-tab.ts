@@ -35,6 +35,10 @@ export class BiometricsTabComponent implements OnInit, OnDestroy {
   thermConnected = false;
   scaleConnected = false;
 
+  // Modo Maleta Itinerante - quando ativo, oculta botões de conexão manual
+  // pois os dados chegam automaticamente via BLE Bridge
+  maletaMode = true; // Por padrão, assume que está no modo maleta
+
   constructor(
     private fb: FormBuilder,
     private biometricsService: BiometricsService,
