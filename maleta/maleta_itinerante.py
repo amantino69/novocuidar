@@ -29,7 +29,7 @@ from pathlib import Path
 from bleak import BleakScanner, BleakClient
 
 # === CONFIGURAÇÃO ===
-BASE_URL = os.environ.get("TELECUIDAR_URL", "http://localhost:5239")
+BASE_URL = os.environ.get("TELECUIDAR_URL", "https://www.telecuidar.com.br")
 API_URL = f"{BASE_URL}/api"
 
 # Arquivo de log

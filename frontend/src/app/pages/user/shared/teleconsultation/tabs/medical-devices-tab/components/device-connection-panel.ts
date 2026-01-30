@@ -918,26 +918,42 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy, OnChan
     this.isCapturing = true;
     this.captureMessage = '';
 
-    this.http.get<any>(`${environment.apiUrl}/biometrics/ble-cache`)
+    const apiUrl = `${environment.apiUrl}/biometrics/ble-cache`;
+    console.log('[Capturar] 🔍 Buscando cache em:', apiUrl);
+
+    this.http.get<any>(apiUrl)
       .subscribe({
         next: (response) => {
+          // DEBUG: Mostra resposta completa
+          console.log('[Capturar] 📦 Resposta completa:', JSON.stringify(response, null, 2));
+          
+          // POPUP DEBUG - mostra dados recebidos
+          const debugInfo = `📡 DADOS RECEBIDOS:\n\n${JSON.stringify(response, null, 2)}`;
+          alert(debugInfo);
+
           const devices = response.devices || {};
           let capturedCount = 0;
           const updates: any = {};
 
+          console.log('[Capturar] 📊 Dispositivos no cache:', Object.keys(devices));
+
           // Processa balança
           if (devices['scale']?.values) {
             const weight = devices['scale'].values.weight;
+            console.log('[Capturar] ⚖️ Scale encontrado, weight:', weight);
             if (weight !== undefined) {
               updates.weight = weight;
               capturedCount++;
-              console.log('[Capturar] Peso:', weight, 'kg');
+              console.log('[Capturar] ✅ Peso adicionado:', weight, 'kg');
             }
+          } else {
+            console.log('[Capturar] ❌ Nenhum scale no cache');
           }
 
           // Processa pressão arterial
           if (devices['blood_pressure']?.values) {
             const bp = devices['blood_pressure'].values;
+            console.log('[Capturar] 🩸 Blood pressure encontrado:', bp);
             if (bp.systolic !== undefined) {
               updates.systolic = bp.systolic;
               capturedCount++;
@@ -956,6 +972,7 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy, OnChan
           // Processa oxímetro
           if (devices['oximeter']?.values) {
             const ox = devices['oximeter'].values;
+            console.log('[Capturar] 💓 Oximeter encontrado:', ox);
             if (ox.spo2 !== undefined) {
               updates.spo2 = ox.spo2;
               capturedCount++;
@@ -970,6 +987,7 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy, OnChan
           // Processa termômetro
           if (devices['thermometer']?.values) {
             const temp = devices['thermometer'].values.temperature;
+            console.log('[Capturar] 🌡️ Thermometer encontrado, temp:', temp);
             if (temp !== undefined) {
               updates.temperature = temp;
               capturedCount++;
@@ -977,15 +995,23 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy, OnChan
             }
           }
 
+          console.log('[Capturar] 📝 Updates a aplicar:', updates);
+          console.log('[Capturar] 📝 Form antes do patch:', this.vitalsForm.value);
+
           if (capturedCount > 0) {
             // Atualiza formulário
             this.vitalsForm.patchValue(updates);
+            console.log('[Capturar] 📝 Form depois do patch:', this.vitalsForm.value);
 
             this.captureSuccess = true;
             this.captureMessage = `✓ ${capturedCount} medição(ões) capturada(s)!`;
+            
+            // POPUP de sucesso
+            alert(`✅ SUCESSO!\n\nCapturadas ${capturedCount} medição(ões):\n${JSON.stringify(updates, null, 2)}`);
           } else {
             this.captureSuccess = false;
             this.captureMessage = 'Nenhuma leitura recente. Faça a medição.';
+            console.log('[Capturar] ⚠️ Nenhuma leitura encontrada no cache');
           }
 
           this.isCapturing = false;
@@ -996,7 +1022,8 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy, OnChan
           }, 5000);
         },
         error: (err) => {
-          console.error('[Capturar] Erro:', err);
+          console.error('[Capturar] ❌ Erro HTTP:', err);
+          alert(`❌ ERRO AO BUSCAR CACHE:\n\n${err.message || JSON.stringify(err)}`);
           this.captureSuccess = false;
           this.captureMessage = 'Erro ao buscar dados da maleta';
           this.isCapturing = false;
