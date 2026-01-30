@@ -203,7 +203,60 @@ public class BleBridgeController : ControllerBase
 
         _logger.LogInformation("[BLE Bridge] Dados enviados via SignalR para appointment_{Id}", appointmentId);
 
+        // Também atualiza o cache global (para botão "Capturar Sinais")
+        if (!string.IsNullOrEmpty(dto.DeviceType))
+        {
+            BleCacheStore.UpdateCache(dto.DeviceType.ToLower(), dto.Values);
+            _logger.LogInformation("[BLE Cache] Cache atualizado para {Type}", dto.DeviceType);
+        }
+
         return Ok(new { message = "Leitura processada", biometrics });
+    }
+    
+    /// <summary>
+    /// Armazena leitura BLE no cache (para recuperação posterior pelo botão "Capturar Sinais")
+    /// Usado quando não há consulta ativa específica, mas o dispositivo capturou dados
+    /// </summary>
+    [HttpPost("ble-cache")]
+    public ActionResult StoreBleCache([FromBody] BleReadingDto dto)
+    {
+        if (string.IsNullOrEmpty(dto.DeviceType))
+            return BadRequest(new { message = "deviceType é obrigatório" });
+        
+        BleCacheStore.UpdateCache(dto.DeviceType.ToLower(), dto.Values);
+        _logger.LogInformation("[BLE Cache] Armazenado: {Type} = {@Values}", dto.DeviceType, dto.Values);
+        
+        return Ok(new { message = "Leitura armazenada no cache", deviceType = dto.DeviceType, values = dto.Values });
+    }
+    
+    /// <summary>
+    /// Retorna todas as leituras BLE em cache (usado pelo botão "Capturar Sinais")
+    /// O frontend pode buscar os dados e aplicar na consulta específica
+    /// </summary>
+    [HttpGet("ble-cache")]
+    public ActionResult GetBleCache()
+    {
+        // Limpa entradas com mais de 5 minutos
+        BleCacheStore.ClearOldEntries(TimeSpan.FromMinutes(5));
+        
+        var cache = BleCacheStore.GetAllCache();
+        
+        if (cache.Count == 0)
+            return Ok(new { message = "Nenhuma leitura recente", devices = new Dictionary<string, object>() });
+        
+        var result = new Dictionary<string, object>();
+        foreach (var kvp in cache)
+        {
+            result[kvp.Key] = new
+            {
+                values = kvp.Value.Values,
+                timestamp = kvp.Value.Timestamp.ToString("o"),
+                ageSeconds = (DateTime.UtcNow - kvp.Value.Timestamp).TotalSeconds
+            };
+        }
+        
+        _logger.LogInformation("[BLE Cache] Consulta de cache: {Count} dispositivos", cache.Count);
+        return Ok(new { message = "Cache recuperado", devices = result });
     }
     
     /// <summary>
@@ -247,6 +300,56 @@ public class BleReadingDto
     public string? DeviceType { get; set; }
     public string? Timestamp { get; set; }
     public Dictionary<string, object> Values { get; set; } = new();
+}
+
+/// <summary>
+/// Cache estático para últimas leituras BLE (solução para múltiplas consultas em andamento)
+/// </summary>
+public static class BleCacheStore
+{
+    private static readonly Dictionary<string, BleCacheEntry> _cache = new();
+    private static readonly object _lock = new object();
+    
+    public static void UpdateCache(string deviceType, Dictionary<string, object> values)
+    {
+        lock (_lock)
+        {
+            _cache[deviceType] = new BleCacheEntry
+            {
+                DeviceType = deviceType,
+                Values = values,
+                Timestamp = DateTime.UtcNow
+            };
+        }
+    }
+    
+    public static Dictionary<string, BleCacheEntry> GetAllCache()
+    {
+        lock (_lock)
+        {
+            return new Dictionary<string, BleCacheEntry>(_cache);
+        }
+    }
+    
+    public static void ClearOldEntries(TimeSpan maxAge)
+    {
+        lock (_lock)
+        {
+            var cutoff = DateTime.UtcNow - maxAge;
+            var keysToRemove = _cache.Where(kvp => kvp.Value.Timestamp < cutoff).Select(kvp => kvp.Key).ToList();
+            foreach (var key in keysToRemove)
+            {
+                _cache.Remove(key);
+            }
+        }
+    }
+}
+
+public class BleCacheEntry
+{
+    public string DeviceType { get; set; } = "";
+    public Dictionary<string, object> Values { get; set; } = new();
+    public DateTime Timestamp { get; set; }
 }
 
 public class BiometricsDto

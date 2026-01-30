@@ -83,7 +83,73 @@
   .description {
     color: var(--text-secondary);
     font-size: $font-size-sm;
+    margin: 0;
+  }
+
+  // Seção de descrição + botão
+  .description-section {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-md;
     margin-bottom: $spacing-lg;
+    padding: $spacing-md;
+    background: var(--primary-50);
+    border: 1px dashed var(--primary-300);
+    border-radius: $radius-lg;
+  }
+
+  // Seção do botão Capturar Sinais
+  .capture-section {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+
+    .btn-capture {
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+      padding: $spacing-sm $spacing-lg;
+      background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
+      color: white;
+      border: none;
+      border-radius: $radius-lg;
+      font-size: 14px;
+      font-weight: $font-weight-semibold;
+      cursor: pointer;
+      transition: all $transition-fast;
+      box-shadow: $shadow-sm;
+
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, var(--primary-700), var(--primary-800));
+        transform: translateY(-2px);
+        box-shadow: $shadow-md;
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .spin {
+        animation: spin 1s linear infinite;
+      }
+    }
+
+    .capture-message {
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+      
+      &.success {
+        color: var(--green-600);
+      }
+      
+      &.error {
+        color: var(--red-600);
+      }
+    }
   }
 
   .biometrics-grid {

@@ -51,6 +51,27 @@ import { environment } from '@env/environment';
         Os valores são capturados automaticamente da maleta ou podem ser digitados manualmente.
       </p>
 
+      <!-- Botão para buscar dados do cache da maleta -->
+      <div class="capture-section">
+        <button type="button" class="btn-capture" 
+                [disabled]="isCapturing" 
+                (click)="capturarSinais()"
+                title="Busca os últimos dados capturados pela maleta e aplica nesta consulta">
+          @if (isCapturing) {
+            <app-icon name="loader" [size]="16" class="spin" />
+            <span>Buscando...</span>
+          } @else {
+            <app-icon name="radio" [size]="16" />
+            <span>📡 Capturar Sinais</span>
+          }
+        </button>
+        @if (captureMessage) {
+          <span class="capture-message" [class.success]="captureSuccess" [class.error]="!captureSuccess">
+            {{ captureMessage }}
+          </span>
+        }
+      </div>
+
       @if (!bluetoothAvailable) {
         <div class="warning-banner">
           <app-icon name="alert-triangle" [size]="16" />
@@ -235,6 +256,58 @@ import { environment } from '@env/environment';
       font-size: 11px;
       color: var(--text-secondary);
       margin: 0 0 10px 0;
+    }
+
+    .capture-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 10px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
+      border: 1px dashed #3b82f6;
+      border-radius: 8px;
+    }
+
+    .btn-capture {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+    }
+
+    .capture-message {
+      font-size: 12px;
+      font-weight: 500;
+      
+      &.success {
+        color: #10b981;
+      }
+      
+      &.error {
+        color: #ef4444;
+      }
     }
 
     .warning-banner {
@@ -471,6 +544,11 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy, OnChan
   connectingType: DeviceType | null = null;
   connectedDevices: BluetoothDevice[] = [];
   lastSent: Date | null = null;
+
+  // Captura de sinais da maleta
+  isCapturing = false;
+  captureMessage = '';
+  captureSuccess = false;
 
   // Dados do paciente (carregados do perfil)
   patientGender: string | null = null;
@@ -830,6 +908,100 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy, OnChan
     } catch (error) {
       console.warn('[DeviceConnectionPanel] Erro ao salvar no banco (dados já enviados via SignalR):', error);
     }
+  }
+
+  /**
+   * Busca os dados do cache da maleta e aplica no formulário desta consulta.
+   * Resolve o problema de múltiplas consultas "Em Andamento".
+   */
+  capturarSinais(): void {
+    this.isCapturing = true;
+    this.captureMessage = '';
+
+    this.http.get<any>(`${environment.apiUrl}/biometrics/ble-cache`)
+      .subscribe({
+        next: (response) => {
+          const devices = response.devices || {};
+          let capturedCount = 0;
+          const updates: any = {};
+
+          // Processa balança
+          if (devices['scale']?.values) {
+            const weight = devices['scale'].values.weight;
+            if (weight !== undefined) {
+              updates.weight = weight;
+              capturedCount++;
+              console.log('[Capturar] Peso:', weight, 'kg');
+            }
+          }
+
+          // Processa pressão arterial
+          if (devices['blood_pressure']?.values) {
+            const bp = devices['blood_pressure'].values;
+            if (bp.systolic !== undefined) {
+              updates.systolic = bp.systolic;
+              capturedCount++;
+            }
+            if (bp.diastolic !== undefined) {
+              updates.diastolic = bp.diastolic;
+              capturedCount++;
+            }
+            if (bp.pulse !== undefined) {
+              updates.heartRate = bp.pulse;
+              capturedCount++;
+            }
+            console.log('[Capturar] Pressão:', bp.systolic, '/', bp.diastolic);
+          }
+
+          // Processa oxímetro
+          if (devices['oximeter']?.values) {
+            const ox = devices['oximeter'].values;
+            if (ox.spo2 !== undefined) {
+              updates.spo2 = ox.spo2;
+              capturedCount++;
+            }
+            if (ox.pulseRate !== undefined) {
+              updates.heartRate = ox.pulseRate;
+              capturedCount++;
+            }
+            console.log('[Capturar] SpO2:', ox.spo2, '%');
+          }
+
+          // Processa termômetro
+          if (devices['thermometer']?.values) {
+            const temp = devices['thermometer'].values.temperature;
+            if (temp !== undefined) {
+              updates.temperature = temp;
+              capturedCount++;
+              console.log('[Capturar] Temperatura:', temp, '°C');
+            }
+          }
+
+          if (capturedCount > 0) {
+            // Atualiza formulário
+            this.vitalsForm.patchValue(updates);
+
+            this.captureSuccess = true;
+            this.captureMessage = `✓ ${capturedCount} medição(ões) capturada(s)!`;
+          } else {
+            this.captureSuccess = false;
+            this.captureMessage = 'Nenhuma leitura recente. Faça a medição.';
+          }
+
+          this.isCapturing = false;
+
+          // Limpa mensagem após 5 segundos
+          setTimeout(() => {
+            this.captureMessage = '';
+          }, 5000);
+        },
+        error: (err) => {
+          console.error('[Capturar] Erro:', err);
+          this.captureSuccess = false;
+          this.captureMessage = 'Erro ao buscar dados da maleta';
+          this.isCapturing = false;
+        }
+      });
   }
 
   ngOnDestroy(): void {

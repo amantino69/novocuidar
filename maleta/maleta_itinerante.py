@@ -223,8 +223,31 @@ async def detect_active_appointment() -> str:
 
 # === COMUNICAÇÃO COM BACKEND ===
 
+async def enviar_para_cache(tipo: str, valores: dict):
+    """Envia leitura para o cache do backend (sempre, independente de consulta ativa)"""
+    payload = {
+        "deviceType": tipo,
+        "timestamp": datetime.now().isoformat(),
+        "values": valores
+    }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            url = f"{API_URL}/biometrics/ble-cache"
+            async with session.post(url, json=payload) as resp:
+                if resp.status == 200:
+                    logger.info(f"📦 Cache: {tipo} = {valores}")
+                    return True
+    except Exception as e:
+        pass  # Silencioso - cache é secundário
+    return False
+
+
 async def enviar_leitura(tipo: str, valores: dict):
     """Envia leitura para o backend TeleCuidar"""
+    # SEMPRE envia para o cache (para botão "Capturar Sinais")
+    await enviar_para_cache(tipo, valores)
+    
     appointment_id = await detect_active_appointment()
     
     if not appointment_id:

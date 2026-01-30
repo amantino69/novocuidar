@@ -7,6 +7,8 @@ import { TeleconsultationRealTimeService, DataUpdatedEvent } from '@core/service
 import { BluetoothDevicesService, VitalReading } from '@core/services/bluetooth-devices.service';
 import { Appointment } from '@core/services/appointments.service';
 import { Subject, takeUntil } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-biometrics-tab',
@@ -27,6 +29,11 @@ export class BiometricsTabComponent implements OnInit, OnDestroy {
   isSaving = false;
   isRefreshing = false;
 
+  // Captura de sinais da maleta
+  isCapturing = false;
+  captureMessage = '';
+  captureSuccess = false;
+
   // Bluetooth
   bluetoothAvailable = false;
   isConnecting = false;
@@ -44,7 +51,8 @@ export class BiometricsTabComponent implements OnInit, OnDestroy {
     private biometricsService: BiometricsService,
     private teleconsultationRealTime: TeleconsultationRealTimeService,
     private bluetoothService: BluetoothDevicesService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private http: HttpClient
   ) {
     this.biometricsForm = this.fb.group({
       heartRate: [null, [Validators.min(0), Validators.max(300)]],
@@ -278,6 +286,108 @@ export class BiometricsTabComponent implements OnInit, OnDestroy {
     
     const data = this.biometricsForm.value;
     this.saveData(data);
+  }
+
+  /**
+   * Busca os dados do cache da maleta e aplica no formulário desta consulta.
+   * Resolve o problema de múltiplas consultas "Em Andamento".
+   */
+  capturarSinais(): void {
+    this.isCapturing = true;
+    this.captureMessage = '';
+    this.cdr.detectChanges();
+
+    this.http.get<any>(`${environment.apiUrl}/biometrics/ble-cache`)
+      .subscribe({
+        next: (response) => {
+          const devices = response.devices || {};
+          const updates: Partial<BiometricsData> = {};
+          let capturedCount = 0;
+
+          // Processa balança
+          if (devices['scale']?.values) {
+            const weight = devices['scale'].values.weight;
+            if (weight !== undefined) {
+              updates.weight = weight;
+              capturedCount++;
+              console.log('[Capturar] Peso:', weight, 'kg');
+            }
+          }
+
+          // Processa pressão arterial
+          if (devices['blood_pressure']?.values) {
+            const bp = devices['blood_pressure'].values;
+            if (bp.systolic !== undefined) {
+              updates.bloodPressureSystolic = bp.systolic;
+              capturedCount++;
+            }
+            if (bp.diastolic !== undefined) {
+              updates.bloodPressureDiastolic = bp.diastolic;
+              capturedCount++;
+            }
+            if (bp.pulse !== undefined) {
+              updates.heartRate = bp.pulse;
+              capturedCount++;
+            }
+            console.log('[Capturar] Pressão:', bp.systolic, '/', bp.diastolic);
+          }
+
+          // Processa oxímetro
+          if (devices['oximeter']?.values) {
+            const ox = devices['oximeter'].values;
+            if (ox.spo2 !== undefined) {
+              updates.oxygenSaturation = ox.spo2;
+              capturedCount++;
+            }
+            if (ox.pulseRate !== undefined) {
+              updates.heartRate = ox.pulseRate;
+              capturedCount++;
+            }
+            console.log('[Capturar] SpO2:', ox.spo2, '%');
+          }
+
+          // Processa termômetro
+          if (devices['thermometer']?.values) {
+            const temp = devices['thermometer'].values.temperature;
+            if (temp !== undefined) {
+              updates.temperature = temp;
+              capturedCount++;
+              console.log('[Capturar] Temperatura:', temp, '°C');
+            }
+          }
+
+          if (capturedCount > 0) {
+            // Atualiza formulário
+            this.biometricsForm.patchValue(updates);
+            this.cdr.detectChanges();
+
+            // Salva automaticamente
+            this.saveData(this.biometricsForm.value);
+
+            this.captureSuccess = true;
+            this.captureMessage = `✓ ${capturedCount} medição(ões) capturada(s)!`;
+          } else {
+            this.captureSuccess = false;
+            this.captureMessage = 'Nenhuma leitura recente. Faça a medição no dispositivo.';
+          }
+
+          this.isCapturing = false;
+          this.cdr.detectChanges();
+
+          // Limpa mensagem após 5 segundos
+          setTimeout(() => {
+            this.captureMessage = '';
+            this.cdr.detectChanges();
+          }, 5000);
+        },
+        error: (err) => {
+          console.error('[Capturar] Erro:', err);
+          this.captureSuccess = false;
+          this.captureMessage = 'Erro ao buscar dados da maleta';
+          this.isCapturing = false;
+          this.cdr.detectChanges();
+        }
+      });
   }
 
   saveData(data: BiometricsData) {

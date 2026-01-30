@@ -412,6 +412,28 @@ POC_SEED_ENABLED=true
 
 ---
 
+## 🏗️ Arquitetura de Componentes - ATENÇÃO!
+
+### Aba "Sinais" na Teleconsulta
+A aba "Sinais" na teleconsulta **NÃO** usa `biometrics-tab.html`.
+
+A estrutura real é:
+```
+teleconsultation-sidebar.html
+  └── Quando activeTab === 'Sinais'
+      └── <app-medical-devices-tab>  (arquivo: medical-devices-tab.ts)
+          ├── Para OPERADOR (Paciente/Assistente/Admin):
+          │   └── <app-device-connection-panel>  ← ESTE é o componente correto!
+          │       (arquivo: device-connection-panel.ts - template inline)
+          └── Para MÉDICO (Professional):
+              └── <app-vital-signs-panel>
+                  (arquivo: vital-signs-panel.ts - template inline)
+```
+
+⚠️ **LIÇÃO APRENDIDA**: Sempre verificar qual componente está realmente sendo renderizado antes de editar. Use `grep_search` para encontrar onde os seletores são usados.
+
+---
+
 ## 📞 Informações de Acesso
 
 - **URL Produção**: https://www.telecuidar.com.br
@@ -421,7 +443,7 @@ POC_SEED_ENABLED=true
 ---
 
 ## 📅 Última Atualização
-- **Data**: 25/01/2026
+- **Data**: 30/01/2026
 - **Autor**: IA Assistant
-- **Motivo**: Documentação de procedimentos após incidentes de deploy
+- **Motivo**: Documentação da arquitetura de componentes da aba Sinais
 

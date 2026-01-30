@@ -25,15 +25,39 @@
     </div>
   </div>
 
-  @if (!isProfessional) {
-    <p class="description">
-      Os valores são capturados automaticamente da maleta ou podem ser digitados manualmente.
-    </p>
-  } @else {
-    <p class="description">
-      Dados biométricos do paciente em tempo real.
-    </p>
-  }
+  <!-- Descrição e Botão de Captura -->
+  <div class="description-section">
+    @if (!isProfessional) {
+      <p class="description">
+        Os valores são capturados automaticamente da maleta ou podem ser digitados manualmente.
+      </p>
+    } @else {
+      <p class="description">
+        Dados biométricos do paciente em tempo real.
+      </p>
+    }
+    
+    <!-- Botão para buscar dados do cache da maleta - disponível para todos -->
+    <div class="capture-section">
+      <button type="button" class="btn-capture" 
+              [disabled]="isCapturing" 
+              (click)="capturarSinais()"
+              title="Busca os últimos dados capturados pela maleta e aplica nesta consulta">
+        @if (isCapturing) {
+          <app-icon name="loader" [size]="18" class="spin"></app-icon>
+          Buscando...
+        } @else {
+          <app-icon name="radio" [size]="18"></app-icon>
+          📡 Capturar Sinais
+        }
+      </button>
+      @if (captureMessage) {
+        <span class="capture-message" [class.success]="captureSuccess" [class.error]="!captureSuccess">
+          {{ captureMessage }}
+        </span>
+      }
+    </div>
+  </div>
 
   <form [formGroup]="biometricsForm" class="biometrics-grid">
     
