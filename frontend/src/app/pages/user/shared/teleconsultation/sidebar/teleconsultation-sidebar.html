@@ -1,51 +1,40 @@
 <div class="tele-sidebar" [class.open]="isOpen" [class.full-screen]="isFullScreen" [class.header-hidden]="!isHeaderVisible">
   <div class="sidebar-header">
-    <div class="sidebar-actions-left">
-      <!-- PROFESSIONAL: Ícone original -->
-      <button *ngIf="userrole === 'PROFESSIONAL'" class="icon-btn resize-btn" (click)="onToggleMode()" [title]="isFullScreen ? 'Modo Lateral' : 'Tela Cheia'">
-        <app-icon [name]="isFullScreen ? 'arrow-right' : 'arrow-left'" [size]="20" />
+    <!-- Botões de controle em linha -->
+    <div class="header-controls">
+      <!-- Expandir/Reduzir (esquerda) -->
+      <button class="control-btn expand-btn" (click)="onToggleMode()" [title]="isFullScreen ? 'Reduzir janela' : 'Expandir janela'">
+        <app-icon [name]="isFullScreen ? 'minimize' : 'copy'" [size]="22" />
+        <span>{{ isFullScreen ? 'Reduzir' : 'Expandir' }}</span>
       </button>
-      <!-- PATIENT/outros: Texto -->
-      <button *ngIf="userrole !== 'PROFESSIONAL'" class="text-btn resize-btn" (click)="onToggleMode()" [title]="isFullScreen ? 'Modo Lateral' : 'Tela Cheia'">
-        {{ isFullScreen ? 'Reduzir janela' : 'Expandir janela' }}
-      </button>
-    </div>
-    
-    @if (isFullScreen && !isHeaderVisible) {
-      <div class="sidebar-actions-center">
-        <button class="icon-btn show-header-btn" (click)="onToggleHeader()" title="Mostrar Cabeçalho">
-          <app-icon name="chevron-down" [size]="20" />
-        </button>
-      </div>
-    }
-    
-    <div class="sidebar-actions">
-      <!-- PROFESSIONAL: Microfone + Ícone X -->
+      
+      <!-- Ditar/Transcrever (centro - mais largo) -->
       @if (userrole === 'PROFESSIONAL') {
         <button 
-          class="icon-btn dictation-btn" 
+          class="control-btn dictate-btn" 
           [class.active]="isDictationActive"
           [class.listening]="isListening"
           [class.initializing]="isDictationInitializing"
           [disabled]="isDictationInitializing"
           (click)="toggleDictation()" 
-          [title]="isDictationInitializing ? 'Liberando microfone...' : 'Modo Ditado'">
+          [title]="isDictationInitializing ? 'Aguarde...' : (isDictationActive ? 'Desativar transcrição' : 'Ativar transcrição')">
           @if (isDictationInitializing) {
             <span class="spinner"></span>
           } @else {
-            <app-icon [name]="isDictationActive ? 'mic' : 'mic-off'" [size]="20" />
+            <app-icon [name]="isDictationActive ? 'mic' : 'mic-off'" [size]="22" />
           }
-        </button>
-        <button class="icon-btn close-btn" (click)="onToggle()">
-          <app-icon name="close" [size]="20" />
+          <span>{{ isDictationActive ? 'Transcrevendo...' : 'Transcrever a fala' }}</span>
         </button>
       }
-      <!-- PATIENT/outros: Texto -->
-      @if (userrole !== 'PROFESSIONAL') {
-        <button class="text-btn close-btn" (click)="onToggle()">
-          Ocultar janela
-        </button>
-      }
+      
+      <!-- Espaço flexível para empurrar Fechar para direita -->
+      <div class="flex-spacer"></div>
+      
+      <!-- Fechar (direita) -->
+      <button class="control-btn close-btn" (click)="onToggle()" title="Ocultar painel">
+        <app-icon name="x" [size]="22" />
+        <span>Fechar</span>
+      </button>
     </div>
   </div>
 
@@ -68,7 +57,7 @@
           [class.active]="isTabActive('Finalizar Consulta')"
           (click)="onFinalizarClick()">
           <app-icon name="check-circle" [size]="16" />
-          <span>Finalizar</span>
+          <span>Finalizar a Consulta</span>
         </button>
       }
     </div>

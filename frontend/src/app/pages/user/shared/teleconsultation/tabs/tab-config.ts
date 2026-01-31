@@ -68,7 +68,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     label: 'Paciente',
     icon: 'user',
     roles: ['PROFESSIONAL', 'ADMIN'],
-    showInTeleconsultation: true,
+    showInTeleconsultation: false, // Removido da teleconsulta - info na barra de sinais
     showInDetails: false,
     order: 1,
     group: 'exame-fisico'
@@ -96,7 +96,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
   {
     id: 'specialty',
     label: 'Específico',
-    icon: 'box',
+    icon: 'stethoscope',
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
     showInDetails: false,

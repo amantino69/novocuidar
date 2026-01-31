@@ -13,36 +13,22 @@
     <!-- Main Content (Video + Header) -->
     <div class="main-content" [class.sidebar-open]="isSidebarOpen && !isSidebarFull" [class.full-screen]="isSidebarOpen && isSidebarFull">
     <!-- Header -->
-    <div class="tele-header" [class.hidden]="!isHeaderVisible" [class.patient-mode]="userrole !== 'PROFESSIONAL'">
+    <div class="tele-header dark-header" [class.hidden]="!isHeaderVisible">
       <div class="header-content">
-        <!-- LAYOUT PARA PROFESSIONAL: Header original completo -->
+        <!-- LAYOUT PARA PROFESSIONAL: Header simplificado -->
         <ng-container *ngIf="userrole === 'PROFESSIONAL'">
-          <div class="info-section">
-            <div class="main-info" *ngIf="appointment">
-              <h2>{{ appointment.patientName }}</h2>
-              <span class="specialty-badge">{{ appointment.specialtyName }}</span>
-            </div>
-            <div class="main-info" *ngIf="!appointment">
-              <h2>Carregando...</h2>
-            </div>
-            <div class="meta-info" *ngIf="appointment">
-              <span><app-icon name="calendar" [size]="14" /> {{ appointment.date | date:'dd/MM/yyyy':'':'pt-BR' }}</span>
-              <span><app-icon name="clock" [size]="14" /> {{ appointment.time }}</span>
-            </div>
+          <div class="controls-section controls-left">
+            <app-button variant="danger" size="sm" (click)="exitCall()">
+              <app-icon name="log-out" [size]="18" />
+              Sair da consulta
+            </app-button>
           </div>
 
-          <div class="controls-section">
-            <app-theme-toggle />
-            <button class="icon-btn sidebar-btn" (click)="toggleSidebar()" title="Abrir Painel Lateral" *ngIf="!isSidebarOpen">
-              <app-icon name="panel-right" [size]="20" />
+          <div class="controls-section controls-right">
+            <button class="control-btn registry-btn" (click)="toggleSidebar()" title="Registro da Consulta" *ngIf="!isSidebarOpen">
+              <app-icon name="edit" [size]="22" />
+              <span>Registro</span>
             </button>
-            <button class="icon-btn" (click)="toggleHeader()" title="Ocultar Cabeçalho">
-              <app-icon name="chevron-up" [size]="20" />
-            </button>
-            <app-button variant="danger" size="sm" (click)="exitCall()">
-              <app-icon name="arrow-left" [size]="18" />
-              Sair
-            </app-button>
           </div>
         </ng-container>
 

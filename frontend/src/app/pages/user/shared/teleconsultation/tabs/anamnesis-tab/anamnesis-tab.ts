@@ -7,15 +7,6 @@ import { AppointmentsService, Appointment } from '@core/services/appointments.se
 import { TeleconsultationRealTimeService, DataUpdatedEvent } from '@core/services/teleconsultation-realtime.service';
 import { Subject, takeUntil, debounceTime } from 'rxjs';
 
-export type SoapSection = 'subjective' | 'objective' | 'assessment' | 'plan';
-
-export interface SoapTabInfo {
-  id: SoapSection;
-  letter: string;
-  label: string;
-  color: string;
-}
-
 @Component({
   selector: 'app-anamnesis-tab',
   standalone: true,
@@ -32,14 +23,7 @@ export class AnamnesisTabComponent implements OnInit, OnDestroy, OnChanges {
   anamnesisForm: FormGroup;
   isSaving = false;
   lastSaved: Date | null = null;
-  activeSection: SoapSection = 'subjective';
-  
-  readonly soapTabs: SoapTabInfo[] = [
-    { id: 'subjective', letter: 'S', label: 'Subjetivo', color: 'blue' },
-    { id: 'objective', letter: 'O', label: 'Objetivo', color: 'green' },
-    { id: 'assessment', letter: 'A', label: 'Avaliação', color: 'amber' },
-    { id: 'plan', letter: 'P', label: 'Plano', color: 'purple' }
-  ];
+  expandedSection: 'subjective' | 'objective' | 'assessment' | 'plan' | null = null;
 
   private destroy$ = new Subject<void>();
   private dataLoaded = false;
@@ -167,14 +151,6 @@ export class AnamnesisTabComponent implements OnInit, OnDestroy, OnChanges {
           this.saveAnamnesis();
         }
       });
-  }
-
-  setActiveSection(section: SoapSection): void {
-    this.activeSection = section;
-  }
-
-  getActiveTab(): SoapTabInfo {
-    return this.soapTabs.find(t => t.id === this.activeSection) || this.soapTabs[0];
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -307,5 +283,36 @@ export class AnamnesisTabComponent implements OnInit, OnDestroy, OnChanges {
 
   onManualSave() {
     this.saveAnamnesis();
+  }
+
+  // ============================================
+  // Editor Expandido
+  // ============================================
+  openExpandedEditor(section: 'subjective' | 'objective' | 'assessment' | 'plan'): void {
+    this.expandedSection = section;
+  }
+
+  closeExpandedEditor(): void {
+    this.expandedSection = null;
+  }
+
+  getExpandedSectionLetter(): string {
+    const letters: Record<string, string> = {
+      subjective: 'S',
+      objective: 'O',
+      assessment: 'A',
+      plan: 'P'
+    };
+    return this.expandedSection ? letters[this.expandedSection] : '';
+  }
+
+  getExpandedSectionTitle(): string {
+    const titles: Record<string, string> = {
+      subjective: 'Subjetivo',
+      objective: 'Objetivo',
+      assessment: 'Avaliação',
+      plan: 'Plano'
+    };
+    return this.expandedSection ? titles[this.expandedSection] : '';
   }
 }
