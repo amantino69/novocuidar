@@ -18,40 +18,19 @@ import { environment } from '@env/environment';
   imports: [CommonModule, FormsModule, IconComponent],
   template: `
     <div class="vitals-bar" [class.professional]="isProfessional">
-      <!-- LINHA 1: Paciente + Ações -->
+      <!-- LINHA 1: Info Profissional (esq) + Paciente (dir) -->
       <div class="row-1">
-        <div class="patient-info">
-          <span class="patient-badge">
-            <app-icon name="user" [size]="22" />
-            <strong>{{ patientName || 'Paciente' }}</strong>
-          </span>
-          <span class="chip">Sexo: <b>{{ getGenderLabel() }}</b></span>
-          <span class="chip">Idade: <b>{{ patientAge ? patientAge + ' anos' : '--' }}</b></span>
+        <div class="left-info">
+          <span class="chip"><b>Profissional:</b> {{ professionalName || '--' }}</span>
+          <span class="chip"><b>Especialidade:</b> {{ specialtyName || '--' }}</span>
+          <span class="chip"><b>Data:</b> {{ appointmentDate || '--' }}</span>
+          <span class="chip"><b>Hora:</b> {{ appointmentTime || '--' }}</span>
         </div>
         
-        <div class="actions">
-          <!-- OPERADOR: botão capturar -->
-          <button *ngIf="!isProfessional" class="btn-capture" (click)="capturarSinais()" [disabled]="isCapturing">
-            <span *ngIf="isCapturing" class="spinner"></span>
-            <app-icon *ngIf="!isCapturing" name="radio" [size]="20" />
-            <span>{{ isCapturing ? 'Buscando...' : '📡 Capturar Sinais' }}</span>
-          </button>
-          
-          <!-- MÉDICO: botão analisar -->
-          <button *ngIf="isProfessional" class="btn-analyze" (click)="analisarSinais()" [disabled]="!hasAnyVitals() || isAnalyzing">
-            <span *ngIf="isAnalyzing" class="spinner"></span>
-            <app-icon *ngIf="!isAnalyzing" name="sparkles" [size]="20" />
-            <span>🧠 Analisar Sinais Vitais</span>
-          </button>
-          
-          <span *ngIf="captureMessage" class="msg" [class.ok]="captureSuccess" [class.err]="!captureSuccess">
-            {{ captureMessage }}
-          </span>
-          
-          <span *ngIf="lastSync" class="sync-info">
-            <app-icon name="check-circle" [size]="16" />
-            Sync: {{ lastSync | date:'HH:mm:ss' }}
-          </span>
+        <div class="right-info">
+          <span class="chip"><b>Paciente:</b> {{ patientName || '--' }}</span>
+          <span class="chip"><b>Sexo:</b> {{ getGenderLabel() }}</span>
+          <span class="chip"><b>Idade:</b> {{ patientAge ? patientAge + ' anos' : '--' }}</span>
         </div>
       </div>
       
@@ -140,6 +119,32 @@ import { environment } from '@env/environment';
             <small>°C</small>
           </div>
         </div>
+        
+        <!-- Ações à direita -->
+        <div class="actions">
+          <span *ngIf="lastSync" class="sync-info">
+            <app-icon name="check-circle" [size]="16" />
+            {{ lastSync | date:'HH:mm:ss' }}
+          </span>
+          
+          <span *ngIf="captureMessage" class="msg" [class.ok]="captureSuccess" [class.err]="!captureSuccess">
+            {{ captureMessage }}
+          </span>
+          
+          <!-- OPERADOR: botão capturar -->
+          <button *ngIf="!isProfessional" class="btn-capture" (click)="capturarSinais()" [disabled]="isCapturing">
+            <span *ngIf="isCapturing" class="spinner"></span>
+            <app-icon *ngIf="!isCapturing" name="radio" [size]="20" />
+            <span>{{ isCapturing ? 'Buscando...' : '📡 Capturar Sinais' }}</span>
+          </button>
+          
+          <!-- MÉDICO: botão analisar -->
+          <button *ngIf="isProfessional" class="btn-analyze" (click)="analisarSinais()" [disabled]="!hasAnyVitals() || isAnalyzing">
+            <span *ngIf="isAnalyzing" class="spinner"></span>
+            <app-icon *ngIf="!isAnalyzing" name="sparkles" [size]="20" />
+            <span>🧠 Analisar</span>
+          </button>
+        </div>
       </div>
     </div>
   `,
@@ -159,47 +164,35 @@ import { environment } from '@env/environment';
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
     
-    /* ============ LINHA 1: PACIENTE + AÇÕES ============ */
+    /* ============ LINHA 1: INFO PROFISSIONAL (ESQ) + PACIENTE (DIR) ============ */
     .row-1 {
       display: flex;
       align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
-      gap: 16px;
-      padding: 14px 24px;
-      background: linear-gradient(90deg, rgba(59,130,246,0.2) 0%, rgba(59,130,246,0.05) 40%, transparent 70%);
+      gap: 12px;
+      padding: 10px 24px;
+      background: linear-gradient(90deg, rgba(59,130,246,0.15) 0%, rgba(59,130,246,0.05) 40%, transparent 70%);
       border-bottom: 1px solid rgba(255,255,255,0.1);
-      min-height: 60px;
+      min-height: 50px;
     }
     
-    .patient-info {
+    .left-info, .right-info {
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: 12px;
       flex-wrap: wrap;
     }
     
-    .patient-badge {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 18px;
-      background: rgba(59,130,246,0.25);
-      border: 1px solid rgba(59,130,246,0.4);
-      border-radius: 12px;
-      
-      app-icon { color: #60a5fa; }
-      strong { font-size: 18px; color: #fff; }
-    }
-    
     .chip {
-      font-size: 15px;
+      font-size: 14px;
       color: #94a3b8;
-      padding: 8px 14px;
+      padding: 6px 12px;
       background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
       border-radius: 8px;
       
-      b { color: #e2e8f0; font-weight: 600; }
+      b { color: #60a5fa; font-weight: 600; margin-right: 4px; }
     }
     
     .actions {
@@ -433,6 +426,12 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
   patientGender = '';
   patientAge: number | null = null;
 
+  // Dados do profissional/consulta
+  professionalName = '';
+  specialtyName = '';
+  appointmentDate = '';
+  appointmentTime = '';
+
   // Sinais vitais
   weight: number | null = null;
   height: number | null = null;
@@ -497,7 +496,20 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
 
   private loadPatientInfo(): void {
     if (!this.appointment) return;
+    
+    // Info do paciente
     this.patientName = this.appointment.patientName || '';
+    
+    // Info do profissional/consulta
+    this.professionalName = this.appointment.professionalName || '';
+    this.specialtyName = this.appointment.specialtyName || '';
+    
+    // Formatar data e hora
+    if (this.appointment.date) {
+      const date = new Date(this.appointment.date);
+      this.appointmentDate = date.toLocaleDateString('pt-BR');
+    }
+    this.appointmentTime = this.appointment.time || '';
 
     if (this.appointment.patientId) {
       this.usersService.getUserById(this.appointment.patientId).subscribe({

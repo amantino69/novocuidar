@@ -467,6 +467,33 @@
   }
 }
 
+.text-btn {
+  padding: 6px 12px;
+  border-radius: $radius-md;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all $transition-fast;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--background);
+    color: var(--text-primary);
+  }
+
+  &.close-btn {
+    color: var(--red-600);
+    border-color: var(--red-200);
+    
+    &:hover {
+      background: var(--red-50);
+    }
+  }
+}
+
 @keyframes pulse {
   0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
   70% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }

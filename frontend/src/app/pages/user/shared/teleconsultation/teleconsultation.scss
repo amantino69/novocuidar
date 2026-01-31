@@ -205,6 +205,22 @@
     flex-shrink: 0;
     overflow: hidden;
     max-height: 80px;
+    
+    // Modo paciente: fundo escuro
+    &.patient-mode {
+      background: #1e293b;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      color: #f1f5f9;
+    }
+    padding: 0 $spacing-2xl;
+    display: flex;
+    align-items: center;
+    transition: all $transition-base;
+    z-index: 40;
+    color: var(--text-primary);
+    flex-shrink: 0;
+    overflow: hidden;
+    max-height: 80px;
 
     // When sidebar is full-screen and header is visible, put header above sidebar
     &.above-sidebar {

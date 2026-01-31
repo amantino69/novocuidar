@@ -160,8 +160,8 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: true,
     showInDetails: false,
-    order: 5,
-    group: 'exame-fisico'
+    order: 0,
+    group: 'documentos'
   },
   {
     id: 'receita',
@@ -282,8 +282,12 @@ export function getTeleconsultationTabGroups(role: 'PATIENT' | 'PROFESSIONAL' | 
     }
   ];
   
-  // Remove grupos vazios
-  return groups.filter(g => g.tabs.length > 0);
+  // Remove grupos vazios e remove 'Avaliação Clínica' para pacientes
+  return groups.filter(g => {
+    if (g.tabs.length === 0) return false;
+    if (role === 'PATIENT' && g.id === 'exame-fisico') return false;
+    return true;
+  });
 }
 
 /**

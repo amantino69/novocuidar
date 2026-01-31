@@ -1,8 +1,13 @@
 <div class="tele-sidebar" [class.open]="isOpen" [class.full-screen]="isFullScreen" [class.header-hidden]="!isHeaderVisible">
   <div class="sidebar-header">
     <div class="sidebar-actions-left">
-      <button class="icon-btn resize-btn" (click)="onToggleMode()" [title]="isFullScreen ? 'Modo Lateral' : 'Tela Cheia'">
+      <!-- PROFESSIONAL: Ícone original -->
+      <button *ngIf="userrole === 'PROFESSIONAL'" class="icon-btn resize-btn" (click)="onToggleMode()" [title]="isFullScreen ? 'Modo Lateral' : 'Tela Cheia'">
         <app-icon [name]="isFullScreen ? 'arrow-right' : 'arrow-left'" [size]="20" />
+      </button>
+      <!-- PATIENT/outros: Texto -->
+      <button *ngIf="userrole !== 'PROFESSIONAL'" class="text-btn resize-btn" (click)="onToggleMode()" [title]="isFullScreen ? 'Modo Lateral' : 'Tela Cheia'">
+        {{ isFullScreen ? 'Reduzir janela' : 'Expandir janela' }}
       </button>
     </div>
     
@@ -15,7 +20,8 @@
     }
     
     <div class="sidebar-actions">
-      @if (userrole !== 'PATIENT') {
+      <!-- PROFESSIONAL: Microfone + Ícone X -->
+      @if (userrole === 'PROFESSIONAL') {
         <button 
           class="icon-btn dictation-btn" 
           [class.active]="isDictationActive"
@@ -30,10 +36,16 @@
             <app-icon [name]="isDictationActive ? 'mic' : 'mic-off'" [size]="20" />
           }
         </button>
+        <button class="icon-btn close-btn" (click)="onToggle()">
+          <app-icon name="close" [size]="20" />
+        </button>
       }
-      <button class="icon-btn close-btn" (click)="onToggle()">
-        <app-icon name="close" [size]="20" />
-      </button>
+      <!-- PATIENT/outros: Texto -->
+      @if (userrole !== 'PROFESSIONAL') {
+        <button class="text-btn close-btn" (click)="onToggle()">
+          Ocultar janela
+        </button>
+      }
     </div>
   </div>
 
