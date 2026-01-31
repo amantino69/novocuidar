@@ -19,9 +19,9 @@
             "enabled": false
         },
         "thermometer": {
-            "mac": null,
-            "name": "Termômetro",
-            "enabled": false
+            "mac": "DC:23:4E:DA:E9:DD",
+            "name": "MOBI m3ja",
+            "enabled": true
         },
         "stethoscope": {
             "mac": null,

@@ -61,6 +61,13 @@ DEVICES = {
         "method": "gatt",
         "service_uuid": "00001810-0000-1000-8000-00805f9b34fb",
         "char_uuid": "00002a35-0000-1000-8000-00805f9b34fb"
+    },
+    "DC:23:4E:DA:E9:DD": {
+        "type": "thermometer",
+        "name": "MOBI m3ja",
+        "method": "gatt",
+        "service_uuid": "00001809-0000-1000-8000-00805f9b34fb",  # Health Thermometer
+        "char_uuid": "00002a1c-0000-1000-8000-00805f9b34fb"      # Temperature Measurement
     }
 }
 
@@ -76,6 +83,9 @@ class ServiceState:
         
         # Controle do Omron
         self.omron_connecting = False
+        
+        # Controle do Termômetro
+        self.thermometer_connecting = False
 
 state = ServiceState()
 
@@ -149,6 +159,39 @@ def processar_balanca(data: bytes) -> dict:
         state.scale_state["confirmado"] = True
         logger.info(f"✅ PESO CONFIRMADO: {peso} kg")
         return {"weight": peso}
+    
+    return None
+
+
+def processar_temperatura(data: bytes) -> dict:
+    """Processa dados do Health Thermometer Measurement (IEEE 11073)"""
+    if len(data) < 5:
+        return None
+    
+    flags = data[0]
+    
+    # Temperatura em IEEE 11073 FLOAT (4 bytes)
+    # Formato: mantissa (3 bytes) + exponent (1 byte)
+    mantissa = data[1] | (data[2] << 8) | (data[3] << 16)
+    if mantissa >= 0x800000:
+        mantissa -= 0x1000000
+    exponent = data[4]
+    if exponent >= 0x80:
+        exponent -= 0x100
+    
+    temperatura = mantissa * (10 ** exponent)
+    
+    # Verifica se é Fahrenheit (bit 0 do flags)
+    if flags & 0x01:
+        # Converte de Fahrenheit para Celsius
+        temperatura = (temperatura - 32) * 5 / 9
+    
+    # Arredonda para 1 casa decimal
+    temperatura = round(temperatura, 1)
+    
+    # Valida range (32°C a 43°C é range humano típico)
+    if 32.0 <= temperatura <= 43.0:
+        return {"temperature": temperatura}
     
     return None
 
@@ -331,6 +374,71 @@ async def conectar_omron():
     return None
 
 
+# === CONEXÃO TERMÔMETRO MOBI ===
+
+async def conectar_termometro():
+    """Conecta ao termômetro MOBI via GATT"""
+    if state.thermometer_connecting:
+        return None
+    
+    state.thermometer_connecting = True
+    device_info = DEVICES.get("DC:23:4E:DA:E9:DD")
+    mac = "DC:23:4E:DA:E9:DD"
+    char_uuid = device_info["char_uuid"]
+    
+    logger.info(f"🔗 Conectando ao {device_info['name']}...")
+    
+    dados_temp = None
+    temp_recebida = asyncio.Event()
+    
+    def notification_handler(sender, data):
+        nonlocal dados_temp
+        logger.debug(f"🌡️ Dados recebidos: {data.hex()}")
+        resultado = processar_temperatura(data)
+        if resultado:
+            dados_temp = resultado
+            temp_recebida.set()
+    
+    try:
+        async with BleakClient(mac, timeout=15.0) as client:
+            if client.is_connected:
+                logger.info(f"✅ Conectado ao Termômetro")
+                
+                # Tenta encontrar a característica de temperatura
+                try:
+                    await client.start_notify(char_uuid, notification_handler)
+                except Exception as e:
+                    # Alguns termômetros usam characteristic diferente
+                    logger.debug(f"Tentando características alternativas...")
+                    for service in client.services:
+                        for char in service.characteristics:
+                            if "notify" in char.properties or "indicate" in char.properties:
+                                try:
+                                    await client.start_notify(char.uuid, notification_handler)
+                                    logger.debug(f"Usando característica: {char.uuid}")
+                                    break
+                                except:
+                                    pass
+                
+                try:
+                    await asyncio.wait_for(temp_recebida.wait(), timeout=30.0)
+                    
+                    if dados_temp:
+                        logger.info(f"🌡️ TEMPERATURA: {dados_temp['temperature']}°C")
+                        await enviar_leitura("thermometer", dados_temp)
+                        return dados_temp
+                        
+                except asyncio.TimeoutError:
+                    logger.warning("⏱️ Timeout - faça a medição no termômetro")
+                
+    except Exception as e:
+        logger.error(f"❌ Erro Termômetro: {e}")
+    finally:
+        state.thermometer_connecting = False
+    
+    return None
+
+
 # === SCANNER BLE ===
 
 def detection_callback(device, advertisement_data):
@@ -346,6 +454,10 @@ def detection_callback(device, advertisement_data):
     elif mac == "00:5F:BF:9A:64:DF" and not state.omron_connecting:
         logger.info(f"📡 Omron detectado!")
         asyncio.create_task(conectar_omron())
+    
+    elif mac == "DC:23:4E:DA:E9:DD" and not state.thermometer_connecting:
+        logger.info(f"🌡️ Termômetro MOBI detectado!")
+        asyncio.create_task(conectar_termometro())
 
 
 # === INTERFACE SIMPLES PARA TÉCNICO ===

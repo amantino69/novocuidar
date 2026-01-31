@@ -10,9 +10,33 @@
   background: var(--neutral-900); // Video background
   z-index: $z-index-modal + 10; // Above everything
   display: flex;
-  flex-direction: row;
+  flex-direction: column; // Mudou para column para acomodar a barra de status
   overflow: hidden;
   color: var(--neutral-50);
+
+  // Wrapper do body (vídeo + sidebar)
+  .teleconsultation-body {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+    min-height: 0; // Importante para flex funcionar corretamente
+  }
+
+  // Wrapper da barra de status no rodapé (LARGURA TOTAL)
+  .vitals-footer-wrapper {
+    position: relative;
+    width: 100%;
+    flex-shrink: 0;
+    z-index: 100;
+    background: #1e293b;
+    border-top: 3px solid #3b82f6;
+    
+    app-vitals-status-bar {
+      display: block;
+      width: 100%;
+    }
+  }
 
   // Overlay quando médico está ditando (para paciente)
   .dictation-overlay {

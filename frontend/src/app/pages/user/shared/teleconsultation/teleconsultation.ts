@@ -14,6 +14,7 @@ import { TeleconsultationRealTimeService, StatusChangedEvent, DataUpdatedEvent }
 import { TeleconsultationDataCollectorService } from '@core/services/teleconsultation-data-collector.service';
 import { MedicalDevicesSyncService } from '@core/services/medical-devices-sync.service';
 import { TeleconsultationSidebarComponent } from './sidebar/teleconsultation-sidebar';
+import { VitalsStatusBarComponent } from './components/vitals-status-bar/vitals-status-bar';
 import { getTeleconsultationTabs, TAB_ID_TO_LEGACY_NAME, TabConfig } from './tabs/tab-config';
 import { Subscription } from 'rxjs';
 
@@ -27,7 +28,8 @@ import { Subscription } from 'rxjs';
     ThemeToggleComponent,
     RouterModule,
     TeleconsultationSidebarComponent,
-    JitsiVideoComponent
+    JitsiVideoComponent,
+    VitalsStatusBarComponent
   ],
   templateUrl: './teleconsultation.html',
   styleUrls: ['./teleconsultation.scss']

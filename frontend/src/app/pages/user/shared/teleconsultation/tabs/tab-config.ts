@@ -108,7 +108,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     label: 'Sinais',
     icon: 'activity',
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
-    showInTeleconsultation: true,
+    showInTeleconsultation: false, // DESATIVADO - Movido para barra de rodapé
     showInDetails: false,
     order: 0,
     group: 'exame-fisico'
@@ -138,7 +138,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     label: 'Fonocardio',
     icon: 'headphones',
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
-    showInTeleconsultation: true, // HABILITADO - Fonocardiograma em tempo real
+    showInTeleconsultation: false, // DESATIVADO - Removido conforme solicitação
     showInDetails: false,
     order: 1,
     group: 'exame-fisico'

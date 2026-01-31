@@ -8,8 +8,10 @@
     </div>
   </div>
 
-  <!-- Main Content (Video + Header) -->
-  <div class="main-content" [class.sidebar-open]="isSidebarOpen && !isSidebarFull" [class.full-screen]="isSidebarOpen && isSidebarFull">
+  <!-- Wrapper para conteúdo + barra de status -->
+  <div class="teleconsultation-body">
+    <!-- Main Content (Video + Header) -->
+    <div class="main-content" [class.sidebar-open]="isSidebarOpen && !isSidebarFull" [class.full-screen]="isSidebarOpen && isSidebarFull">
     <!-- Header -->
     <div class="tele-header" [class.hidden]="!isHeaderVisible">
       <div class="header-content">
@@ -100,4 +102,14 @@
     (tabChange)="setActiveTab($event)"
     (finishConsultation)="onFinishConsultation($event)">
   </app-teleconsultation-sidebar>
+  </div>
+
+  <!-- Barra de Status de Sinais Vitais (rodapé fixo - LARGURA TOTAL) -->
+  <div class="vitals-footer-wrapper">
+    <app-vitals-status-bar
+      [appointmentId]="appointmentId"
+      [appointment]="appointment"
+      [userRole]="userrole">
+    </app-vitals-status-bar>
+  </div>
 </div>
