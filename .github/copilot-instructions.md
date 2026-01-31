@@ -442,8 +442,223 @@ teleconsultation-sidebar.html
 
 ---
 
+## 🧳 MALETA ITINERANTE - Dispositivos Médicos BLE
+
+### Conceito
+A maleta viaja para comunidades remotas onde não há médicos. Um técnico/enfermeiro leva a maleta e atende múltiplos pacientes por dia. O médico especialista atende via teleconsulta da capital.
+
+### Arquitetura
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    MALETA TELEMEDICINA                       │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────────┐│
+│  │ Computador  │ │   Monitor   │ │ Equipamentos Médicos    ││
+│  │ Windows     │ │             │ │ • Omron HEM-7156T       ││
+│  │             │ │             │ │ • Balança OKOK          ││
+│  │ [maleta_    │ │ [Chrome]    │ │ • Termômetro MOBI       ││
+│  │ itinerante  │ │ telecuidar  │ │                         ││
+│  │ .py]        │ │ .com.br     │ │                         ││
+│  └─────────────┘ └─────────────┘ └─────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
+         │                                    │
+         │ API: /api/biometrics/ble-reading   │ Bluetooth LE
+         ▼                                    ▼
+┌─────────────────────────────────────────────────────────────┐
+│                SERVIDOR PRODUÇÃO (VPS)                       │
+│            https://www.telecuidar.com.br                     │
+│                                                              │
+│  ┌─────────────┐    SignalR     ┌─────────────────────────┐ │
+│  │ BiometricsController ───────► MedicalDevicesHub        │ │
+│  │ /ble-reading │               │ SendAsync("Biometrics   │ │
+│  │ /active-appointment         │ Updated", dados)        │ │
+│  └─────────────┘               └───────────┬─────────────┘ │
+└────────────────────────────────────────────┼────────────────┘
+                                             │
+                                             ▼
+                              ┌─────────────────────────┐
+                              │ Tela do Médico          │
+                              │ (vital-signs-panel.ts)  │
+                              │ Dados aparecem em       │
+                              │ tempo real!             │
+                              └─────────────────────────┘
+```
+
+### Dispositivos Suportados
+| Dispositivo | MAC Address | Método | Status |
+|-------------|-------------|--------|--------|
+| Balança OKOK | F8:8F:C8:3A:B7:92 | Advertisement | ✅ Funcionando |
+| Omron HEM-7156T | 00:5F:BF:9A:64:DF | GATT | ✅ Funcionando |
+| Termômetro MOBI | DC:23:4E:DA:E9:DD | GATT | 🔧 Em teste |
+
+### Scripts Principais
+| Arquivo | Descrição |
+|---------|-----------|
+| `maleta/maleta_itinerante.py` | Script principal - detecta consulta ativa automaticamente |
+| `maleta/Iniciar Maleta.bat` | Batch para iniciar o serviço (duplo-clique) |
+| `ble_bridge.py` | Script manual com `--prod` para testes |
+
+### APIs Backend (BiometricsController)
+| Endpoint | Descrição |
+|----------|-----------|
+| `GET /api/biometrics/active-appointment` | Retorna consulta ativa (Status=InProgress) |
+| `POST /api/biometrics/ble-reading` | Recebe leitura BLE e envia via SignalR |
+| `POST /api/biometrics/ble-cache` | Cache temporário para botão "Capturar Sinais" |
+
+### Fluxo de Dados (SignalR)
+```
+1. maleta_itinerante.py detecta dispositivo BLE
+2. POST /api/biometrics/ble-reading { appointmentId, deviceType, values }
+3. BiometricsController processa e salva no banco
+4. MedicalDevicesHub.SendAsync("BiometricsUpdated", appointmentId, data)
+5. Frontend (vital-signs-panel.ts) recebe via subscription
+6. Dados aparecem na tela do médico em tempo real
+```
+
+---
+
+## 🔐 SEGURANÇA - APIs e Sistemas Locais
+
+### APIs que NÃO requerem autenticação (por design)
+```
+GET  /api/biometrics/active-appointment  → Retorna apenas ID da consulta ativa
+POST /api/biometrics/ble-reading         → Requer appointmentId válido (GUID)
+POST /api/biometrics/ble-cache           → Cache temporário por IP
+GET  /api/health                         → Health check
+```
+
+⚠️ **ATENÇÃO**: Estas APIs são abertas para permitir que a maleta envie dados sem autenticação complexa. A segurança é garantida por:
+1. **appointmentId** é um GUID aleatório - impossível adivinhar
+2. Só funciona para consultas com status "Em Andamento"
+3. Dados são validados antes de salvar
+
+### APIs que REQUEREM autenticação (JWT)
+- Todas as outras APIs do sistema
+- Login, cadastro, consultas, prontuários, etc.
+
+### Proteções Implementadas
+1. **HTTPS obrigatório** em produção
+2. **CORS configurado** para domínios permitidos
+3. **Rate limiting** (implícito no Nginx)
+4. **Validação de appointmentId** - deve existir e estar ativo
+
+### Recomendações de Segurança Futuras
+```csharp
+// TODO: Adicionar no BiometricsController
+// 1. Rate limiting por IP (máx 10 req/min)
+// 2. Validar que appointmentId foi criado há menos de 24h
+// 3. Log de todas as tentativas para auditoria
+// 4. Whitelist de IPs das maletas (se IPs fixos)
+```
+
+---
+
+## 🚐 CONFIGURAÇÃO DE NOVAS MALETAS
+
+### Pré-requisitos no Computador da Maleta
+- Windows 10/11
+- Python 3.10+ instalado
+- Bluetooth ativado
+- Conexão com internet (4G ou WiFi)
+
+### Passo 1: Baixar o Código
+```powershell
+# Criar pasta
+mkdir C:\telecuidar
+cd C:\telecuidar
+
+# Clonar repositório (ou copiar via pendrive)
+git clone https://github.com/amantino69/novocuidar.git .
+```
+
+### Passo 2: Instalar Dependências Python
+```powershell
+cd C:\telecuidar\maleta
+pip install -r requirements.txt
+```
+
+Dependências necessárias:
+- `bleak` - Biblioteca Bluetooth LE
+- `aiohttp` - Requisições HTTP assíncronas
+
+### Passo 3: Configurar MACs dos Dispositivos
+Editar `C:\telecuidar\maleta\maleta_itinerante.py`:
+```python
+# Linha ~50 - Alterar MACs conforme dispositivos da maleta
+DEVICES = {
+    "F8:8F:C8:3A:B7:92": {  # ← MAC da balança DESTA maleta
+        "type": "scale",
+        "name": "Balança OKOK",
+        ...
+    },
+    "00:5F:BF:9A:64:DF": {  # ← MAC do Omron DESTA maleta
+        "type": "blood_pressure",
+        ...
+    }
+}
+```
+
+### Passo 4: Descobrir MAC dos Dispositivos
+```powershell
+cd C:\telecuidar\maleta
+python scan_devices.py
+# Liga os dispositivos e anota os MACs que aparecem
+```
+
+### Passo 5: Criar Atalhos
+```powershell
+# Atalho no Desktop
+$WScriptShell = New-Object -ComObject WScript.Shell
+$DesktopPath = [Environment]::GetFolderPath('Desktop')
+$Shortcut = $WScriptShell.CreateShortcut("$DesktopPath\TeleCuidar Maleta.lnk")
+$Shortcut.TargetPath = 'C:\telecuidar\maleta\Iniciar Maleta.bat'
+$Shortcut.WorkingDirectory = 'C:\telecuidar\maleta'
+$Shortcut.IconLocation = 'C:\Windows\System32\shell32.dll,22'
+$Shortcut.Save()
+
+# Atalho na Inicialização (abre automaticamente com Windows)
+$StartupPath = [Environment]::GetFolderPath('Startup')
+$Shortcut2 = $WScriptShell.CreateShortcut("$StartupPath\TeleCuidar Maleta.lnk")
+$Shortcut2.TargetPath = 'C:\telecuidar\maleta\Iniciar Maleta.bat'
+$Shortcut2.WorkingDirectory = 'C:\telecuidar\maleta'
+$Shortcut2.Save()
+```
+
+### Passo 6: Configurar Chrome para Modo Kiosk (Opcional)
+Criar atalho na pasta Startup:
+```
+Destino: "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk https://www.telecuidar.com.br
+```
+
+### Passo 7: Testar
+1. Reiniciar o computador
+2. Verificar se a janela azul "TeleCuidar Maleta" abre
+3. Fazer login no telecuidar.com.br
+4. Entrar numa teleconsulta
+5. Fazer medição - dados devem aparecer na tela
+
+### Checklist de Configuração de Nova Maleta
+- [ ] Python instalado
+- [ ] Dependências instaladas (`pip install -r requirements.txt`)
+- [ ] MACs dos dispositivos configurados
+- [ ] Atalho no Desktop criado
+- [ ] Atalho na Inicialização criado
+- [ ] Bluetooth ativado
+- [ ] Teste de medição realizado com sucesso
+
+---
+
+## 📋 INVENTÁRIO DE MALETAS
+
+| Município | MAC Balança | MAC Omron | MAC Termômetro | Status |
+|-----------|-------------|-----------|----------------|--------|
+| POC (Dev) | F8:8F:C8:3A:B7:92 | 00:5F:BF:9A:64:DF | DC:23:4E:DA:E9:DD | ✅ Ativo |
+| Município 1 | A definir | A definir | A definir | ⏳ Pendente |
+| Município 2 | A definir | A definir | A definir | ⏳ Pendente |
+
+---
+
 ## 📅 Última Atualização
-- **Data**: 30/01/2026
+- **Data**: 31/01/2026
 - **Autor**: IA Assistant
-- **Motivo**: Documentação da arquitetura de componentes da aba Sinais
+- **Motivo**: Documentação completa da Maleta Itinerante e guia de configuração
 
