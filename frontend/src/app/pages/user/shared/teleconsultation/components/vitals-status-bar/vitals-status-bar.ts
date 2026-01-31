@@ -585,12 +585,47 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
       const response = await this.http.get<any>(`${environment.apiUrl}/biometrics/ble-cache`).toPromise();
       if (response) {
         const captured: string[] = [];
-        if (response.weight) { this.weight = response.weight; captured.push('Peso'); }
-        if (response.systolic) { this.systolic = response.systolic; captured.push('PA Sis'); }
-        if (response.diastolic) { this.diastolic = response.diastolic; captured.push('PA Dia'); }
-        if (response.pulse || response.heartRate) { this.heartRate = response.pulse || response.heartRate; captured.push('FC'); }
-        if (response.spo2) { this.spo2 = response.spo2; captured.push('SpO2'); }
-        if (response.temperature) { this.temperature = response.temperature; captured.push('Temp'); }
+        const devices = response.devices || {};
+        
+        // Extrai dados da balança (scale)
+        const scale = devices.scale?.values || {};
+        if (scale.weight) { 
+          this.weight = Number(scale.weight); 
+          captured.push('Peso'); 
+        }
+        
+        // Extrai dados do aparelho de pressão (blood_pressure)
+        const bp = devices.blood_pressure?.values || {};
+        if (bp.systolic) { 
+          this.systolic = Number(bp.systolic); 
+          captured.push('PA Sis'); 
+        }
+        if (bp.diastolic) { 
+          this.diastolic = Number(bp.diastolic); 
+          captured.push('PA Dia'); 
+        }
+        if (bp.heartRate || bp.pulse) { 
+          this.heartRate = Number(bp.heartRate || bp.pulse); 
+          captured.push('FC'); 
+        }
+        
+        // Extrai dados do oxímetro
+        const oximeter = devices.oximeter?.values || {};
+        if (oximeter.spo2) { 
+          this.spo2 = Number(oximeter.spo2); 
+          captured.push('SpO2'); 
+        }
+        if (oximeter.pulseRate && !this.heartRate) { 
+          this.heartRate = Number(oximeter.pulseRate); 
+          captured.push('FC'); 
+        }
+        
+        // Extrai dados do termômetro
+        const thermo = devices.thermometer?.values || {};
+        if (thermo.temperature) { 
+          this.temperature = Number(thermo.temperature); 
+          captured.push('Temp'); 
+        }
 
         if (captured.length > 0) {
           this.calculateIMC();
