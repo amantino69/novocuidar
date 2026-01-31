@@ -880,8 +880,10 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
     // Observa sinais vitais recebidos
     this.subscriptions.add(
       this.syncService.vitalSignsReceived$.subscribe(data => {
-        this.processVitalSigns(data);
-        this.saveToCache(data); // Salva no cache
+        // MESCLA dados novos com existentes para persistir valores anteriores
+        const mergedData = this.mergeWithCachedData(data);
+        this.processVitalSigns(mergedData);
+        this.saveToCache(mergedData);
       })
     );
     
@@ -940,8 +942,10 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
             height: data.height
           }
         };
-        this.processVitalSigns(vitalSignsData);
-        this.saveToCache(vitalSignsData); // Salva no cache para próximas vezes
+        // MESCLA dados do banco com cache existente
+        const mergedData = this.mergeWithCachedData(vitalSignsData);
+        this.processVitalSigns(mergedData);
+        this.saveToCache(mergedData);
       }
     } catch (error) {
       console.warn('[VitalSignsPanel] Erro ao carregar dados existentes:', error);
@@ -954,10 +958,13 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   private processVitalSigns(data: VitalSignsData): void {
+    console.log('[VitalSignsPanel] 🔄 processVitalSigns chamado com:', JSON.stringify(data, null, 2));
+    
     this.hasAnyData = true;
     this.lastUpdate = new Date(data.timestamp);
 
     const v = data.vitals;
+    console.log('[VitalSignsPanel] Vitals extraídos:', v);
     
     // Extrai dados do paciente enviados via SignalR
     if (v.gender) {
@@ -1389,6 +1396,59 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   /**
+   * Mescla novos dados com dados existentes no cache.
+   * Mantém valores anteriores se os novos forem null/undefined.
+   * Isso garante que peso capturado antes não desapareça quando chegar pressão.
+   */
+  private mergeWithCachedData(newData: VitalSignsData): VitalSignsData {
+    if (!this.appointmentId) return newData;
+
+    try {
+      const cached = sessionStorage.getItem(this.CACHE_KEY_PREFIX + this.appointmentId);
+      if (!cached) return newData;
+
+      const cachedData = JSON.parse(cached) as VitalSignsData;
+      const cachedVitals = cachedData.vitals || {};
+      const newVitals = newData.vitals || {};
+
+      // Mescla: novos valores válidos sobrescrevem, senão mantém antigos
+      const mergedVitals = {
+        spo2: this.getValidValue(newVitals.spo2, cachedVitals.spo2),
+        oxygenSaturation: this.getValidValue((newVitals as any).oxygenSaturation, (cachedVitals as any).oxygenSaturation),
+        pulseRate: this.getValidValue(newVitals.pulseRate, cachedVitals.pulseRate),
+        heartRate: this.getValidValue(newVitals.heartRate, cachedVitals.heartRate),
+        systolic: this.getValidValue(newVitals.systolic, cachedVitals.systolic),
+        diastolic: this.getValidValue(newVitals.diastolic, cachedVitals.diastolic),
+        temperature: this.getValidValue(newVitals.temperature, cachedVitals.temperature),
+        weight: this.getValidValue(newVitals.weight, cachedVitals.weight),
+        height: this.getValidValue(newVitals.height, cachedVitals.height),
+        gender: newVitals.gender || cachedVitals.gender,
+        birthDate: newVitals.birthDate || cachedVitals.birthDate
+      };
+
+      console.log('[VitalSignsPanel] 🔀 Dados mesclados:', mergedVitals);
+
+      return {
+        ...newData,
+        vitals: mergedVitals
+      };
+    } catch (e) {
+      console.warn('[VitalSignsPanel] Erro ao mesclar com cache:', e);
+      return newData;
+    }
+  }
+
+  /**
+   * Retorna o valor novo se for válido, senão retorna o antigo
+   */
+  private getValidValue(newVal: any, oldVal: any): any {
+    if (newVal !== undefined && newVal !== null && newVal !== 0 && newVal !== '') {
+      return newVal;
+    }
+    return oldVal;
+  }
+
+  /**
    * Carrega dados do cache local (instantâneo)
    */
   private loadFromCache(): void {
@@ -1450,8 +1510,10 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
             height: data.height
           }
         };
-        this.processVitalSigns(vitalSignsData);
-        this.saveToCache(vitalSignsData);
+        // MESCLA dados do banco com cache existente
+        const mergedData = this.mergeWithCachedData(vitalSignsData);
+        this.processVitalSigns(mergedData);
+        this.saveToCache(mergedData);
       }
     } catch (error) {
       console.error('[VitalSignsPanel] Erro ao atualizar:', error);

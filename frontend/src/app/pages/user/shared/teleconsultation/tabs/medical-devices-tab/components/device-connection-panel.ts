@@ -915,6 +915,10 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy, OnChan
    * Resolve o problema de múltiplas consultas "Em Andamento".
    */
   capturarSinais(): void {
+    console.log('========================================');
+    console.log('[Capturar] 🚀 MÉTODO CAPTURAR CHAMADO!');
+    console.log('========================================');
+    
     this.isCapturing = true;
     this.captureMessage = '';
 
@@ -1003,11 +1007,15 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy, OnChan
             this.vitalsForm.patchValue(updates);
             console.log('[Capturar] 📝 Form depois do patch:', this.vitalsForm.value);
 
+            // ENVIA VIA SIGNALR IMEDIATAMENTE
+            this.sendVitalsRealtime();
+            console.log('[Capturar] 📡 Enviando via SignalR...');
+
             this.captureSuccess = true;
             this.captureMessage = `✓ ${capturedCount} medição(ões) capturada(s)!`;
             
-            // POPUP de sucesso
-            alert(`✅ SUCESSO!\n\nCapturadas ${capturedCount} medição(ões):\n${JSON.stringify(updates, null, 2)}`);
+            // Remove o alert de debug - agora funciona!
+            // alert(`✅ SUCESSO!\n\nCapturadas ${capturedCount} medição(ões):\n${JSON.stringify(updates, null, 2)}`);
           } else {
             this.captureSuccess = false;
             this.captureMessage = 'Nenhuma leitura recente. Faça a medição.';

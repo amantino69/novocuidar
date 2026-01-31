@@ -577,21 +577,29 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async capturarSinais(): Promise<void> {
+    console.log('[VitalsBar] 🔍 capturarSinais chamado, appointmentId:', this.appointmentId);
     if (!this.appointmentId) return;
     this.isCapturing = true;
     this.captureMessage = '';
 
     try {
-      const response = await this.http.get<any>(`${environment.apiUrl}/biometrics/ble-cache`).toPromise();
+      const url = `${environment.apiUrl}/biometrics/ble-cache`;
+      console.log('[VitalsBar] Buscando cache de:', url);
+      const response = await this.http.get<any>(url).toPromise();
+      console.log('[VitalsBar] Resposta do cache:', JSON.stringify(response, null, 2));
+      
       if (response) {
         const captured: string[] = [];
         const devices = response.devices || {};
+        console.log('[VitalsBar] Devices encontrados:', Object.keys(devices));
         
         // Extrai dados da balança (scale)
         const scale = devices.scale?.values || {};
+        console.log('[VitalsBar] Scale values:', scale);
         if (scale.weight) { 
           this.weight = Number(scale.weight); 
           captured.push('Peso'); 
+          console.log('[VitalsBar] ✅ Peso capturado:', this.weight);
         }
         
         // Extrai dados do aparelho de pressão (blood_pressure)

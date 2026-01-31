@@ -102,16 +102,16 @@ public class BiometricsController : ControllerBase
 public class BleBridgeController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
-    private readonly IHubContext<TeleconsultationHub> _hubContext;
+    private readonly IHubContext<MedicalDevicesHub> _medicalDevicesHubContext;
     private readonly ILogger<BleBridgeController> _logger;
 
     public BleBridgeController(
         ApplicationDbContext context, 
-        IHubContext<TeleconsultationHub> hubContext,
+        IHubContext<MedicalDevicesHub> medicalDevicesHubContext,
         ILogger<BleBridgeController> logger)
     {
         _context = context;
-        _hubContext = hubContext;
+        _medicalDevicesHubContext = medicalDevicesHubContext;
         _logger = logger;
     }
 
@@ -190,8 +190,8 @@ public class BleBridgeController : ControllerBase
         appointment.BiometricsJson = JsonSerializer.Serialize(biometrics);
         await _context.SaveChangesAsync();
 
-        // Envia via SignalR para todos na sala da consulta
-        await _hubContext.Clients.Group($"appointment_{appointmentId}")
+        // Envia via SignalR para todos na sala da consulta (MedicalDevicesHub)
+        await _medicalDevicesHubContext.Clients.Group($"appointment_{appointmentId}")
             .SendAsync("BiometricsUpdated", new
             {
                 appointmentId = dto.AppointmentId,
@@ -201,7 +201,7 @@ public class BleBridgeController : ControllerBase
                 timestamp = biometrics.LastUpdated
             });
 
-        _logger.LogInformation("[BLE Bridge] Dados enviados via SignalR para appointment_{Id}", appointmentId);
+        _logger.LogInformation("[BLE Bridge] Dados enviados via MedicalDevicesHub para appointment_{Id}", appointmentId);
 
         // Também atualiza o cache global (para botão "Capturar Sinais")
         if (!string.IsNullOrEmpty(dto.DeviceType))

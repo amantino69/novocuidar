@@ -278,7 +278,8 @@ export class MedicalDevicesSyncService implements OnDestroy {
     // Recebe sinais vitais
     this.hubConnection.on('ReceiveVitalSigns', (data: VitalSignsData) => {
       this.ngZone.run(() => {
-        console.log('[MedicalDevicesSync] Recebeu sinais vitais:', data);
+        console.log('[MedicalDevicesSync] ✅ Recebeu sinais vitais:', JSON.stringify(data, null, 2));
+        console.log('[MedicalDevicesSync] Vitals recebidos:', data?.vitals);
         this._vitalSignsReceived$.next(data);
       });
     });
@@ -457,37 +458,52 @@ export class MedicalDevicesSyncService implements OnDestroy {
    * Envia sinais vitais via SignalR
    * Aceita tanto VitalReading (do Bluetooth) quanto objeto simples de sinais vitais
    */
-  async sendVitalSigns(reading: VitalReading | Record<string, any>): Promise<void> {
+  async sendVitalSigns(reading: VitalReading | VitalSignsData | Record<string, any>): Promise<void> {
     if (!this.hubConnection || !this.currentAppointmentId) return;
 
     try {
-      // Verifica se é um VitalReading ou um objeto simples
-      const isVitalReading = 'timestamp' in reading && 'values' in reading;
+      let data: VitalSignsData;
       
-      const vitals = isVitalReading 
-        ? (reading as VitalReading).values 
-        : {
-            spo2: (reading as any).oxygenSaturation,
-            heartRate: (reading as any).heartRate,
-            systolic: (reading as any).bloodPressureSystolic,
-            diastolic: (reading as any).bloodPressureDiastolic,
-            temperature: (reading as any).temperature,
-            weight: (reading as any).weight,
-            height: (reading as any).height,
-            // Dados do paciente (do perfil)
-            gender: (reading as any).gender,
-            birthDate: (reading as any).birthDate
-          };
-
-      const data: VitalSignsData = {
-        appointmentId: this.currentAppointmentId,
-        senderRole: this.authService.currentUser()?.role || 'unknown',
-        timestamp: isVitalReading ? (reading as VitalReading).timestamp : new Date(),
-        vitals
-      };
+      // Caso 1: Já é um VitalSignsData completo (vem do vitals-status-bar)
+      if ('appointmentId' in reading && 'vitals' in reading) {
+        data = reading as VitalSignsData;
+        console.log('[MedicalDevicesSync] Recebido VitalSignsData completo');
+      }
+      // Caso 2: É um VitalReading (do Bluetooth - tem timestamp e values)
+      else if ('timestamp' in reading && 'values' in reading) {
+        const vitalReading = reading as VitalReading;
+        data = {
+          appointmentId: this.currentAppointmentId,
+          senderRole: this.authService.currentUser()?.role || 'unknown',
+          timestamp: vitalReading.timestamp,
+          vitals: vitalReading.values
+        };
+        console.log('[MedicalDevicesSync] Convertido VitalReading para VitalSignsData');
+      }
+      // Caso 3: Objeto simples com campos de biometrics (legado)
+      else {
+        const r = reading as any;
+        data = {
+          appointmentId: this.currentAppointmentId,
+          senderRole: this.authService.currentUser()?.role || 'unknown',
+          timestamp: new Date(),
+          vitals: {
+            spo2: r.oxygenSaturation || r.spo2,
+            heartRate: r.heartRate,
+            systolic: r.bloodPressureSystolic || r.systolic,
+            diastolic: r.bloodPressureDiastolic || r.diastolic,
+            temperature: r.temperature,
+            weight: r.weight,
+            height: r.height,
+            gender: r.gender,
+            birthDate: r.birthDate
+          }
+        };
+        console.log('[MedicalDevicesSync] Convertido objeto legado para VitalSignsData');
+      }
 
       await this.hubConnection.invoke('SendVitalSigns', data);
-      console.log('[MedicalDevicesSync] Sinais vitais enviados:', data.vitals);
+      console.log('[MedicalDevicesSync] ✓ Sinais vitais enviados:', data.vitals);
     } catch (error) {
       console.error('[MedicalDevicesSync] Erro ao enviar sinais vitais:', error);
     }

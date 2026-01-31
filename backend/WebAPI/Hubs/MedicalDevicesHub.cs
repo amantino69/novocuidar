@@ -186,9 +186,16 @@ public class MedicalDevicesHub : Hub
     /// </summary>
     public async Task SendVitalSigns(JsonElement vitalSignsData)
     {
+        _logger.LogInformation("========================================");
+        _logger.LogInformation("[MedicalDevicesHub] SendVitalSigns CHAMADO!");
+        _logger.LogInformation("========================================");
+        
         var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var userRole = Context.User?.FindFirst(ClaimTypes.Role)?.Value 
                     ?? Context.User?.FindFirst("role")?.Value;
+        
+        _logger.LogInformation("[MedicalDevicesHub] UserId: {UserId}, Role: {Role}", userId, userRole);
+        _logger.LogInformation("[MedicalDevicesHub] Data: {Data}", vitalSignsData.ToString());
         
         // Extrai appointmentId do objeto
         string? appointmentId = null;
@@ -199,16 +206,18 @@ public class MedicalDevicesHub : Hub
         
         if (string.IsNullOrEmpty(appointmentId))
         {
-            _logger.LogWarning("SendVitalSigns: appointmentId não fornecido");
+            _logger.LogWarning("[MedicalDevicesHub] SendVitalSigns: appointmentId não fornecido");
             return;
         }
 
-        _logger.LogDebug(
-            "MedicalDevicesHub: Sinais vitais de {UserId} ({Role}) para sala {AppointmentId}",
-            userId ?? "unknown", userRole ?? "unknown", appointmentId);
+        _logger.LogInformation(
+            "[MedicalDevicesHub] Enviando sinais vitais para sala appointment_{AppointmentId}",
+            appointmentId);
         
         await Clients.OthersInGroup($"appointment_{appointmentId}")
             .SendAsync("ReceiveVitalSigns", vitalSignsData);
+        
+        _logger.LogInformation("[MedicalDevicesHub] ✓ Sinais vitais enviados via SignalR!");
     }
 
     /// <summary>

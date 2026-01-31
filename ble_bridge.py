@@ -25,9 +25,12 @@ import struct
 import sys
 from bleak import BleakScanner, BleakClient
 from datetime import datetime
+import argparse
 
 # === CONFIGURAÇÃO ===
-BACKEND_URL = "http://localhost:5239/api/biometrics/ble-reading"
+BACKEND_URL_LOCAL = "http://localhost:5239/api/biometrics/ble-reading"
+BACKEND_URL_PROD = "https://www.telecuidar.com.br/api/biometrics/ble-reading"
+BACKEND_URL = BACKEND_URL_LOCAL  # Será alterado se --prod
 APPOINTMENT_ID = None  # Definido via argumento de linha de comando
 
 # Dispositivos conhecidos
@@ -255,15 +258,28 @@ def detection_callback(device, advertisement_data):
 
 
 async def main():
-    global APPOINTMENT_ID
+    global APPOINTMENT_ID, BACKEND_URL
+    
+    # Parse argumentos
+    parser = argparse.ArgumentParser(description='BLE Bridge - TeleCuidar')
+    parser.add_argument('appointment_id', nargs='?', help='ID da consulta (appointment)')
+    parser.add_argument('--prod', action='store_true', help='Usar servidor de produção')
+    args = parser.parse_args()
+    
+    if args.prod:
+        BACKEND_URL = BACKEND_URL_PROD
+        print("\n🌐 MODO PRODUÇÃO: " + BACKEND_URL)
+    else:
+        BACKEND_URL = BACKEND_URL_LOCAL
+        print("\n🏠 MODO LOCAL: " + BACKEND_URL)
     
     print("=" * 50)
     print("   🏥 BLE BRIDGE - TeleCuidar (AUTOMÁTICO)")
     print("=" * 50)
     
-    # Pega appointment_id da linha de comando
-    if len(sys.argv) > 1:
-        APPOINTMENT_ID = sys.argv[1]
+    # Pega appointment_id 
+    if args.appointment_id:
+        APPOINTMENT_ID = args.appointment_id
         print(f"\n📡 Consulta: {APPOINTMENT_ID}")
     else:
         print("\n⚠️  Uso: python ble_bridge.py <appointment_id>")
