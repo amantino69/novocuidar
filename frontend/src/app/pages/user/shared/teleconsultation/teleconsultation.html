@@ -25,10 +25,10 @@
           </div>
 
           <div class="controls-section controls-right">
-            <button class="control-btn registry-btn" (click)="toggleSidebar()" title="Registro da Consulta" *ngIf="!isSidebarOpen">
-              <app-icon name="edit" [size]="22" />
-              <span>Registro</span>
-            </button>
+            <app-button variant="primary" size="sm" (click)="toggleSidebar()" *ngIf="!isSidebarOpen">
+              <app-icon name="edit" [size]="18" />
+              Registros da Consulta
+            </app-button>
           </div>
         </ng-container>
 

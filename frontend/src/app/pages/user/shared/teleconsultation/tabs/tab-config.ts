@@ -98,7 +98,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     label: 'Específico',
     icon: 'stethoscope',
     roles: ['PROFESSIONAL', 'ADMIN'],
-    showInTeleconsultation: true,
+    showInTeleconsultation: false, // DESATIVADO - Removido conforme solicitação
     showInDetails: false,
     order: 3,
     group: 'exame-fisico'

@@ -1,27 +1,19 @@
 <div class="anamnesis-container">
-  <!-- Header simples com indicador de auto-save -->
-  <div class="anamnesis-header">
-    <h2 class="header-title">
-      <app-icon name="file-text" [size]="20" />
-      Anamnese (SOAP)
-    </h2>
-    
-    <!-- Indicador de auto-save -->
-    <div class="auto-save-indicator">
-      @if (isSaving) {
-        <span class="saving-status">
-          <span class="spinner-small"></span>
-          Salvando...
-        </span>
-      } @else if (lastSaved) {
-        <span class="saved-status">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-          Salvo {{ lastSaved | date:'HH:mm' }}
-        </span>
-      }
-    </div>
+  <!-- Indicador de auto-save flutuante no canto -->
+  <div class="auto-save-floating">
+    @if (isSaving) {
+      <span class="saving-status">
+        <span class="spinner-small"></span>
+        Salvando...
+      </span>
+    } @else if (lastSaved) {
+      <span class="saved-status">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        Salvo {{ lastSaved | date:'HH:mm' }}
+      </span>
+    }
   </div>
 
   <!-- Conteúdo único rolável com todas as seções SOAP -->

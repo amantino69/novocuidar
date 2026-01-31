@@ -21,16 +21,16 @@ import { environment } from '@env/environment';
       <!-- LINHA 1: Info Profissional (esq) + Paciente (dir) -->
       <div class="row-1">
         <div class="left-info">
-          <span class="chip"><b>Profissional:</b> {{ professionalName || '--' }}</span>
-          <span class="chip"><b>Especialidade:</b> {{ specialtyName || '--' }}</span>
-          <span class="chip"><b>Data:</b> {{ appointmentDate || '--' }}</span>
-          <span class="chip"><b>Hora:</b> {{ appointmentTime || '--' }}</span>
+          <span class="chip"><span class="label">Profissional:</span> <strong>{{ professionalName || '--' }}</strong></span>
+          <span class="chip"><span class="label">Especialidade:</span> <strong>{{ specialtyName || '--' }}</strong></span>
+          <span class="chip"><span class="label">Data:</span> <strong>{{ appointmentDate || '--' }}</strong></span>
+          <span class="chip"><span class="label">Hora:</span> <strong>{{ appointmentTime || '--' }}</strong></span>
         </div>
         
         <div class="right-info">
-          <span class="chip"><b>Paciente:</b> {{ patientName || '--' }}</span>
-          <span class="chip"><b>Sexo:</b> {{ getGenderLabel() }}</span>
-          <span class="chip"><b>Idade:</b> {{ patientAge ? patientAge + ' anos' : '--' }}</span>
+          <span class="chip"><span class="label">Paciente:</span> <strong>{{ patientName || '--' }}</strong></span>
+          <span class="chip"><span class="label">Sexo:</span> <strong>{{ getGenderLabel() }}</strong></span>
+          <span class="chip"><span class="label">Idade:</span> <strong>{{ patientAge ? patientAge + ' anos' : '--' }}</strong></span>
         </div>
       </div>
       
@@ -192,6 +192,8 @@ import { environment } from '@env/environment';
       border: 1px solid rgba(255,255,255,0.1);
       border-radius: 8px;
       
+      .label { color: #60a5fa; font-weight: 500; margin-right: 4px; }
+      strong { color: #f1f5f9; font-weight: 700; font-size: 15px; }
       b { color: #60a5fa; font-weight: 600; margin-right: 4px; }
     }
     

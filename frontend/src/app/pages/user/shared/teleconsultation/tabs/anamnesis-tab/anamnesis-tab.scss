@@ -7,8 +7,49 @@
   height: 100%;
   overflow: hidden;
   font-family: $font-primary;
+  position: relative;
 
-  // === HEADER ===
+  // === INDICADOR FLUTUANTE DE AUTO-SAVE ===
+  .auto-save-floating {
+    position: absolute;
+    top: $spacing-sm;
+    right: $spacing-md;
+    z-index: 10;
+    
+    .saving-status, .saved-status {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: $radius-sm;
+      font-size: $font-size-xs;
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .saving-status {
+      color: #2563eb;
+      
+      .spinner-small {
+        width: 12px;
+        height: 12px;
+        border: 2px solid rgba(37, 99, 235, 0.3);
+        border-top-color: #2563eb;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+    }
+    
+    .saved-status {
+      color: #16a34a;
+      
+      svg {
+        color: #22c55e;
+      }
+    }
+  }
+
+  // === HEADER (mantido para compatibilidade) ===
   .anamnesis-header {
     display: flex;
     align-items: center;
