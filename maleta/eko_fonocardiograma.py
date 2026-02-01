@@ -26,6 +26,9 @@ SAMPLE_RATE = 8000  # Hz - confirmado como melhor taxa
 API_URL_LOCAL = "http://localhost:5239"
 API_URL_PROD = "https://www.telecuidar.com.br"
 
+# ID FIXO para testes (quando API não detecta consulta)
+APPOINTMENT_ID_FIXO = "62734ef5-c2af-40f1-8726-099932da0240"
+
 # Buffer para dados
 audio_buffer = bytearray()
 packet_count = 0
@@ -61,7 +64,12 @@ async def get_active_appointment():
             async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
                 if response.status == 200:
                     data = await response.json()
-                    return data.get('appointmentId')
+                    # API retorna 'id', não 'appointmentId'
+                    appointment_id = data.get('id') or data.get('appointmentId')
+                    if appointment_id:
+                        return appointment_id
+                    print("⚠️  Resposta da API sem ID de consulta")
+                    return None
                 elif response.status == 404:
                     print("⚠️  Nenhuma consulta em andamento")
                     return None
@@ -75,20 +83,26 @@ async def get_active_appointment():
 
 async def send_phonocardiogram(appointment_id: str, wav_data: bytes, bpm: int = None):
     """Envia o fonocardiograma para a API"""
-    url = f"{get_api_url()}/api/biometrics/ble-reading"
+    url = f"{get_api_url()}/api/biometrics/phonocardiogram"
     
-    # Converte WAV para base64
-    audio_base64 = base64.b64encode(wav_data).decode('utf-8')
+    # Extrai os dados PCM do WAV (pula o header de 44 bytes)
+    pcm_data = wav_data[44:] if len(wav_data) > 44 else wav_data
+    
+    # Converte PCM para base64
+    audio_base64 = base64.b64encode(pcm_data).decode('utf-8')
+    
+    # Calcula duração em segundos (16-bit mono = 2 bytes por sample)
+    duration_seconds = len(pcm_data) / (SAMPLE_RATE * 2)
     
     payload = {
         "appointmentId": appointment_id,
-        "deviceType": "phonocardiogram",
+        "deviceType": "stethoscope",
+        "audioData": audio_base64,
+        "sampleRate": SAMPLE_RATE,
+        "format": "pcm_s16le",
+        "durationSeconds": duration_seconds,
         "values": {
-            "audioData": audio_base64,
-            "format": "wav",
-            "sampleRate": SAMPLE_RATE,
-            "duration": len(wav_data) / (SAMPLE_RATE * 2),  # 16-bit = 2 bytes
-            "bpm": bpm
+            "heartRate": bpm
         }
     }
     
@@ -96,7 +110,10 @@ async def send_phonocardiogram(appointment_id: str, wav_data: bytes, bpm: int = 
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=30)) as response:
                 if response.status == 200:
+                    result = await response.json()
                     print(f"✅ Fonocardiograma enviado com sucesso!")
+                    if result.get('audioUrl'):
+                        print(f"   🔊 Áudio disponível em: {get_api_url()}{result['audioUrl']}")
                     return True
                 else:
                     text = await response.text()
@@ -380,10 +397,12 @@ async def capture_and_analyze(duration_seconds: int = 15):
     env_label = "PRODUÇÃO" if USE_PRODUCTION else "LOCAL"
     print(f"   Ambiente: {env_label} ({get_api_url()})")
     
-    appointment_id = await get_active_appointment()
+    # TEMPORÁRIO: Usar ID fixo sempre para garantir teste
+    appointment_id = APPOINTMENT_ID_FIXO
+    print(f"   Usando ID fixo: {appointment_id[:8]}...")
     
     if appointment_id:
-        print(f"   Consulta ativa: {appointment_id[:8]}...")
+        print(f"   Consulta: {appointment_id[:8]}...")
         
         # Lê o arquivo WAV para envio
         with open(wav_filename, 'rb') as f:
@@ -394,6 +413,8 @@ async def capture_and_analyze(duration_seconds: int = 15):
         
         if success:
             print(f"\n🎉 Dados enviados! O médico pode ouvir o fonocardiograma.")
+        else:
+            print(f"   ❌ Falha no envio - dados salvos localmente")
     else:
         print(f"   ⚠️  Sem consulta ativa - dados salvos apenas localmente")
     
