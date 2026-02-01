@@ -138,7 +138,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     label: 'Fonocardio',
     icon: 'headphones',
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
-    showInTeleconsultation: false, // DESATIVADO - Removido conforme solicitação
+    showInTeleconsultation: true, // ATIVADO - Estetoscópio Eko CORE 500
     showInDetails: false,
     order: 1,
     group: 'exame-fisico'
