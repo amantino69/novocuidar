@@ -343,6 +343,25 @@ export class JitsiService {
         }
       };
       trySetIframeAllow();
+      
+      // Injetar CSS para ocultar watermark após o Jitsi carregar
+      // A watermark aparece como elemento SVG ou imagem, então removemos via API executeCommand
+      this.jitsiApi.addListener('videoConferenceJoined', () => {
+        try {
+          // Injeta CSS customizado dentro do iframe para esconder watermarks
+          this.jitsiApi?.executeCommand('overwriteConfig', {
+            interfaceConfig: {
+              SHOW_JITSI_WATERMARK: false,
+              SHOW_BRAND_WATERMARK: false,
+              SHOW_WATERMARK_FOR_GUESTS: false,
+              JITSI_WATERMARK_LINK: '',
+              BRAND_WATERMARK_LINK: ''
+            }
+          });
+        } catch (e) {
+          // ignore - some versions don't support this
+        }
+      });
 
       // Event listeners
       this.setupEventListeners(options);

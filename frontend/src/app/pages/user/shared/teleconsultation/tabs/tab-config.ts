@@ -108,7 +108,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     label: 'Sinais',
     icon: 'activity',
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
-    showInTeleconsultation: false, // DESATIVADO - Movido para barra de rodapé
+    showInTeleconsultation: true, // ATIVADO - Sinais vitais e Fonocardiograma Eko
     showInDetails: false,
     order: 0,
     group: 'exame-fisico'

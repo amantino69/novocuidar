@@ -5,7 +5,7 @@ import { Subscription } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 
 import { IconComponent } from '@shared/components/atoms/icon/icon';
-import { MedicalDevicesSyncService, VitalSignsData } from '@app/core/services/medical-devices-sync.service';
+import { MedicalDevicesSyncService, VitalSignsData, PhonocardiogramData } from '@app/core/services/medical-devices-sync.service';
 import { Appointment } from '@core/services/appointments.service';
 import { UsersService, User } from '@core/services/users.service';
 import { AIService, AnalyzeVitalsRequest } from '@app/core/services/ai.service';
@@ -120,6 +120,22 @@ import { environment } from '@env/environment';
           </div>
         </div>
         
+        <!-- Fonocardiograma do Eko - sempre visível para debug -->
+        <div class="vital phono" [class.has-value]="phonocardiogram">
+          <label><app-icon name="heart" [size]="18" /> 🩺 Fono</label>
+          <div class="phono-box">
+            @if (phonocardiogram) {
+              <span class="phono-bpm">{{ phonocardiogram.heartRate || '--' }} bpm</span>
+              <button class="btn-play" (click)="playPhonocardiogram()" [title]="'Ouvir fonocardiograma'">
+                <app-icon [name]="isPlayingPhono ? 'pause' : 'play'" [size]="16" />
+              </button>
+              <audio #phonoAudio [src]="phonocardiogramAudioUrl" (ended)="isPlayingPhono = false" style="display:none;"></audio>
+            } @else {
+              <span class="phono-bpm waiting">Aguardando...</span>
+            }
+          </div>
+        </div>
+        
         <!-- Ações à direita -->
         <div class="actions">
           <span *ngIf="lastSync" class="sync-info">
@@ -230,6 +246,58 @@ import { environment } from '@env/environment';
       background: linear-gradient(135deg, #8b5cf6, #7c3aed);
       box-shadow: 0 4px 12px rgba(139,92,246,0.4);
     }
+
+    /* Fonocardiograma do Eko */
+    .vital.phono {
+      background: linear-gradient(135deg, #fef3c7, #fde68a);
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 6px 10px;
+      min-width: auto;
+      
+      label {
+        color: #92400e;
+        font-weight: 600;
+      }
+      
+      .phono-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        
+        .phono-bpm {
+          font-size: 16px;
+          font-weight: 700;
+          color: #dc2626;
+        }
+
+        .phono-bpm.waiting {
+          font-size: 11px;
+          font-weight: 400;
+          color: #92400e;
+          opacity: 0.7;
+        }
+        
+        .btn-play {
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: none;
+          border-radius: 50%;
+          background: #dc2626;
+          color: white;
+          cursor: pointer;
+          transition: all 0.2s;
+          
+          &:hover {
+            transform: scale(1.1);
+            background: #b91c1c;
+          }
+        }
+      }
+    }
     
     .spinner {
       width: 18px;
@@ -266,29 +334,29 @@ import { environment } from '@env/environment';
     /* ============ LINHA 2: SINAIS VITAIS ============ */
     .row-2 {
       display: flex;
-      align-items: center;
-      gap: 20px;
-      padding: 18px 24px;
+      align-items: flex-end;
+      gap: 12px;
+      padding: 8px 16px;
       background: #0f172a;
       flex-wrap: wrap;
-      min-height: 90px;
+      min-height: 60px;
     }
     
     .sep {
-      width: 2px;
-      height: 60px;
+      width: 1px;
+      height: 40px;
       background: linear-gradient(180deg, transparent, rgba(255,255,255,0.2), transparent);
     }
     
     .vital {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      min-width: 110px;
-      padding: 12px 16px;
+      gap: 4px;
+      min-width: 85px;
+      padding: 6px 10px;
       background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 14px;
+      border-radius: 10px;
       transition: all 0.2s;
       
       &:hover { background: rgba(255,255,255,0.08); }
@@ -296,12 +364,12 @@ import { environment } from '@env/environment';
       label {
         display: flex;
         align-items: center;
-        gap: 8px;
-        font-size: 13px;
+        gap: 5px;
+        font-size: 11px;
         font-weight: 700;
         color: #64748b;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.3px;
         
         app-icon { color: #64748b; }
       }
@@ -333,14 +401,14 @@ import { environment } from '@env/environment';
     .value-box {
       display: flex;
       align-items: baseline;
-      gap: 6px;
+      gap: 4px;
       
       input {
-        width: 80px;
-        padding: 10px 12px;
+        width: 65px;
+        padding: 6px 8px;
         border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 10px;
-        font-size: 20px;
+        border-radius: 8px;
+        font-size: 16px;
         font-weight: 700;
         color: #f1f5f9;
         background: rgba(0,0,0,0.4);
@@ -363,21 +431,21 @@ import { environment } from '@env/environment';
       }
       
       .readonly {
-        font-size: 22px;
+        font-size: 17px;
         font-weight: 700;
         color: #f1f5f9;
-        min-width: 60px;
+        min-width: 50px;
         text-align: center;
         
         &.calc {
-          padding: 8px 14px;
+          padding: 5px 10px;
           background: rgba(255,255,255,0.1);
-          border-radius: 10px;
+          border-radius: 8px;
         }
       }
       
       small {
-        font-size: 14px;
+        font-size: 12px;
         color: #64748b;
         font-weight: 500;
       }
@@ -454,6 +522,11 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
   captureSuccess = false;
   lastSync: Date | null = null;
 
+  // Fonocardiograma do Eko
+  phonocardiogram: PhonocardiogramData | null = null;
+  phonocardiogramAudioUrl = '';
+  isPlayingPhono = false;
+
   private subscriptions = new Subscription();
   private patientData: User | null = null;
   private syncTimeout: any = null;
@@ -491,6 +564,26 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
       this.medicalDevicesSync.vitalSignsReceived$.subscribe((data: VitalSignsData) => {
         if (data.appointmentId === this.appointmentId) {
           this.updateFromRemote(data);
+        }
+      })
+    );
+
+    // Subscription para fonocardiograma do Eko
+    this.subscriptions.add(
+      this.medicalDevicesSync.phonocardiogramReceived$.subscribe((data: PhonocardiogramData) => {
+        console.log('[VitalsBar] 🩺 Fonocardiograma chegou! data.appointmentId:', data.appointmentId, 'this.appointmentId:', this.appointmentId);
+        // Aceita o fonocardiograma se for da consulta atual OU se não tiver appointmentId definido
+        if (data.appointmentId === this.appointmentId || !this.appointmentId) {
+          console.log('[VitalsBar] 🩺 Fonocardiograma aceito:', data);
+          this.phonocardiogram = data;
+          if (data.audioUrl) {
+            this.phonocardiogramAudioUrl = environment.apiUrl.replace('/api', '') + data.audioUrl;
+          }
+          // Atualiza FC se detectada
+          if (data.heartRate) {
+            this.heartRate = data.heartRate;
+          }
+          this.lastSync = new Date();
         }
       })
     );
@@ -732,5 +825,28 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
 
   hasAnyVitals(): boolean {
     return !!(this.weight || this.height || this.spo2 || this.heartRate || this.systolic || this.diastolic || this.temperature);
+  }
+
+  // Fonocardiograma - reproduzir áudio
+  playPhonocardiogram(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    
+    const audioElement = document.querySelector('audio[src*="phonocardiogram"]') as HTMLAudioElement;
+    if (!audioElement && this.phonocardiogramAudioUrl) {
+      // Cria um elemento de áudio temporário
+      const audio = new Audio(this.phonocardiogramAudioUrl);
+      audio.onended = () => this.isPlayingPhono = false;
+      
+      if (this.isPlayingPhono) {
+        audio.pause();
+        this.isPlayingPhono = false;
+      } else {
+        audio.play().then(() => {
+          this.isPlayingPhono = true;
+        }).catch(err => {
+          console.error('[VitalsBar] Erro ao reproduzir áudio:', err);
+        });
+      }
+    }
   }
 }

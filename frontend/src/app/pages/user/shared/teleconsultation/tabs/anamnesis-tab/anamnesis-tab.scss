@@ -12,9 +12,10 @@
   // === INDICADOR FLUTUANTE DE AUTO-SAVE ===
   .auto-save-floating {
     position: absolute;
-    top: $spacing-sm;
-    right: $spacing-md;
-    z-index: 10;
+    top: $spacing-xs;
+    right: $spacing-xl;  // Movido mais para a direita para não cobrir o botão de expandir
+    z-index: 5;  // Reduzido para ficar abaixo de elementos interativos
+    pointer-events: none;  // Não bloqueia cliques nos elementos abaixo
     
     .saving-status, .saved-status {
       display: flex;
@@ -25,6 +26,7 @@
       font-size: $font-size-xs;
       background: rgba(255, 255, 255, 0.95);
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      pointer-events: auto;  // Restaura interação no próprio elemento
     }
     
     .saving-status {
@@ -157,11 +159,42 @@
         letter-spacing: 0.05em;
       }
 
-      // Cores por seção
+      // Cores por seção (mantido para compatibilidade)
       &.blue { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); }
       &.green { background: linear-gradient(135deg, #15803d 0%, #22c55e 100%); }
       &.amber { background: linear-gradient(135deg, #b45309 0%, #f59e0b 100%); }
       &.purple { background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%); }
+      
+      // Estilo minimal - sem fundo, apenas letra colorida
+      &.minimal {
+        background: transparent;
+        padding: 6px $spacing-md;
+        border-bottom: 1px solid var(--border);
+        
+        .section-letter {
+          width: 28px;
+          height: 28px;
+          font-size: $font-size-base;
+          font-weight: $font-weight-bold;
+          color: white;
+          
+          &.blue { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); }
+          &.green { background: linear-gradient(135deg, #15803d 0%, #22c55e 100%); }
+          &.amber { background: linear-gradient(135deg, #b45309 0%, #f59e0b 100%); }
+          &.purple { background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%); }
+        }
+        
+        .expand-btn {
+          margin-left: auto;
+          color: var(--text-secondary);
+          position: relative;
+          z-index: 15;  // Garante que fica acima do indicador de salvamento
+          
+          &:hover {
+            color: var(--primary-600);
+          }
+        }
+      }
     }
 
     .section-body {
