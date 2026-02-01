@@ -115,21 +115,100 @@ public class BleBridgeController : ControllerBase
         _logger = logger;
     }
 
+    // Cache estático para consulta marcada como "Acontecendo" pelo paciente
+    private static string? _acontecendoAppointmentId = null;
+    private static DateTime? _acontecendoTimestamp = null;
+    private static readonly TimeSpan AcontecendoTimeout = TimeSpan.FromHours(4); // Expira após 4 horas
+
+    /// <summary>
+    /// Marca uma consulta como "Acontecendo" (chamado pelo paciente/operador)
+    /// </summary>
+    [HttpPost("acontecendo/{appointmentId}")]
+    public async Task<ActionResult> MarcarAcontecendo(Guid appointmentId)
+    {
+        var appointment = await _context.Appointments.FindAsync(appointmentId);
+        if (appointment == null)
+            return NotFound(new { message = "Consulta não encontrada" });
+
+        _acontecendoAppointmentId = appointmentId.ToString();
+        _acontecendoTimestamp = DateTime.UtcNow;
+        
+        _logger.LogInformation("[Acontecendo] Consulta marcada: {Id}", appointmentId);
+        return Ok(new { message = "Consulta marcada como acontecendo", appointmentId });
+    }
+
+    /// <summary>
+    /// Remove a marcação "Acontecendo" (chamado ao finalizar consulta)
+    /// </summary>
+    [HttpDelete("acontecendo")]
+    public ActionResult DesmarcarAcontecendo()
+    {
+        var oldId = _acontecendoAppointmentId;
+        _acontecendoAppointmentId = null;
+        _acontecendoTimestamp = null;
+        
+        _logger.LogInformation("[Acontecendo] Desmarcado. Anterior: {Id}", oldId);
+        return Ok(new { message = "Status acontecendo removido" });
+    }
+
+    /// <summary>
+    /// Verifica se há consulta marcada como "Acontecendo"
+    /// </summary>
+    [HttpGet("acontecendo")]
+    public ActionResult GetAcontecendo()
+    {
+        // Verifica se expirou
+        if (_acontecendoTimestamp != null && 
+            DateTime.UtcNow - _acontecendoTimestamp.Value > AcontecendoTimeout)
+        {
+            _acontecendoAppointmentId = null;
+            _acontecendoTimestamp = null;
+        }
+
+        if (string.IsNullOrEmpty(_acontecendoAppointmentId))
+            return Ok(new { appointmentId = (string?)null, message = "Nenhuma consulta acontecendo" });
+
+        return Ok(new { 
+            appointmentId = _acontecendoAppointmentId, 
+            since = _acontecendoTimestamp 
+        });
+    }
+
     /// <summary>
     /// Retorna a consulta ativa no momento (para maleta itinerante)
-    /// Como só há uma consulta por maleta, busca a mais recente ativa
+    /// PRIORIDADE: 1) Marcada como "Acontecendo" 2) InProgress 3) Scheduled/Confirmed
     /// </summary>
     [HttpGet("active-appointment")]
     public async Task<ActionResult> GetActiveAppointment()
     {
-        // Busca consultas InProgress (mais recente primeiro)
+        // PRIORIDADE 1: Consulta marcada como "Acontecendo" pelo paciente
+        if (!string.IsNullOrEmpty(_acontecendoAppointmentId) && 
+            _acontecendoTimestamp != null &&
+            DateTime.UtcNow - _acontecendoTimestamp.Value <= AcontecendoTimeout)
+        {
+            if (Guid.TryParse(_acontecendoAppointmentId, out var acontecendoGuid))
+            {
+                var acontecendo = await _context.Appointments
+                    .Where(a => a.Id == acontecendoGuid)
+                    .Select(a => new { a.Id, a.PatientId, a.ProfessionalId, a.Date, a.Time })
+                    .FirstOrDefaultAsync();
+                
+                if (acontecendo != null)
+                {
+                    _logger.LogInformation("[Maleta] Consulta ACONTECENDO: {Id}", acontecendo.Id);
+                    return Ok(acontecendo);
+                }
+            }
+        }
+
+        // PRIORIDADE 2: Consultas InProgress (mais recente primeiro)
         var activeAppointment = await _context.Appointments
             .Where(a => a.Status == Domain.Enums.AppointmentStatus.InProgress)
             .OrderByDescending(a => a.UpdatedAt)
             .Select(a => new { a.Id, a.PatientId, a.ProfessionalId, a.Date, a.Time })
             .FirstOrDefaultAsync();
         
-        // Se não encontrou InProgress, busca Scheduled/Confirmed mais recente
+        // PRIORIDADE 3: Scheduled/Confirmed mais recente
         if (activeAppointment == null)
         {
             activeAppointment = await _context.Appointments

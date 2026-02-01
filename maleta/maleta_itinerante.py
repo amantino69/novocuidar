@@ -39,6 +39,7 @@ Exemplos:
   python maleta_itinerante.py              # Usa produção (telecuidar.com.br)
   python maleta_itinerante.py --local      # Usa localhost:5239 (homologação)
   python maleta_itinerante.py --url http://192.168.1.100:5239  # URL customizada
+  python maleta_itinerante.py --appointment 62734ef5-c2af-40f1-8726-099932da0240  # ID fixo
         """
     )
     parser.add_argument(
@@ -50,6 +51,11 @@ Exemplos:
         "--url", "-u",
         type=str,
         help="URL base customizada (ex: http://192.168.1.100:5239)"
+    )
+    parser.add_argument(
+        "--appointment", "-a",
+        type=str,
+        help="ID da consulta (GUID). Se informado, ignora detecção automática."
     )
     return parser.parse_args()
 
@@ -276,9 +282,17 @@ async def detect_active_appointment() -> str:
     """
     Detecta qual consulta está ativa.
     Usa múltiplas estratégias:
+    0. Parâmetro de linha de comando (--appointment)
     1. API do backend (consultas em andamento)
     2. Arquivo temporário (escrito pelo frontend)
     """
+    # Estratégia 0: Parâmetro de linha de comando (prioridade máxima)
+    if args.appointment:
+        if args.appointment != state.current_appointment_id:
+            logger.info(f"📡 Usando consulta fixa (--appointment): {args.appointment}")
+            state.current_appointment_id = args.appointment
+        return args.appointment
+    
     now = datetime.now()
     
     # Verifica intervalo

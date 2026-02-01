@@ -147,6 +147,15 @@ import { environment } from '@env/environment';
             {{ captureMessage }}
           </span>
           
+          <!-- OPERADOR: botão "Acontecendo" para marcar consulta ativa -->
+          <button *ngIf="!isProfessional" class="btn-acontecendo" 
+                  [class.active]="isAcontecendo" 
+                  (click)="toggleAcontecendo()"
+                  [title]="isAcontecendo ? 'Clique para desmarcar' : 'Clique para ativar captura de sinais'">
+            <span class="status-dot" [class.active]="isAcontecendo"></span>
+            <span>{{ isAcontecendo ? '🟢 Acontecendo' : '⚪ Iniciar Captura' }}</span>
+          </button>
+          
           <!-- OPERADOR: botão capturar -->
           <button *ngIf="!isProfessional" class="btn-capture" (click)="capturarSinais()" [disabled]="isCapturing">
             <span *ngIf="isCapturing" class="spinner"></span>
@@ -245,6 +254,53 @@ import { environment } from '@env/environment';
     .btn-analyze {
       background: linear-gradient(135deg, #8b5cf6, #7c3aed);
       box-shadow: 0 4px 12px rgba(139,92,246,0.4);
+    }
+    
+    /* Botão Acontecendo */
+    .btn-acontecendo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border: 2px solid #475569;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: #334155;
+      color: #94a3b8;
+      
+      &:hover { 
+        border-color: #22c55e;
+        color: #22c55e;
+      }
+      
+      &.active {
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        border-color: #22c55e;
+        color: white;
+        box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+        animation: pulse-green 2s infinite;
+      }
+      
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #475569;
+        transition: all 0.3s;
+        
+        &.active {
+          background: white;
+          box-shadow: 0 0 8px white;
+        }
+      }
+    }
+    
+    @keyframes pulse-green {
+      0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.5); }
+      50% { box-shadow: 0 0 30px rgba(34, 197, 94, 0.8); }
     }
 
     /* Fonocardiograma do Eko */
@@ -521,6 +577,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
   captureMessage = '';
   captureSuccess = false;
   lastSync: Date | null = null;
+  isAcontecendo = false;  // Botão "Acontecendo" para maleta itinerante
 
   // Fonocardiograma do Eko
   phonocardiogram: PhonocardiogramData | null = null;
@@ -546,17 +603,34 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
 
   ngOnInit(): void {
     this.setupSubscriptions();
+    this.checkAcontecendoStatus();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['appointment'] && this.appointment) {
       this.loadPatientInfo();
+      this.checkAcontecendoStatus();
     }
   }
 
   ngOnDestroy(): void {
     this.subscriptions.unsubscribe();
     if (this.syncTimeout) clearTimeout(this.syncTimeout);
+    // Desmarcar "acontecendo" ao sair da teleconsulta
+    if (this.isAcontecendo) {
+      this.http.delete(`${environment.apiUrl}/biometrics/acontecendo`).subscribe();
+    }
+  }
+
+  /** Verifica se esta consulta está marcada como "acontecendo" */
+  private async checkAcontecendoStatus(): Promise<void> {
+    if (!this.appointmentId) return;
+    try {
+      const response = await this.http.get<any>(`${environment.apiUrl}/biometrics/acontecendo`).toPromise();
+      this.isAcontecendo = response?.appointmentId === this.appointmentId;
+    } catch {
+      this.isAcontecendo = false;
+    }
   }
 
   private setupSubscriptions(): void {
@@ -669,6 +743,30 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
 
     this.medicalDevicesSync.sendVitalSigns(vitalsData);
     this.lastSync = new Date();
+  }
+
+  /**
+   * Marca/desmarca a consulta como "Acontecendo" para a maleta itinerante
+   * Quando marcada, a maleta vai enviar os sinais vitais para ESTA consulta
+   */
+  async toggleAcontecendo(): Promise<void> {
+    if (!this.appointmentId) return;
+    
+    try {
+      if (this.isAcontecendo) {
+        // Desmarcar
+        await this.http.delete(`${environment.apiUrl}/biometrics/acontecendo`).toPromise();
+        this.isAcontecendo = false;
+        console.log('[VitalsBar] ⚪ Consulta desmarcada como acontecendo');
+      } else {
+        // Marcar
+        await this.http.post(`${environment.apiUrl}/biometrics/acontecendo/${this.appointmentId}`, {}).toPromise();
+        this.isAcontecendo = true;
+        console.log('[VitalsBar] 🟢 Consulta marcada como acontecendo:', this.appointmentId);
+      }
+    } catch (error) {
+      console.error('[VitalsBar] Erro ao alterar status acontecendo:', error);
+    }
   }
 
   async capturarSinais(): Promise<void> {
