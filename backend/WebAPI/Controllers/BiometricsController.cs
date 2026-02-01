@@ -401,16 +401,18 @@ public class BleBridgeController : ControllerBase
             }
         }
 
-        // Envia via SignalR para médico (inclui URL do áudio)
+        // Envia via SignalR para médico (inclui URL do áudio e waveform)
         await _medicalDevicesHubContext.Clients.Group($"appointment_{appointmentId}")
             .SendAsync("PhonocardiogramReceived", new
             {
                 appointmentId = dto.AppointmentId,
                 deviceType = "stethoscope",
                 heartRate = dto.Values?.GetValueOrDefault("heartRate"),
+                quality = dto.Values?.GetValueOrDefault("quality"),
                 audioUrl = audioFilePath,
                 sampleRate = dto.SampleRate ?? 8000,
                 durationSeconds = dto.DurationSeconds,
+                waveform = dto.Waveform,  // 500 pontos para visualização
                 timestamp = DateTime.UtcNow.ToString("o")
             });
 
@@ -570,4 +572,5 @@ public class PhonocardiogramDto
     public int? SampleRate { get; set; }
     public string? Format { get; set; }  // "pcm_s16le"
     public double? DurationSeconds { get; set; }
+    public List<double>? Waveform { get; set; }  // 500 pontos para visualização
 }

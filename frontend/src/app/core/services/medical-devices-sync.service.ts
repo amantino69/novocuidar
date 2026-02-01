@@ -47,9 +47,11 @@ export interface PhonocardiogramData {
   appointmentId: string;
   deviceType: string;
   heartRate?: number;
+  quality?: number;
   audioUrl?: string;
   sampleRate: number;
   durationSeconds: number;
+  waveform?: number[];  // 500 pontos para visualização
   timestamp: string;
 }
 

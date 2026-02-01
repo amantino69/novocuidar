@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges, Inject, PLATFORM_ID, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -125,6 +125,9 @@ import { environment } from '@env/environment';
           <label><app-icon name="heart" [size]="18" /> 🩺 Fono</label>
           <div class="phono-box">
             @if (phonocardiogram) {
+              <div class="phono-waveform">
+                <canvas #waveformCanvas width="200" height="40"></canvas>
+              </div>
               <span class="phono-bpm">{{ phonocardiogram.heartRate || '--' }} bpm</span>
               <button class="btn-play" (click)="playPhonocardiogram()" [title]="'Ouvir fonocardiograma'">
                 <app-icon [name]="isPlayingPhono ? 'pause' : 'play'" [size]="16" />
@@ -320,6 +323,18 @@ import { environment } from '@env/environment';
         display: flex;
         align-items: center;
         gap: 8px;
+        
+        .phono-waveform {
+          width: 200px;
+          height: 40px;
+          border-radius: 4px;
+          overflow: hidden;
+          background: #1a1a2e;
+          
+          canvas {
+            display: block;
+          }
+        }
         
         .phono-bpm {
           font-size: 16px;
@@ -542,10 +557,12 @@ import { environment } from '@env/environment';
     }
   `]
 })
-export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
+export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, AfterViewChecked {
   @Input() appointmentId: string | null = null;
   @Input() appointment: Appointment | null = null;
   @Input() userRole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' = 'PATIENT';
+
+  @ViewChild('waveformCanvas') waveformCanvasRef!: ElementRef<HTMLCanvasElement>;
 
   // Dados do paciente
   patientName = '';
@@ -583,6 +600,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
   phonocardiogram: PhonocardiogramData | null = null;
   phonocardiogramAudioUrl = '';
   isPlayingPhono = false;
+  private needsWaveformRedraw = false;
 
   private subscriptions = new Subscription();
   private patientData: User | null = null;
@@ -622,6 +640,60 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
     }
   }
 
+  ngAfterViewChecked(): void {
+    if (this.needsWaveformRedraw && this.waveformCanvasRef) {
+      this.drawWaveform();
+      this.needsWaveformRedraw = false;
+    }
+  }
+
+  private drawWaveform(): void {
+    if (!this.phonocardiogram?.waveform || !this.waveformCanvasRef) return;
+    
+    const canvas = this.waveformCanvasRef.nativeElement;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const waveform = this.phonocardiogram.waveform;
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Limpar canvas
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Linha de base
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, height / 2);
+    ctx.lineTo(width, height / 2);
+    ctx.stroke();
+    
+    // Desenhar waveform
+    ctx.strokeStyle = '#00ff88';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    
+    const stepX = width / (waveform.length - 1);
+    const midY = height / 2;
+    const amplitudeScale = height / 2 * 0.9;  // 90% da altura
+    
+    for (let i = 0; i < waveform.length; i++) {
+      const x = i * stepX;
+      const y = midY - (waveform[i] * amplitudeScale);
+      
+      if (i === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    
+    ctx.stroke();
+    console.log('[VitalsBar] Waveform desenhado:', waveform.length, 'pontos');
+  }
+
   /** Verifica se esta consulta está marcada como "acontecendo" */
   private async checkAcontecendoStatus(): Promise<void> {
     if (!this.appointmentId) return;
@@ -656,6 +728,10 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
           // Atualiza FC se detectada
           if (data.heartRate) {
             this.heartRate = data.heartRate;
+          }
+          // Marcar para redesenhar waveform
+          if (data.waveform && data.waveform.length > 0) {
+            this.needsWaveformRedraw = true;
           }
           this.lastSync = new Date();
         }

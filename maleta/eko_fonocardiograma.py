@@ -81,7 +81,7 @@ async def get_active_appointment():
         return None
 
 
-async def send_phonocardiogram(appointment_id: str, wav_data: bytes, bpm: int = None):
+async def send_phonocardiogram(appointment_id: str, wav_data: bytes, bpm: int = None, waveform: list = None, quality: int = 0):
     """Envia o fonocardiograma para a API"""
     url = f"{get_api_url()}/api/biometrics/phonocardiogram"
     
@@ -101,8 +101,10 @@ async def send_phonocardiogram(appointment_id: str, wav_data: bytes, bpm: int = 
         "sampleRate": SAMPLE_RATE,
         "format": "pcm_s16le",
         "durationSeconds": duration_seconds,
+        "waveform": waveform,  # 500 pontos para visualização
         "values": {
-            "heartRate": bpm
+            "heartRate": bpm,
+            "quality": quality
         }
     }
     
@@ -180,6 +182,136 @@ def save_wav(samples: np.ndarray, filename: str, sample_rate: int = SAMPLE_RATE)
         wav_file.setsampwidth(2)
         wav_file.setframerate(sample_rate)
         wav_file.writeframes(samples.tobytes())
+
+
+def apply_bandpass_filter(samples: np.ndarray, sample_rate: int = SAMPLE_RATE, 
+                          low_freq: float = 20.0, high_freq: float = 200.0) -> np.ndarray:
+    """
+    Aplica filtro passa-banda para isolar frequências cardíacas.
+    Sons cardíacos típicos: S1/S2 entre 20-150Hz, sopros até 400Hz
+    """
+    # Converte para float para processamento
+    samples_float = samples.astype(np.float64)
+    
+    # Calcula frequência de Nyquist
+    nyquist = sample_rate / 2.0
+    
+    # Normaliza frequências de corte
+    low = low_freq / nyquist
+    high = high_freq / nyquist
+    
+    # Garante que estão no range válido
+    low = max(0.001, min(0.999, low))
+    high = max(0.001, min(0.999, high))
+    
+    if low >= high:
+        return samples
+    
+    # Implementa filtro Butterworth de 2ª ordem manualmente (sem scipy)
+    # Usando filtro IIR simples para passa-banda
+    
+    # Filtro passa-alta (remove DC e ruído de baixa frequência)
+    alpha_high = low
+    filtered = np.zeros_like(samples_float)
+    prev_in = 0.0
+    prev_out = 0.0
+    
+    for i in range(len(samples_float)):
+        filtered[i] = alpha_high * (prev_out + samples_float[i] - prev_in)
+        prev_in = samples_float[i]
+        prev_out = filtered[i]
+    
+    # Filtro passa-baixa (remove ruído de alta frequência)
+    alpha_low = high
+    result = np.zeros_like(filtered)
+    prev = 0.0
+    
+    for i in range(len(filtered)):
+        result[i] = prev + alpha_low * (filtered[i] - prev)
+        prev = result[i]
+    
+    return result.astype(np.float64)
+
+
+def amplify_audio(samples: np.ndarray, gain: float = 20.0) -> np.ndarray:
+    """
+    Amplifica o áudio com ganho especificado.
+    Inclui compressão dinâmica para evitar clipping.
+    """
+    # Converte para float
+    samples_float = samples.astype(np.float64)
+    
+    # Remove DC offset
+    samples_float = samples_float - np.mean(samples_float)
+    
+    # Aplica ganho
+    amplified = samples_float * gain
+    
+    # Compressão suave para evitar clipping (soft clipping)
+    # Usa tanh para compressão suave
+    max_val = 32767.0
+    normalized = amplified / max_val
+    
+    # Soft clipping com tanh
+    compressed = np.tanh(normalized) * max_val
+    
+    # Normaliza para usar range dinâmico completo
+    peak = np.max(np.abs(compressed))
+    if peak > 0:
+        compressed = compressed * (32000.0 / peak)
+    
+    return compressed.astype(np.int16)
+
+
+def process_audio_for_stethoscope(samples: np.ndarray, sample_rate: int = SAMPLE_RATE) -> np.ndarray:
+    """
+    Pipeline completo de processamento para estetoscópio:
+    1. Filtro passa-banda (20-200Hz) - isola sons cardíacos
+    2. Amplificação (20x) - aumenta volume audível
+    """
+    print("   🔊 Aplicando processamento de áudio...")
+    
+    # 1. Filtro passa-banda
+    print("      • Filtro passa-banda (20-200Hz)...")
+    filtered = apply_bandpass_filter(samples, sample_rate, low_freq=20.0, high_freq=200.0)
+    
+    # 2. Amplificação com soft clipping
+    print("      • Amplificação (20x com compressão)...")
+    amplified = amplify_audio(filtered.astype(np.int16), gain=20.0)
+    
+    return amplified
+
+
+def generate_waveform_data(samples: np.ndarray, num_points: int = 500) -> list:
+    """
+    Gera dados do waveform para visualização no frontend.
+    Reduz o número de pontos para transmissão eficiente.
+    """
+    if len(samples) == 0:
+        return []
+    
+    # Normaliza para range -1 a 1
+    samples_float = samples.astype(np.float64)
+    max_val = np.max(np.abs(samples_float))
+    if max_val > 0:
+        samples_float = samples_float / max_val
+    
+    # Reduz número de pontos por média de blocos
+    block_size = max(1, len(samples_float) // num_points)
+    waveform = []
+    
+    for i in range(0, len(samples_float) - block_size, block_size):
+        block = samples_float[i:i + block_size]
+        # Pega o valor de pico (positivo ou negativo) no bloco
+        max_in_block = np.max(block)
+        min_in_block = np.min(block)
+        # Usa o de maior magnitude
+        if abs(max_in_block) > abs(min_in_block):
+            waveform.append(float(max_in_block))
+        else:
+            waveform.append(float(min_in_block))
+    
+    return waveform
 
 
 def analyze_heartbeat(samples: np.ndarray, sample_rate: int = SAMPLE_RATE):
@@ -352,18 +484,25 @@ async def capture_and_analyze(duration_seconds: int = 15):
     print(f"   Bytes de áudio: {len(clean_data)}")
     
     # Decodifica IMA ADPCM
-    samples = decode_ima_adpcm(clean_data)
-    duration = len(samples) / SAMPLE_RATE
-    print(f"   Samples decodificados: {len(samples)}")
+    samples_raw = decode_ima_adpcm(clean_data)
+    duration = len(samples_raw) / SAMPLE_RATE
+    print(f"   Samples decodificados: {len(samples_raw)}")
     print(f"   Duração do áudio: {duration:.1f} segundos")
     
-    # Salva arquivo WAV
+    # Aplica processamento de áudio (filtro + amplificação)
+    samples = process_audio_for_stethoscope(samples_raw, SAMPLE_RATE)
+    
+    # Gera dados do waveform para o frontend
+    waveform_data = generate_waveform_data(samples, num_points=500)
+    print(f"   📊 Waveform gerado: {len(waveform_data)} pontos")
+    
+    # Salva arquivo WAV processado
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     wav_filename = f"fonocardiograma_{timestamp}.wav"
     save_wav(samples, wav_filename)
     print(f"\n💾 Arquivo salvo: {wav_filename}")
     
-    # Análise de batimentos
+    # Análise de batimentos (usa samples processados)
     print(f"\n" + "=" * 60)
     print("   🫀 ANÁLISE DO FONOCARDIOGRAMA")
     print("=" * 60)
@@ -409,7 +548,8 @@ async def capture_and_analyze(duration_seconds: int = 15):
             wav_data = f.read()
         
         bpm = analysis.get('bpm')
-        success = await send_phonocardiogram(appointment_id, wav_data, bpm)
+        quality = analysis.get('quality', 0)
+        success = await send_phonocardiogram(appointment_id, wav_data, bpm, waveform_data, quality)
         
         if success:
             print(f"\n🎉 Dados enviados! O médico pode ouvir o fonocardiograma.")
@@ -421,7 +561,8 @@ async def capture_and_analyze(duration_seconds: int = 15):
     return {
         'filename': wav_filename,
         'samples': samples,
-        'analysis': analysis
+        'analysis': analysis,
+        'waveform': waveform_data
     }
 
 
