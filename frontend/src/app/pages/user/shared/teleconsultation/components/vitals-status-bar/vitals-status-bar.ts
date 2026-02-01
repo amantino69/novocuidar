@@ -1046,8 +1046,10 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       console.log('[VitalsBar] ▶️ Tocando fonocardiograma');
     }).catch(err => {
       console.error('[VitalsBar] Erro ao reproduzir:', err);
-      // Tenta abrir em nova aba como fallback
-      window.open(this.phonocardiogramAudioUrl, '_blank');
+      // Pergunta se quer abrir em nova aba
+      if (confirm('O áudio não pôde ser reproduzido diretamente.\n\nDeseja abrir em uma nova aba?')) {
+        window.open(this.phonocardiogramAudioUrl, '_blank');
+      }
     });
   }
 }
