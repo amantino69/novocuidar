@@ -1,6 +1,7 @@
   import { Component, OnInit, OnDestroy, HostListener, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { ButtonComponent } from '@shared/components/atoms/button/button';
 import { ThemeToggleComponent } from '@shared/components/atoms/theme-toggle/theme-toggle';
@@ -17,6 +18,7 @@ import { TeleconsultationSidebarComponent } from './sidebar/teleconsultation-sid
 import { VitalsStatusBarComponent } from './components/vitals-status-bar/vitals-status-bar';
 import { getTeleconsultationTabs, TAB_ID_TO_LEGACY_NAME, TabConfig } from './tabs/tab-config';
 import { Subscription } from 'rxjs';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-teleconsultation',
@@ -72,6 +74,7 @@ export class TeleconsultationComponent implements OnInit, OnDestroy {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
+    private http: HttpClient,
     private appointmentsService: AppointmentsService,
     private jitsiService: JitsiService,
     private modalService: ModalService,
@@ -96,11 +99,26 @@ export class TeleconsultationComponent implements OnInit, OnDestroy {
     if (this.appointmentId) {
       this.loadAppointment(this.appointmentId);
       
+      // AUTOMÁTICO: Marca esta consulta como ativa para a maleta
+      this.marcarConsultaAtiva(this.appointmentId);
+      
       // Setup real-time connection
       if (this.isBrowser) {
         this.setupRealTimeConnection();
       }
     }
+  }
+  
+  /**
+   * Marca automaticamente a consulta como ativa para a maleta itinerante
+   * Chamado quando o usuário entra na sala de teleconsulta
+   */
+  private marcarConsultaAtiva(appointmentId: string): void {
+    const url = `${environment.apiUrl}/biometrics/acontecendo/${appointmentId}`;
+    this.http.post(url, {}).subscribe({
+      next: () => console.log('[Teleconsultation] 🟢 Consulta marcada como ativa para maleta:', appointmentId),
+      error: (err) => console.warn('[Teleconsultation] Não foi possível marcar consulta ativa:', err)
+    });
   }
 
   ngOnDestroy(): void {
@@ -110,7 +128,22 @@ export class TeleconsultationComponent implements OnInit, OnDestroy {
     // Leave teleconsultation room
     if (this.appointmentId) {
       this.teleconsultationRealTime.leaveConsultation(this.appointmentId);
+      
+      // AUTOMÁTICO: Desmarca a consulta como ativa quando sai
+      this.desmarcarConsultaAtiva(this.appointmentId);
     }
+  }
+  
+  /**
+   * Desmarca a consulta como ativa quando o usuário sai da sala
+   */
+  private desmarcarConsultaAtiva(appointmentId: string): void {
+    const url = `${environment.apiUrl}/biometrics/acontecendo`;
+    // Usa fetch síncrono pois ngOnDestroy pode não esperar o Observable
+    this.http.delete(url).subscribe({
+      next: () => console.log('[Teleconsultation] 🔴 Consulta desmarcada:', appointmentId),
+      error: () => {} // Ignora erro silenciosamente
+    });
   }
 
   private setupRealTimeConnection(): void {
