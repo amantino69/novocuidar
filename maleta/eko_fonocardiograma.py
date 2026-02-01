@@ -9,6 +9,10 @@ e exibe uma visualização do fonocardiograma para confirmar batimentos cardíac
 import asyncio
 import numpy as np
 import wave
+import base64
+import aiohttp
+import argparse
+import sys
 from datetime import datetime
 from pathlib import Path
 from bleak import BleakClient
@@ -18,9 +22,16 @@ EKO_MAC = "88:D2:11:C8:20:31"
 AUDIO_CHARACTERISTIC = "c320d257-d7be-46ac-9a37-7a4edfa84bce"
 SAMPLE_RATE = 8000  # Hz - confirmado como melhor taxa
 
+# URLs da API
+API_URL_LOCAL = "http://localhost:5239"
+API_URL_PROD = "https://www.telecuidar.com.br"
+
 # Buffer para dados
 audio_buffer = bytearray()
 packet_count = 0
+
+# Variável global para modo de produção
+USE_PRODUCTION = False
 
 
 # Tabela de passos IMA ADPCM
@@ -34,6 +45,66 @@ STEP_TABLE = [
 ]
 
 INDEX_TABLE = [-1, -1, -1, -1, 2, 4, 6, 8, -1, -1, -1, -1, 2, 4, 6, 8]
+
+
+def get_api_url():
+    """Retorna a URL da API baseado no modo"""
+    return API_URL_PROD if USE_PRODUCTION else API_URL_LOCAL
+
+
+async def get_active_appointment():
+    """Busca a consulta ativa no servidor"""
+    url = f"{get_api_url()}/api/biometrics/active-appointment"
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get('appointmentId')
+                elif response.status == 404:
+                    print("⚠️  Nenhuma consulta em andamento")
+                    return None
+                else:
+                    print(f"❌ Erro ao buscar consulta: {response.status}")
+                    return None
+    except Exception as e:
+        print(f"❌ Erro de conexão: {e}")
+        return None
+
+
+async def send_phonocardiogram(appointment_id: str, wav_data: bytes, bpm: int = None):
+    """Envia o fonocardiograma para a API"""
+    url = f"{get_api_url()}/api/biometrics/ble-reading"
+    
+    # Converte WAV para base64
+    audio_base64 = base64.b64encode(wav_data).decode('utf-8')
+    
+    payload = {
+        "appointmentId": appointment_id,
+        "deviceType": "phonocardiogram",
+        "values": {
+            "audioData": audio_base64,
+            "format": "wav",
+            "sampleRate": SAMPLE_RATE,
+            "duration": len(wav_data) / (SAMPLE_RATE * 2),  # 16-bit = 2 bytes
+            "bpm": bpm
+        }
+    }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                if response.status == 200:
+                    print(f"✅ Fonocardiograma enviado com sucesso!")
+                    return True
+                else:
+                    text = await response.text()
+                    print(f"❌ Erro ao enviar: {response.status} - {text}")
+                    return False
+    except Exception as e:
+        print(f"❌ Erro de conexão: {e}")
+        return False
 
 
 def decode_ima_adpcm(data: bytes) -> np.ndarray:
@@ -304,6 +375,28 @@ async def capture_and_analyze(duration_seconds: int = 15):
     print(f"\n✅ Fonocardiograma capturado com sucesso!")
     print(f"   Ouça o arquivo: {wav_filename}")
     
+    # Envia para a API se tiver consulta ativa
+    print(f"\n📡 ENVIANDO PARA O SERVIDOR...")
+    env_label = "PRODUÇÃO" if USE_PRODUCTION else "LOCAL"
+    print(f"   Ambiente: {env_label} ({get_api_url()})")
+    
+    appointment_id = await get_active_appointment()
+    
+    if appointment_id:
+        print(f"   Consulta ativa: {appointment_id[:8]}...")
+        
+        # Lê o arquivo WAV para envio
+        with open(wav_filename, 'rb') as f:
+            wav_data = f.read()
+        
+        bpm = analysis.get('bpm')
+        success = await send_phonocardiogram(appointment_id, wav_data, bpm)
+        
+        if success:
+            print(f"\n🎉 Dados enviados! O médico pode ouvir o fonocardiograma.")
+    else:
+        print(f"   ⚠️  Sem consulta ativa - dados salvos apenas localmente")
+    
     return {
         'filename': wav_filename,
         'samples': samples,
@@ -312,13 +405,26 @@ async def capture_and_analyze(duration_seconds: int = 15):
 
 
 async def main():
-    print("""
+    global USE_PRODUCTION
+    
+    # Parse argumentos
+    parser = argparse.ArgumentParser(description='Captura fonocardiograma do Eko CORE 500')
+    parser.add_argument('--prod', action='store_true', help='Usar servidor de produção')
+    args = parser.parse_args()
+    
+    USE_PRODUCTION = args.prod
+    env_label = "PRODUÇÃO" if USE_PRODUCTION else "LOCAL"
+    
+    print(f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
 ║   🩺 EKO CORE 500 - FONOCARDIOGRAMA                          ║
 ║                                                              ║
 ║   Sistema de captura e análise de sons cardíacos             ║
 ║   Formato confirmado: IMA ADPCM @ 8000Hz                     ║
+║                                                              ║
+║   🌐 Ambiente: {env_label:20s}                        ║
+║   📡 API: {get_api_url():40s} ║
 ║                                                              ║
 ╚══════════════════════════════════════════════════════════════╝
 

@@ -262,6 +262,11 @@ export class DictationService {
       }
     }
 
+    // Aplica pontuação automática nos textos finais
+    if (newFinals) {
+      newFinals = this.applyPunctuation(newFinals);
+    }
+
     // Log para diagnóstico
     if (newFinals || newInterim) {
       console.log('[Dictation] Texto capturado - Final:', newFinals, '| Interim:', newInterim);
@@ -297,5 +302,103 @@ export class DictationService {
     // Dispatch input event to trigger Angular/Reactive Forms updates
     this.activeElement.dispatchEvent(new Event('input', { bubbles: true }));
     this.activeElement.dispatchEvent(new Event('change', { bubbles: true }));
+    
+    // Auto-scroll para o final do texto (resolve problema de texto oculto)
+    this.scrollToEnd(this.activeElement);
+  }
+
+  /**
+   * Rola o campo de texto para mostrar o final do conteúdo
+   */
+  private scrollToEnd(element: HTMLInputElement | HTMLTextAreaElement): void {
+    // Move o cursor para o final
+    element.selectionStart = element.value.length;
+    element.selectionEnd = element.value.length;
+    
+    // Para textareas, rola verticalmente até o final
+    if (element instanceof HTMLTextAreaElement) {
+      element.scrollTop = element.scrollHeight;
+    }
+    
+    // Força scroll horizontal para o final se necessário
+    element.scrollLeft = element.scrollWidth;
+  }
+
+  /**
+   * Aplica pontuação automática ao texto transcrito.
+   * Converte comandos de voz em sinais de pontuação.
+   * 
+   * Comandos suportados:
+   * - "ponto" ou "ponto final" → "."
+   * - "vírgula" → ","
+   * - "dois pontos" → ":"
+   * - "ponto e vírgula" → ";"
+   * - "interrogação" ou "ponto de interrogação" → "?"
+   * - "exclamação" ou "ponto de exclamação" → "!"
+   * - "abre parênteses" ou "abre parêntese" → "("
+   * - "fecha parênteses" ou "fecha parêntese" → ")"
+   * - "travessão" ou "traço" → "—"
+   * - "nova linha" ou "próxima linha" ou "enter" → "\n"
+   * - "novo parágrafo" ou "parágrafo" → "\n\n"
+   */
+  private applyPunctuation(text: string): string {
+    if (!text) return text;
+
+    // Mapeamento de comandos de voz para pontuação
+    const punctuationMap: { pattern: RegExp; replacement: string }[] = [
+      // Pontos finais (verificar primeiro os compostos)
+      { pattern: /\s*ponto\s+final\s*/gi, replacement: '. ' },
+      { pattern: /\s*ponto\s+de\s+interrogação\s*/gi, replacement: '? ' },
+      { pattern: /\s*ponto\s+de\s+exclamação\s*/gi, replacement: '! ' },
+      { pattern: /\s*ponto\s+e\s+vírgula\s*/gi, replacement: '; ' },
+      { pattern: /\s*ponto\s*/gi, replacement: '. ' },
+      
+      // Vírgula
+      { pattern: /\s*vírgula\s*/gi, replacement: ', ' },
+      
+      // Dois pontos
+      { pattern: /\s*dois\s+pontos\s*/gi, replacement: ': ' },
+      
+      // Interrogação e exclamação
+      { pattern: /\s*interrogação\s*/gi, replacement: '? ' },
+      { pattern: /\s*exclamação\s*/gi, replacement: '! ' },
+      
+      // Parênteses
+      { pattern: /\s*abre\s+parêntese[s]?\s*/gi, replacement: ' (' },
+      { pattern: /\s*fecha\s+parêntese[s]?\s*/gi, replacement: ') ' },
+      
+      // Travessão
+      { pattern: /\s*travessão\s*/gi, replacement: ' — ' },
+      { pattern: /\s*traço\s*/gi, replacement: ' — ' },
+      
+      // Quebras de linha
+      { pattern: /\s*(nova\s+linha|próxima\s+linha|enter)\s*/gi, replacement: '\n' },
+      { pattern: /\s*(novo\s+parágrafo|parágrafo)\s*/gi, replacement: '\n\n' },
+      
+      // Aspas
+      { pattern: /\s*abre\s+aspas\s*/gi, replacement: ' "' },
+      { pattern: /\s*fecha\s+aspas\s*/gi, replacement: '" ' },
+    ];
+
+    let result = text;
+    
+    for (const { pattern, replacement } of punctuationMap) {
+      result = result.replace(pattern, replacement);
+    }
+
+    // Capitaliza após pontuação final (. ? !)
+    result = result.replace(/([.?!])\s+([a-záéíóúâêîôûãõç])/gi, (match, punct, letter) => {
+      return punct + ' ' + letter.toUpperCase();
+    });
+
+    // Capitaliza início de parágrafo
+    result = result.replace(/(\n\n?)([a-záéíóúâêîôûãõç])/gi, (match, newline, letter) => {
+      return newline + letter.toUpperCase();
+    });
+
+    // Remove espaços múltiplos
+    result = result.replace(/  +/g, ' ');
+
+    return result;
   }
 }

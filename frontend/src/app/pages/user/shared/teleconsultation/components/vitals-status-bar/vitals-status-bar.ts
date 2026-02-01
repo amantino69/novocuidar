@@ -862,12 +862,18 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
     
     // Atualiza URL e toca
     this.phonoAudioPlayer.src = this.phonocardiogramAudioUrl;
+    
+    // Força interação do usuário para permitir play
+    this.phonoAudioPlayer.muted = false;
+    this.phonoAudioPlayer.volume = 1.0;
+    
     this.phonoAudioPlayer.play().then(() => {
       this.isPlayingPhono = true;
       console.log('[VitalsBar] ▶️ Tocando fonocardiograma');
     }).catch(err => {
       console.error('[VitalsBar] Erro ao reproduzir:', err);
-      alert('Erro ao reproduzir áudio. Verifique se o navegador permite autoplay.');
+      // Tenta abrir em nova aba como fallback
+      window.open(this.phonocardiogramAudioUrl, '_blank');
     });
   }
 }

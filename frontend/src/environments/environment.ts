@@ -19,14 +19,11 @@ const getApiUrl = () => {
 const getJitsiDomain = () => {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
-    // Em desenvolvimento local, Jitsi roda em localhost:8443
-    if (host === 'localhost' || host === '127.0.0.1') {
-      return 'localhost:8443';
-    }
-    // Se acessando via IP da rede, usar mesmo IP para Jitsi
-    return `${host}:8443`;
+    // Sempre usar Jitsi de produção (VPS)
+    // O meet.telecuidar.com.br funciona tanto em dev quanto prod
+    return 'meet.telecuidar.com.br';
   }
-  return 'localhost:8443';
+  return 'meet.telecuidar.com.br';
 };
 
 export const environment = {
