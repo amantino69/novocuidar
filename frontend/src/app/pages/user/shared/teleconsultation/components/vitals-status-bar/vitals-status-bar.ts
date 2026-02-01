@@ -828,25 +828,46 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   // Fonocardiograma - reproduzir áudio
+  private phonoAudioPlayer: HTMLAudioElement | null = null;
+  
   playPhonocardiogram(): void {
     if (!isPlatformBrowser(this.platformId)) return;
     
-    const audioElement = document.querySelector('audio[src*="phonocardiogram"]') as HTMLAudioElement;
-    if (!audioElement && this.phonocardiogramAudioUrl) {
-      // Cria um elemento de áudio temporário
-      const audio = new Audio(this.phonocardiogramAudioUrl);
-      audio.onended = () => this.isPlayingPhono = false;
-      
-      if (this.isPlayingPhono) {
-        audio.pause();
-        this.isPlayingPhono = false;
-      } else {
-        audio.play().then(() => {
-          this.isPlayingPhono = true;
-        }).catch(err => {
-          console.error('[VitalsBar] Erro ao reproduzir áudio:', err);
-        });
-      }
+    console.log('[VitalsBar] playPhonocardiogram() chamado, URL:', this.phonocardiogramAudioUrl);
+    
+    if (!this.phonocardiogramAudioUrl) {
+      console.error('[VitalsBar] Nenhuma URL de áudio disponível');
+      return;
     }
+    
+    // Se já está tocando, pausa
+    if (this.isPlayingPhono && this.phonoAudioPlayer) {
+      this.phonoAudioPlayer.pause();
+      this.isPlayingPhono = false;
+      return;
+    }
+    
+    // Cria novo player se não existir
+    if (!this.phonoAudioPlayer) {
+      this.phonoAudioPlayer = new Audio();
+      this.phonoAudioPlayer.onended = () => {
+        this.isPlayingPhono = false;
+        console.log('[VitalsBar] Áudio terminou');
+      };
+      this.phonoAudioPlayer.onerror = (e) => {
+        console.error('[VitalsBar] Erro no áudio:', e);
+        this.isPlayingPhono = false;
+      };
+    }
+    
+    // Atualiza URL e toca
+    this.phonoAudioPlayer.src = this.phonocardiogramAudioUrl;
+    this.phonoAudioPlayer.play().then(() => {
+      this.isPlayingPhono = true;
+      console.log('[VitalsBar] ▶️ Tocando fonocardiograma');
+    }).catch(err => {
+      console.error('[VitalsBar] Erro ao reproduzir:', err);
+      alert('Erro ao reproduzir áudio. Verifique se o navegador permite autoplay.');
+    });
   }
 }
