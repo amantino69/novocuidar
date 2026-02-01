@@ -117,24 +117,36 @@ public class BleBridgeController : ControllerBase
 
     /// <summary>
     /// Retorna a consulta ativa no momento (para maleta itinerante)
-    /// Status 2 = Em Andamento, iniciada nas últimas 2 horas
+    /// Como só há uma consulta por maleta, busca a mais recente ativa
     /// </summary>
     [HttpGet("active-appointment")]
     public async Task<ActionResult> GetActiveAppointment()
     {
-        var today = DateTime.Today;
-        
+        // Busca consultas InProgress (mais recente primeiro)
         var activeAppointment = await _context.Appointments
             .Where(a => a.Status == Domain.Enums.AppointmentStatus.InProgress)
-            .Where(a => a.Date >= today)
             .OrderByDescending(a => a.UpdatedAt)
             .Select(a => new { a.Id, a.PatientId, a.ProfessionalId, a.Date, a.Time })
             .FirstOrDefaultAsync();
         
+        // Se não encontrou InProgress, busca Scheduled/Confirmed mais recente
         if (activeAppointment == null)
-            return NotFound(new { message = "Nenhuma consulta ativa no momento" });
+        {
+            activeAppointment = await _context.Appointments
+                .Where(a => a.Status == Domain.Enums.AppointmentStatus.Scheduled || 
+                           a.Status == Domain.Enums.AppointmentStatus.Confirmed)
+                .OrderByDescending(a => a.UpdatedAt)
+                .Select(a => new { a.Id, a.PatientId, a.ProfessionalId, a.Date, a.Time })
+                .FirstOrDefaultAsync();
+        }
         
-        _logger.LogInformation("[Maleta Itinerante] Consulta ativa: {Id}", activeAppointment.Id);
+        if (activeAppointment == null)
+        {
+            _logger.LogWarning("[Maleta] Nenhuma consulta encontrada");
+            return NotFound(new { message = "Nenhuma consulta ativa no momento" });
+        }
+        
+        _logger.LogInformation("[Maleta] Consulta ativa: {Id}", activeAppointment.Id);
         return Ok(activeAppointment);
     }
 
