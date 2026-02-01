@@ -6,7 +6,7 @@
   position: fixed;
   top: 0;
   right: 0;
-  height: 100%;
+  height: calc(100% - 130px); // Deixa espaço para a barra de status inferior
   width: 40vw;
   min-width: 400px;
   max-width: 600px;
@@ -55,7 +55,7 @@
     min-width: 50vw;
     max-width: 50vw;
     top: 0;
-    height: 100%;
+    height: calc(100% - 130px); // Deixa espaço para a barra de status inferior
     z-index: 60;
     
     @include mobile {
@@ -64,24 +64,24 @@
       min-width: 100%;
       max-width: 100%;
       top: 0;
-      height: 100%;
+      height: calc(100% - 130px);
     }
   }
 
   // Sidebar sempre ocupa altura total, mesmo com header visível
   &.full-screen:not(.header-hidden) {
     top: 0;
-    height: 100%;
+    height: calc(100% - 130px);
     
     @include mobile {
       top: 0;
-      height: 100%;
+      height: calc(100% - 130px);
     }
   }
 
   &.full-screen.header-hidden {
     top: 0;
-    height: 100%;
+    height: calc(100% - 130px);
   }
 
   .sidebar-header {

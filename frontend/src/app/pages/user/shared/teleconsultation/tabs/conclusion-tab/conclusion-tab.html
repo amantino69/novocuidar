@@ -21,11 +21,11 @@
       </div>
       <div class="info-item">
         <label>Tipo</label>
-        <span>{{ appointment.type }}</span>
+        <span>{{ getTypeLabel(appointment.type) }}</span>
       </div>
       <div class="info-item">
         <label>Status</label>
-        <span class="status-badge" [class]="appointment.status">{{ appointment.status }}</span>
+        <span class="status-badge" [class]="appointment.status">{{ getStatusLabel(appointment.status) }}</span>
       </div>
     </div>
   </div>
