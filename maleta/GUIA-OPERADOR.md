@@ -1,54 +1,48 @@
-# 🩺 MALETA ITINERANTE - GUIA RÁPIDO
+# 🩺 MALETA AUTOMÁTICA - GUIA RÁPIDO
 
 ## Para o Operador (Enfermeira/Técnico)
 
-### Antes do Atendimento
+### No Início do Dia
 1. **Ligue o computador** e aguarde iniciar
 2. **Conecte os equipamentos:**
    - Estetoscópio → Entrada de áudio P2 (azul ou rosa)
-   - Balança → Ligar Bluetooth
-   - Omron → Ligar Bluetooth
-   - Termômetro → Ligar Bluetooth
-3. **Verifique a internet** (4G ou WiFi conectado)
+   - Balança, Omron, Termômetro → Bluetooth ligado
+3. **Dê duplo-clique em:** `Iniciar Maleta.bat`
+4. Uma janela azul vai abrir (NÃO FECHE durante o dia!)
 
-### Durante o Atendimento
+### Durante os Atendimentos
 
-#### PASSO 1: Iniciar o Sistema
-- Dê **duplo-clique** em: `Iniciar Maleta.bat`
-- Uma janela azul vai abrir (NÃO FECHE!)
+#### O Sistema é AUTOMÁTICO!
+Você só precisa:
+1. Fazer login no **TeleCuidar** no navegador
+2. Entrar na consulta e clicar em **"Acontecendo"**
+3. Usar os equipamentos normalmente
 
-#### PASSO 2: Acessar o TeleCuidar
-- Abra o **Google Chrome**
-- Acesse: `www.telecuidar.com.br`
-- Faça login com seu email e senha
+| Equipamento | O que fazer |
+|-------------|-------------|
+| **Balança** | Paciente sobe → peso enviado automaticamente |
+| **Omron** | Coloca braçadeira → pressão enviada automaticamente |
+| **Termômetro** | Mede temperatura → enviada automaticamente |
+| **Estetoscópio** | Posiciona no paciente → captura sozinho! |
 
-#### PASSO 3: Entrar na Teleconsulta
-- Clique na **consulta agendada**
-- Clique em **"Acontecendo"** para iniciar
-- O médico receberá a chamada
+**NÃO PRECISA APERTAR NADA!**
 
-#### PASSO 4: Capturar Sinais Vitais
+### Final do Dia
+- Pode fechar a janela azul
+- Desligar o computador normalmente
 
-| Equipamento | Como Usar |
-|-------------|-----------|
-| **Balança** | Paciente sobe na balança → Peso aparece automaticamente |
-| **Omron** | Coloca braçadeira → Liga → Aguarda medição → Dados enviados |
-| **Termômetro** | Mede temperatura → Liga Bluetooth → Dados enviados |
-| **Estetoscópio** | Posiciona → Pressione ENTER na janela azul → Aguarde 10s |
+---
 
-### Problemas Comuns
+## Problemas Comuns
 
-#### ❌ "Sem consulta ativa"
+#### ❌ "Aguardando consulta"
 → Clique em **"Acontecendo"** no TeleCuidar
 
-#### ❌ Peso não aparece
-→ Verifique se Bluetooth está ligado no computador
-
-#### ❌ Estetoscópio não captura
-→ Verifique se o cabo P2 está bem conectado
-
 #### ❌ Janela azul fechou
-→ Dê duplo-clique novamente em `Iniciar Maleta.bat`
+→ Dê duplo-clique em `Iniciar Maleta.bat`
+
+#### ❌ Estetoscópio não detecta
+→ Verifique se o cabo P2 está bem conectado
 
 ---
 

@@ -1,56 +1,45 @@
 @echo off
 chcp 65001 > nul
-title TeleCuidar - Maleta Itinerante Unificada
+title TeleCuidar - Maleta Automatica
 color 1F
 cls
 
 echo.
 echo  =========================================================
 echo.
-echo       TELECUIDAR - MALETA ITINERANTE
+echo       TELECUIDAR - MALETA AUTOMATICA
 echo.
 echo  =========================================================
 echo.
-echo   Este programa captura AUTOMATICAMENTE os dados de:
+echo   TOTALMENTE AUTOMATICO! A enfermeira so precisa:
 echo.
-echo   * Balanca OKOK (peso)
-echo   * Monitor de Pressao Omron HEM-7156T (PA, FC)
-echo   * Termometro MOBI (temperatura)
-echo   * Estetoscopio Digital via entrada P2 (fonocardiograma)
+echo   1. Deixar esta janela aberta
+echo   2. Usar o TeleCuidar no navegador
+echo   3. Usar os equipamentos normalmente
 echo.
-echo  ---------------------------------------------------------
+echo   * Balanca      - detecta peso automaticamente
+echo   * Omron        - detecta pressao automaticamente  
+echo   * Termometro   - detecta temperatura automaticamente
+echo   * Estetoscopio - detecta uso e captura sozinho!
 echo.
-echo   INSTRUCOES:
-echo.
-echo   1. Faca login no TeleCuidar no navegador
-echo   2. Entre na teleconsulta
-echo   3. Clique em "Acontecendo" para ativar a captura
-echo   4. Ligue os dispositivos e use normalmente
-echo   5. Para ESTETOSCOPIO: pressione ENTER para capturar
-echo   6. Os dados aparecem na tela do medico em tempo real!
-echo.
-echo   NAO FECHE ESTA JANELA durante o atendimento!
+echo   NAO PRECISA APERTAR NADA!
 echo.
 echo  =========================================================
 echo.
 
 cd /d "%~dp0"
-
-:: Define encoding UTF-8
 set PYTHONIOENCODING=utf-8
 
+:: Inicia BLE (balanca, pressao, termometro) em janela separada minimizada
+start /min "TeleCuidar BLE" cmd /c "color 2F && python maleta_itinerante.py"
+
 :loop
-echo.
-echo [%date% %time%] Iniciando sistema da maleta...
-echo.
-
-:: Inicia BLE (balanca, pressao, termometro) em janela separada
-start "TeleCuidar BLE" cmd /c "color 2F && python maleta_itinerante.py"
-
-:: Executa estetoscopio nesta janela
-python maleta_unificada.py --prod --no-ble
+python maleta_automatica.py
 
 echo.
+echo Sistema reiniciando em 5 segundos...
+timeout /t 5 /nobreak > nul
+goto loop
 echo Sistema encerrou. Reiniciando em 5 segundos...
 timeout /t 5 /nobreak > nul
 goto loop
