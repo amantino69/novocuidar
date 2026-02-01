@@ -114,7 +114,83 @@ Remove-Item "C:\telecuidar\backend\WebAPI\telecuidar.db" -Force
 
 ---
 
-## �🐳 Containers Docker
+## 🎥 ATIVAR JITSI EM DESENVOLVIMENTO LOCAL (HTTPS)
+
+### Por que HTTPS é necessário?
+O Jitsi Meet (meet.telecuidar.com.br) requer HTTPS para funcionar. Quando o frontend roda em HTTP (localhost:4200), o navegador bloqueia:
+- Mixed content (HTTP carregando recursos HTTPS)
+- Acesso à câmera/microfone (requer contexto seguro)
+
+### Método: Frontend com SSL Auto-Assinado
+
+**Passo 1 - Iniciar Frontend com HTTPS:**
+```powershell
+cd C:\telecuidar\frontend
+ng serve --host 0.0.0.0 --port 4200 --ssl
+```
+> Aguardar aparecer: `➜ Local: https://localhost:4200/`
+
+**Passo 2 - Iniciar Backend (em outro terminal):**
+```powershell
+cd C:\telecuidar
+dotnet run --project backend/WebAPI/WebAPI.csproj
+```
+
+**Passo 3 - Acessar no navegador:**
+```
+https://localhost:4200
+```
+
+⚠️ **IMPORTANTE - Aceitar certificado auto-assinado:**
+Na primeira vez, o navegador mostrará aviso de segurança:
+- **Chrome**: Clicar em "Avançado" → "Continuar para localhost (não seguro)"
+- **Firefox**: Clicar em "Avançado" → "Aceitar o risco e continuar"
+- **Edge**: Clicar em "Avançado" → "Continuar para localhost (não seguro)"
+
+### Configuração do Jitsi
+O backend está configurado para usar o Jitsi de produção:
+- **Domínio**: `meet.telecuidar.com.br`
+- **Arquivo de config**: `backend/WebAPI/appsettings.Development.json`
+
+```json
+{
+  "JitsiSettings": {
+    "Enabled": true,
+    "Domain": "meet.telecuidar.com.br",
+    "AppId": "telecuidar",
+    "AppSecret": "TelecuidarJitsiSecretKey2024LocalDevelopment!@#$%^&*()",
+    "RequiresAuth": true,
+    "DynamicDomain": false
+  }
+}
+```
+
+### Resumo das URLs em Desenvolvimento com Jitsi
+| Serviço | URL | Protocolo |
+|---------|-----|-----------|
+| Frontend | https://localhost:4200 | HTTPS (obrigatório) |
+| Backend | http://localhost:5239 | HTTP |
+| Jitsi | https://meet.telecuidar.com.br | HTTPS (produção) |
+
+### Comando Rápido (Copiar e Colar)
+```powershell
+# Terminal 1 - Frontend com HTTPS
+cd C:\telecuidar\frontend; ng serve --host 0.0.0.0 --port 4200 --ssl
+
+# Terminal 2 - Backend
+cd C:\telecuidar; dotnet run --project backend/WebAPI/WebAPI.csproj
+```
+
+### Credenciais de Teste
+| Tipo | Email | Senha |
+|------|-------|-------|
+| Médico | med_gt@telecuidar.com | 123 |
+| Paciente | pac_aj@telecuidar.com | 123 |
+| Enfermeira | enf_do@telecuidar.com | 123 |
+
+---
+
+## 🐳 Containers Docker
 
 ### Arquitetura de Containers
 ```

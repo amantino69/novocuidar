@@ -4,7 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { Subscription, firstValueFrom } from 'rxjs';
 
 import { IconComponent } from '@shared/components/atoms/icon/icon';
-import { MedicalDevicesSyncService, VitalSignsData } from '@app/core/services/medical-devices-sync.service';
+import { MedicalDevicesSyncService, VitalSignsData, PhonocardiogramData } from '@app/core/services/medical-devices-sync.service';
 import { AIService, AnalyzeVitalsRequest } from '@app/core/services/ai.service';
 import { UsersService, User } from '@core/services/users.service';
 import { Appointment } from '@core/services/appointments.service';
@@ -154,6 +154,31 @@ interface VitalDisplay {
             </div>
           }
         </div>
+
+        <!-- Fonocardiograma do Estetoscópio Eko -->
+        @if (phonocardiogram) {
+          <div class="phonocardiogram-section">
+            <div class="phonocardiogram-header">
+              <app-icon name="activity" [size]="16" />
+              <span class="phonocardiogram-title">🩺 Fonocardiograma - Estetoscópio Eko</span>
+              @if (phonocardiogram.heartRate) {
+                <span class="phonocardiogram-bpm">{{ phonocardiogram.heartRate }} BPM</span>
+              }
+            </div>
+            <div class="phonocardiogram-player">
+              <audio controls [src]="phonocardiogramAudioUrl" class="audio-player">
+                Seu navegador não suporta áudio.
+              </audio>
+              <div class="phonocardiogram-info">
+                <span>Duração: {{ phonocardiogram.durationSeconds?.toFixed(1) }}s</span>
+                <span>•</span>
+                @if (phonocardiogram.timestamp) {
+                  <span>{{ formatTime(phonocardiogram.timestamp) }}</span>
+                }
+              </div>
+            </div>
+          </div>
+        }
 
         <!-- Botão Análise IA -->
         <div class="ai-analysis-section">
@@ -445,6 +470,55 @@ interface VitalDisplay {
         &.normal { background: #10b981; }
         &.warning { background: #f59e0b; }
         &.critical { background: #ef4444; animation: blink 0.5s infinite; }
+      }
+    }
+
+    .phonocardiogram-section {
+      margin-top: 12px;
+      padding: 12px;
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border-radius: 10px;
+      border: 1px solid #f59e0b;
+      flex-shrink: 0;
+
+      .phonocardiogram-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+
+        .phonocardiogram-title {
+          font-size: 13px;
+          font-weight: 600;
+          color: #92400e;
+          flex: 1;
+        }
+
+        .phonocardiogram-bpm {
+          font-size: 14px;
+          font-weight: 700;
+          color: #dc2626;
+          background: white;
+          padding: 2px 8px;
+          border-radius: 12px;
+        }
+      }
+
+      .phonocardiogram-player {
+        .audio-player {
+          width: 100%;
+          height: 36px;
+          border-radius: 6px;
+        }
+
+        .phonocardiogram-info {
+          display: flex;
+          gap: 8px;
+          margin-top: 6px;
+          font-size: 11px;
+          color: #92400e;
+          justify-content: center;
+        }
       }
     }
 
@@ -843,6 +917,10 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
   aiAnalysisError: string = '';
   aiAnalysisGeneratedAt: Date | null = null;
   
+  // Fonocardiograma do estetoscópio Eko
+  phonocardiogram: { heartRate?: number; audioUrl?: string; durationSeconds?: number; timestamp?: Date } | null = null;
+  phonocardiogramAudioUrl: string = '';
+  
   // Dados brutos para enviar à IA
   private rawBiometrics: any = {};
   
@@ -884,6 +962,24 @@ export class VitalSignsPanelComponent implements OnInit, OnDestroy, OnChanges {
         const mergedData = this.mergeWithCachedData(data);
         this.processVitalSigns(mergedData);
         this.saveToCache(mergedData);
+      })
+    );
+
+    // Observa fonocardiograma do estetoscópio Eko
+    this.subscriptions.add(
+      this.syncService.phonocardiogramReceived$.subscribe(data => {
+        console.log('[VitalSignsPanel] 🩺 Fonocardiograma recebido:', data);
+        this.phonocardiogram = {
+          heartRate: data.heartRate,
+          audioUrl: data.audioUrl,
+          durationSeconds: data.durationSeconds,
+          timestamp: new Date(data.timestamp)
+        };
+        if (data.audioUrl) {
+          this.phonocardiogramAudioUrl = environment.apiUrl.replace('/api', '') + data.audioUrl;
+        }
+        this.hasAnyData = true;
+        this.lastUpdate = new Date();
       })
     );
     

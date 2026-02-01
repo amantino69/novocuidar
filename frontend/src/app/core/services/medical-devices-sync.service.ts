@@ -43,6 +43,16 @@ export interface IceCandidate {
   candidate: RTCIceCandidateInit;
 }
 
+export interface PhonocardiogramData {
+  appointmentId: string;
+  deviceType: string;
+  heartRate?: number;
+  audioUrl?: string;
+  sampleRate: number;
+  durationSeconds: number;
+  timestamp: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -104,6 +114,10 @@ export class MedicalDevicesSyncService implements OnDestroy {
   // Audio chunks para streaming de ausculta PCM
   private _audioChunkReceived$ = new Subject<{appointmentId: string; chunk: any}>();
   public audioChunkReceived$ = this._audioChunkReceived$.asObservable();
+
+  // Fonocardiograma do estetoscópio Eko
+  private _phonocardiogramReceived$ = new Subject<PhonocardiogramData>();
+  public phonocardiogramReceived$ = this._phonocardiogramReceived$.asObservable();
 
   // Log visual para debug
   private _debugLog$ = new Subject<{message: string; type: 'info' | 'success' | 'error' | 'warning'}>();
@@ -319,6 +333,25 @@ export class MedicalDevicesSyncService implements OnDestroy {
 
         console.log('[MedicalDevicesSync] 💓 Dados convertidos:', vitalData.vitals);
         this._vitalSignsReceived$.next(vitalData);
+      });
+    });
+
+    // Recebe fonocardiograma do estetoscópio Eko
+    this.hubConnection.on('PhonocardiogramReceived', (data: any) => {
+      this.ngZone.run(() => {
+        console.log('[MedicalDevicesSync] 🩺 Fonocardiograma recebido:', data);
+        this._phonocardiogramReceived$.next(data);
+        
+        // Também atualiza a frequência cardíaca nos sinais vitais
+        if (data.heartRate) {
+          const vitalData: VitalSignsData = {
+            appointmentId: data.appointmentId,
+            senderRole: 'device',
+            timestamp: new Date(data.timestamp),
+            vitals: { heartRate: data.heartRate }
+          };
+          this._vitalSignsReceived$.next(vitalData);
+        }
       });
     });
 

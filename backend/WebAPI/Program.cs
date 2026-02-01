@@ -5,12 +5,26 @@ using DotNetEnv;
 using WebAPI.Hubs;
 using WebAPI.Services;
 
-// Load .env file from project root (two levels up from WebAPI folder)
-var projectRoot = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", ".."));
-var envPath = Path.Combine(projectRoot, ".env");
-if (File.Exists(envPath))
+// Load .env file - try multiple locations for flexibility
+// 1. Current directory (when running from project root with --project flag)
+// 2. Two levels up from WebAPI folder (when running directly from WebAPI folder)
+var currentDir = Directory.GetCurrentDirectory();
+var possibleEnvPaths = new[]
 {
+    Path.Combine(currentDir, ".env"),  // Running from project root: C:\telecuidar
+    Path.Combine(currentDir, "..", "..", ".env"),  // Running from WebAPI: backend/WebAPI -> root
+    Path.Combine(currentDir, "backend", "WebAPI", "..", "..", ".env")  // Fallback
+};
+
+var envPath = possibleEnvPaths.FirstOrDefault(File.Exists);
+if (!string.IsNullOrEmpty(envPath))
+{
+    Console.WriteLine($"[ENV] Loading environment from: {Path.GetFullPath(envPath)}");
     Env.Load(envPath);
+}
+else
+{
+    Console.WriteLine($"[ENV] Warning: .env file not found. Tried paths: {string.Join(", ", possibleEnvPaths.Select(Path.GetFullPath))}");
 }
 
 var builder = WebApplication.CreateBuilder(args);

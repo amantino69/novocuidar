@@ -230,6 +230,109 @@ public class BleBridgeController : ControllerBase
     }
     
     /// <summary>
+    /// Recebe fonocardiograma do estetoscópio Eko CORE 500
+    /// O áudio é salvo em disco e enviado via SignalR para o médico
+    /// </summary>
+    [HttpPost("phonocardiogram")]
+    public async Task<ActionResult> ReceivePhonocardiogram([FromBody] PhonocardiogramDto dto)
+    {
+        _logger.LogInformation("[Fonocardiograma] Recebido: {Duration}s, HeartRate={HeartRate}", 
+            dto.DurationSeconds, dto.Values?.GetValueOrDefault("heartRate"));
+
+        // Valida appointmentId
+        if (!Guid.TryParse(dto.AppointmentId, out var appointmentId))
+            return BadRequest(new { message = "appointmentId inválido" });
+
+        var appointment = await _context.Appointments.FindAsync(appointmentId);
+        if (appointment == null)
+            return NotFound(new { message = "Consulta não encontrada" });
+
+        // Atualiza frequência cardíaca nos biometrics se detectada
+        if (dto.Values != null && dto.Values.TryGetValue("heartRate", out var hrObj) && hrObj != null)
+        {
+            var biometrics = string.IsNullOrEmpty(appointment.BiometricsJson)
+                ? new BiometricsDto()
+                : JsonSerializer.Deserialize<BiometricsDto>(appointment.BiometricsJson) ?? new BiometricsDto();
+
+            biometrics.HeartRate = ConvertToInt(hrObj);
+            biometrics.LastUpdated = DateTime.UtcNow.ToString("o");
+            appointment.BiometricsJson = JsonSerializer.Serialize(biometrics);
+            await _context.SaveChangesAsync();
+        }
+
+        // Salva áudio em arquivo WAV
+        string? audioFilePath = null;
+        if (!string.IsNullOrEmpty(dto.AudioData))
+        {
+            try
+            {
+                var pcmBytes = Convert.FromBase64String(dto.AudioData);
+                var uploadDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "phonocardiograms");
+                Directory.CreateDirectory(uploadDir);
+                
+                var fileName = $"phono_{appointmentId}_{DateTime.UtcNow:yyyyMMddHHmmss}.wav";
+                var filePath = Path.Combine(uploadDir, fileName);
+                
+                // Cria arquivo WAV
+                using (var fs = new FileStream(filePath, FileMode.Create))
+                using (var writer = new BinaryWriter(fs))
+                {
+                    var sampleRate = dto.SampleRate ?? 8000;
+                    var numSamples = pcmBytes.Length / 2; // 16-bit samples
+                    
+                    // WAV Header
+                    writer.Write(new char[] { 'R', 'I', 'F', 'F' });
+                    writer.Write(36 + pcmBytes.Length); // File size - 8
+                    writer.Write(new char[] { 'W', 'A', 'V', 'E' });
+                    
+                    // fmt chunk
+                    writer.Write(new char[] { 'f', 'm', 't', ' ' });
+                    writer.Write(16); // Chunk size
+                    writer.Write((short)1); // PCM format
+                    writer.Write((short)1); // Mono
+                    writer.Write(sampleRate);
+                    writer.Write(sampleRate * 2); // Byte rate
+                    writer.Write((short)2); // Block align
+                    writer.Write((short)16); // Bits per sample
+                    
+                    // data chunk
+                    writer.Write(new char[] { 'd', 'a', 't', 'a' });
+                    writer.Write(pcmBytes.Length);
+                    writer.Write(pcmBytes);
+                }
+                
+                audioFilePath = $"/phonocardiograms/{fileName}";
+                _logger.LogInformation("[Fonocardiograma] Áudio salvo: {Path}", audioFilePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[Fonocardiograma] Erro ao salvar áudio");
+            }
+        }
+
+        // Envia via SignalR para médico (inclui URL do áudio)
+        await _medicalDevicesHubContext.Clients.Group($"appointment_{appointmentId}")
+            .SendAsync("PhonocardiogramReceived", new
+            {
+                appointmentId = dto.AppointmentId,
+                deviceType = "stethoscope",
+                heartRate = dto.Values?.GetValueOrDefault("heartRate"),
+                audioUrl = audioFilePath,
+                sampleRate = dto.SampleRate ?? 8000,
+                durationSeconds = dto.DurationSeconds,
+                timestamp = DateTime.UtcNow.ToString("o")
+            });
+
+        _logger.LogInformation("[Fonocardiograma] Enviado via SignalR para appointment_{Id}", appointmentId);
+
+        return Ok(new { 
+            message = "Fonocardiograma recebido", 
+            audioUrl = audioFilePath,
+            heartRate = dto.Values?.GetValueOrDefault("heartRate")
+        });
+    }
+    
+    /// <summary>
     /// Retorna todas as leituras BLE em cache (usado pelo botão "Capturar Sinais")
     /// O frontend pode buscar os dados e aplicar na consulta específica
     /// </summary>
@@ -364,4 +467,16 @@ public class BiometricsDto
     public decimal? Weight { get; set; }
     public decimal? Height { get; set; }
     public string? LastUpdated { get; set; }
+}
+
+public class PhonocardiogramDto
+{
+    public string? AppointmentId { get; set; }
+    public string? DeviceType { get; set; }
+    public string? Timestamp { get; set; }
+    public Dictionary<string, object>? Values { get; set; }
+    public string? AudioData { get; set; }  // Base64 encoded PCM audio
+    public int? SampleRate { get; set; }
+    public string? Format { get; set; }  // "pcm_s16le"
+    public double? DurationSeconds { get; set; }
 }
