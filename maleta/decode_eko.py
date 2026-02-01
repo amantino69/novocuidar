@@ -1,4 +1,4 @@
-"""
+cd """
 Decodificação Avançada do Eko CORE 500
 ======================================
 

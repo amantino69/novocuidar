@@ -108,7 +108,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     label: 'Sinais',
     icon: 'activity',
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
-    showInTeleconsultation: true, // ATIVADO - Sinais vitais e Fonocardiograma Eko
+    showInTeleconsultation: true, // ATIVADO - Sinais vitais e Fonocardiograma
     showInDetails: false,
     order: 0,
     group: 'exame-fisico'
@@ -138,7 +138,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     label: 'Fonocardio',
     icon: 'headphones',
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
-    showInTeleconsultation: true, // ATIVADO - Estetoscópio Eko CORE 500
+    showInTeleconsultation: true, // ATIVADO - Estetoscópio Digital
     showInDetails: false,
     order: 1,
     group: 'exame-fisico'

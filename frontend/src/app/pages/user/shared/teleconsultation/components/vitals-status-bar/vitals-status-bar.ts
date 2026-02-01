@@ -120,7 +120,7 @@ import { environment } from '@env/environment';
           </div>
         </div>
         
-        <!-- Fonocardiograma do Eko - sempre visível para debug -->
+        <!-- Fonocardiograma - Esteto. Digital -->
         <div class="vital phono" [class.has-value]="phonocardiogram">
           <label><app-icon name="heart" [size]="18" /> 🩺 Fono</label>
           <div class="phono-box">
@@ -306,7 +306,7 @@ import { environment } from '@env/environment';
       50% { box-shadow: 0 0 30px rgba(34, 197, 94, 0.8); }
     }
 
-    /* Fonocardiograma do Eko */
+    /* Fonocardiograma - Estetoscópio Digital */
     .vital.phono {
       background: linear-gradient(135deg, #fef3c7, #fde68a);
       border: 1px solid #f59e0b;
@@ -596,7 +596,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   lastSync: Date | null = null;
   isAcontecendo = false;  // Botão "Acontecendo" para maleta itinerante
 
-  // Fonocardiograma do Eko
+  // Fonocardiograma - Estetoscópio Digital
   phonocardiogram: PhonocardiogramData | null = null;
   phonocardiogramAudioUrl = '';
   isPlayingPhono = false;
@@ -714,7 +714,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       })
     );
 
-    // Subscription para fonocardiograma do Eko
+    // Subscription para fonocardiograma (Estetoscópio Digital)
     this.subscriptions.add(
       this.medicalDevicesSync.phonocardiogramReceived$.subscribe((data: PhonocardiogramData) => {
         console.log('[VitalsBar] 🩺 Fonocardiograma chegou! data.appointmentId:', data.appointmentId, 'this.appointmentId:', this.appointmentId);

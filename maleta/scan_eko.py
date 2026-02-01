@@ -11,10 +11,6 @@ Instruções:
 3. Execute este script
 """
 
-import asyncio
-from bleak import BleakScanner, BleakClient
-from datetime import datetime
-
 # UUIDs conhecidos de serviços de áudio Bluetooth
 KNOWN_AUDIO_SERVICES = {
     "00001800-0000-1000-8000-00805f9b34fb": "Generic Access",
