@@ -20,7 +20,7 @@ import { environment } from '@env/environment';
 export class BiometricsTabComponent implements OnInit, OnDestroy {
   @Input() appointmentId: string | null = null;
   @Input() appointment: Appointment | null = null;
-  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' = 'PATIENT';
+  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PATIENT';
   @Input() readonly = false;
 
   biometricsForm: FormGroup;

@@ -14,7 +14,7 @@ export const roleGuard = (allowedRoles: string[]): CanActivateFn => {
       return true;
     }
 
-    const user = authService.currentUser();
+    const user = authService.getCurrentUser();
     
     if (!user) {
       router.navigate(['/entrar']);
@@ -22,7 +22,7 @@ export const roleGuard = (allowedRoles: string[]): CanActivateFn => {
     }
 
     if (!allowedRoles.includes(user.role)) {
-      router.navigate(['/painel']);
+      router.navigate([authService.getDashboardUrl()]);
       return false;
     }
 

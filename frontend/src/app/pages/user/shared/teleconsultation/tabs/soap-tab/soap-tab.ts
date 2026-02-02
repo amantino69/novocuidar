@@ -26,7 +26,7 @@ export interface SoapTab {
 export class SoapTabComponent implements OnInit, OnDestroy, OnChanges {
   @Input() appointmentId: string | null = null;
   @Input() appointment: Appointment | null = null;
-  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' = 'PATIENT';
+  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PATIENT';
   @Input() readonly = false;
 
   soapForm: FormGroup;

@@ -1,10 +1,10 @@
 # ========================================
 # TeleCuidar Backend - Dockerfile
-# Multi-stage build para .NET 10
+# Multi-stage build para .NET 8 com PostgreSQL
 # ========================================
 
 # Stage 1: Build
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copiar arquivos de projeto primeiro para cache de restore
@@ -28,7 +28,7 @@ FROM build AS publish
 RUN dotnet publish "WebAPI.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Stage 3: Runtime
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
 # Instalar curl para healthcheck

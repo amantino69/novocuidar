@@ -53,7 +53,7 @@ interface TimeSlot {
 export class ReferralTabComponent implements OnDestroy, OnChanges {
   @Input() appointmentId: string | null = null;
   @Input() appointment: Appointment | null = null;
-  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' = 'PROFESSIONAL';
+  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PROFESSIONAL';
   @Input() readonly: boolean = false;
 
   // View mode: 'list' to show existing referrals, 'scheduling' to create new

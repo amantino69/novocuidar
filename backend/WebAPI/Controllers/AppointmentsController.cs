@@ -6,6 +6,9 @@ using System.Security.Claims;
 using WebAPI.Extensions;
 using WebAPI.Services;
 using WebAPI.Hubs;
+using Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using Domain.Enums;
 
 namespace WebAPI.Controllers;
 
@@ -18,17 +21,20 @@ public class AppointmentsController : ControllerBase
     private readonly IAuditLogService _auditLogService;
     private readonly ISchedulingNotificationService _schedulingNotificationService;
     private readonly IRealTimeNotificationService _realTimeNotification;
+    private readonly ApplicationDbContext _context;
 
     public AppointmentsController(
         IAppointmentService appointmentService, 
         IAuditLogService auditLogService,
         ISchedulingNotificationService schedulingNotificationService,
-        IRealTimeNotificationService realTimeNotification)
+        IRealTimeNotificationService realTimeNotification,
+        ApplicationDbContext context)
     {
         _appointmentService = appointmentService;
         _auditLogService = auditLogService;
         _schedulingNotificationService = schedulingNotificationService;
         _realTimeNotification = realTimeNotification;
+        _context = context;
     }
     
     private Guid? GetCurrentUserId()
@@ -292,4 +298,141 @@ public class AppointmentsController : ControllerBase
         var appointments = await _appointmentService.SearchByPatientAsync(search, sortOrder, professionalId.Value);
         return Ok(appointments);
     }
+    
+    /// <summary>
+    /// Inicia atendimento - Enfermeira marca que paciente entrou no consultório digital
+    /// DISPARA NOTIFICAÇÃO PARA O MÉDICO
+    /// </summary>
+    [HttpPost("{id}/start-consultation")]
+    [Authorize(Roles = "ASSISTANT,ADMIN")]
+    public async Task<IActionResult> StartConsultation(Guid id)
+    {
+        var appointment = await _context.Appointments
+            .Include(a => a.Patient)
+                .ThenInclude(p => p.PatientProfile)
+            .Include(a => a.Professional)
+            .Include(a => a.Specialty)
+            .FirstOrDefaultAsync(a => a.Id == id);
+            
+        if (appointment == null)
+            return NotFound(new { message = "Consulta não encontrada" });
+
+        if (appointment.Status != AppointmentStatus.CheckedIn && 
+            appointment.Status != AppointmentStatus.Scheduled && 
+            appointment.Status != AppointmentStatus.Confirmed)
+            return BadRequest(new { message = $"Consulta não pode ser iniciada. Status atual: {appointment.Status}" });
+
+        var assistantId = GetCurrentUserId();
+        if (assistantId == null)
+            return Unauthorized(new { message = "Usuário não identificado" });
+
+        // Atualizar appointment
+        appointment.Status = AppointmentStatus.InProgress;
+        appointment.ConsultationStartedAt = DateTime.UtcNow;
+        appointment.AssistantId = assistantId.Value;
+        appointment.NotificationsSentCount++;
+        appointment.LastNotificationSentAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        // Calcular tempo de espera
+        var waitingTime = appointment.CheckInTime.HasValue 
+            ? (DateTime.UtcNow - appointment.CheckInTime.Value).TotalMinutes 
+            : 0;
+        
+        // Calcular idade do paciente
+        var patientAge = appointment.Patient.PatientProfile?.BirthDate != null
+            ? DateTime.UtcNow.Year - appointment.Patient.PatientProfile.BirthDate.Value.Year
+            : 0;
+
+        // Preparar dados para notificação
+        var notificationData = new
+        {
+            AppointmentId = appointment.Id,
+            PatientName = appointment.Patient.Name + " " + appointment.Patient.LastName,
+            PatientAge = patientAge,
+            Specialty = appointment.Specialty.Name,
+            AssistantName = User.FindFirst(ClaimTypes.Name)?.Value ?? "Assistente",
+            WaitingTime = Math.Round(waitingTime, 0),
+            MeetLink = appointment.MeetLink
+        };
+
+        // 🔔 ENVIAR NOTIFICAÇÃO PARA O MÉDICO via SignalR
+        await _realTimeNotification.NotifyUserAsync(
+            appointment.ProfessionalId.ToString(),
+            new WebAPI.Hubs.UserNotificationUpdate
+            {
+                NotificationId = Guid.NewGuid().ToString(),
+                Title = "Paciente Aguardando",
+                Message = $"{appointment.Patient.Name} {appointment.Patient.LastName} está pronto para consulta",
+                Type = "PatientWaiting",
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow,
+                UnreadCount = 1
+            }
+        );
+
+        // Audit log
+        await _auditLogService.CreateAuditLogAsync(
+            assistantId,
+            "start_consultation",
+            "Appointment",
+            id.ToString(),
+            HttpContextExtensions.SerializeToJson(new { Status = appointment.Status }),
+            HttpContextExtensions.SerializeToJson(new { Status = "InProgress", ConsultationStartedAt = appointment.ConsultationStartedAt }),
+            HttpContext.GetIpAddress(),
+            HttpContext.GetUserAgent()
+        );
+
+        return Ok(new
+        {
+            Success = true,
+            Message = "Atendimento iniciado. Médico foi notificado.",
+            NotificationSent = true
+        });
+    }
+    
+    /// <summary>
+    /// Médico confirma que entrou na consulta
+    /// </summary>
+    [HttpPost("{id}/doctor-joined")]
+    [Authorize(Roles = "PROFESSIONAL")]
+    public async Task<IActionResult> DoctorJoined(Guid id)
+    {
+        var appointment = await _context.Appointments
+            .Include(a => a.Patient)
+            .FirstOrDefaultAsync(a => a.Id == id);
+            
+        if (appointment == null)
+            return NotFound(new { message = "Consulta não encontrada" });
+
+        var professionalId = GetCurrentUserId();
+        if (appointment.ProfessionalId != professionalId)
+            return Forbid();
+
+        appointment.Status = AppointmentStatus.InConsultation;
+        appointment.DoctorJoinedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        // Notificar enfermeira que médico entrou
+        if (appointment.AssistantId.HasValue)
+        {
+            await _realTimeNotification.NotifyUserAsync(
+                appointment.AssistantId.Value.ToString(),
+                new WebAPI.Hubs.UserNotificationUpdate
+                {
+                    NotificationId = Guid.NewGuid().ToString(),
+                    Title = "Médico Entrou",
+                    Message = $"Médico entrou na consulta com {appointment.Patient.Name}",
+                    Type = "DoctorJoined",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow,
+                    UnreadCount = 1
+                }
+            );
+        }
+
+        return Ok(new { Success = true, Message = "Médico entrou na consulta" });
+    }
 }
+

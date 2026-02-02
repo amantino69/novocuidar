@@ -372,7 +372,7 @@ interface MediaDeviceOption {
 })
 export class DeviceSettingsTabComponent implements OnInit, OnDestroy {
   @Input() appointmentId: string | null = null;
-  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' = 'PATIENT';
+  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PATIENT';
 
   videoDevices: MediaDeviceOption[] = [];
   audioInputDevices: MediaDeviceOption[] = [];

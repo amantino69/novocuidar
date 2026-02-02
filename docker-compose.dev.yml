@@ -35,6 +35,24 @@ services:
       retries: 3
 
   # ----------------------------------------
+  # POSTGRESQL - Banco de Dados (Dev)
+  # ----------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: telecuidar-postgres-dev
+    restart: ${DOCKER_RESTART_POLICY:-unless-stopped}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-telecuidar}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - telecuidar-postgres-data:/var/lib/postgresql/data
+    networks:
+      - telecuidar-dev
+
+  # ----------------------------------------
   # BACKEND - .NET 10 API
   # ----------------------------------------
   backend:
@@ -45,7 +63,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
       - ASPNETCORE_URLS=http://+:${BACKEND_INTERNAL_PORT:-5000}
-      - DB_CONNECTION_STRING=Data Source=/app/data/telecuidar.db
+      - DB_PROVIDER=postgres
+      - DB_CONNECTION_STRING=Host=postgres;Port=5432;Database=${POSTGRES_DB:-telecuidar};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-TelecuidarSecretKey2024SuperSecureKey!@#$%ChangeThisInProduction}
       - JWT_ISSUER=${JWT_ISSUER:-TelecuidarAPI}
       - JWT_AUDIENCE=${JWT_AUDIENCE:-TelecuidarClient}
@@ -81,6 +100,8 @@ services:
       - "${BACKEND_INTERNAL_PORT:-5000}"
     networks:
       - telecuidar-dev
+    depends_on:
+      - postgres
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:${BACKEND_INTERNAL_PORT:-5000}/health || exit 1"]
       interval: 30s
@@ -268,6 +289,7 @@ services:
 # VOLUMES
 # ----------------------------------------
 volumes:
+  telecuidar-postgres-data:
   jitsi-web-config:
   jitsi-web-certs:
   jitsi-transcripts:

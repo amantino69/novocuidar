@@ -56,7 +56,7 @@ public static class HttpContextExtensions
             {
                 changes[key] = new { New = newDict[key] };
             }
-            else if (!JsonElement.DeepEquals(oldDict[key], newDict[key]))
+            else if (oldDict[key].ToString() != newDict[key].ToString())
             {
                 changes[key] = new { Old = oldDict[key], New = newDict[key] };
             }

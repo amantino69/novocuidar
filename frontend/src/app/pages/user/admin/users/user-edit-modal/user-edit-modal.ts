@@ -171,7 +171,8 @@ export class UserEditModalComponent implements OnChanges, OnInit {
       PATIENT: 'Paciente',
       PROFESSIONAL: 'Profissional',
       ADMIN: 'Administrador',
-      ASSISTANT: 'Assistente'
+      ASSISTANT: 'Assistente',
+      RECEPTIONIST: 'Recepcionista'
     };
     return labels[role];
   }

@@ -38,7 +38,7 @@ import { AuthService } from '@core/services/auth.service';
 })
 export class ExamCameraTabComponent {
   @Input() appointmentId: string | null = null;
-  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' = 'PATIENT';
+  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PATIENT';
 
   constructor(private authService: AuthService) {}
 

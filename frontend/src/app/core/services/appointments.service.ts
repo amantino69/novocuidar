@@ -208,4 +208,18 @@ export class AppointmentsService {
       .set('sortOrder', sortOrder);
     return this.http.get<Appointment[]>(`${this.apiUrl}/search-by-patient`, { params });
   }
+
+  /**
+   * Enfermeira inicia consulta - envia notificação para médico
+   */
+  startConsultation(appointmentId: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/${appointmentId}/start-consultation`, {});
+  }
+
+  /**
+   * Médico confirma entrada na consulta
+   */
+  doctorJoined(appointmentId: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/${appointmentId}/doctor-joined`, {});
+  }
 }

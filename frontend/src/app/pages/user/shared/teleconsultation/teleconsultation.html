@@ -39,6 +39,16 @@
           </div>
 
           <div class="controls-section">
+            <!-- Botão Iniciar Consulta (apenas para ASSISTANT) -->
+            <app-button 
+              *ngIf="userrole === 'ASSISTANT' && appointment?.status !== 'InProgress'"
+              variant="primary" 
+              size="sm" 
+              (click)="startConsultationAsNurse()">
+              <app-icon name="play" [size]="18" />
+              Iniciar Consulta
+            </app-button>
+
             <app-button variant="primary" size="sm" (click)="toggleSidebar()" *ngIf="!isSidebarOpen">
               <app-icon name="folder" [size]="18" />
               Enviar e receber arquivos

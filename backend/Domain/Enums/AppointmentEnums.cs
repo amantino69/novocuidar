@@ -2,11 +2,14 @@ namespace Domain.Enums;
 
 public enum AppointmentStatus
 {
-    Scheduled,
-    Confirmed,
-    InProgress,
-    Completed,
-    Cancelled
+    Scheduled,      // Agendada
+    Confirmed,      // Confirmada
+    CheckedIn,      // Recepcionista marcou presença (NOVO)
+    InProgress,     // Enfermeira abriu atendimento
+    InConsultation, // Médico entrou na consulta (NOVO)
+    Completed,      // Encerrada
+    Cancelled,      // Cancelada
+    NoShow          // Paciente não compareceu (NOVO)
 }
 
 public enum AppointmentType

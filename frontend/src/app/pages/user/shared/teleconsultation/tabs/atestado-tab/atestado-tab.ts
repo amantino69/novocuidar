@@ -24,7 +24,7 @@ import {
 })
 export class AtestadoTabComponent implements OnInit, OnDestroy {
   @Input() appointmentId: string | null = null;
-  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' = 'PATIENT';
+  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PATIENT';
   @Input() readonly = false;
 
   certificates: MedicalCertificate[] = [];

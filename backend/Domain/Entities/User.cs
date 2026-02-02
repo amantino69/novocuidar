@@ -51,6 +51,9 @@ public class User : BaseEntity
     // Navigation Properties - Relacionamentos existentes
     public ICollection<Appointment> AppointmentsAsPatient { get; set; } = new List<Appointment>();
     public ICollection<Appointment> AppointmentsAsProfessional { get; set; } = new List<Appointment>();
+    public ICollection<Appointment> AppointmentsAsAssistant { get; set; } = new List<Appointment>(); // NOVO
+    public ICollection<WaitingList> WaitingListsAsPatient { get; set; } = new List<WaitingList>(); // NOVO
+    public ICollection<WaitingList> WaitingListsAsProfessional { get; set; } = new List<WaitingList>(); // NOVO
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     public ICollection<Schedule> Schedules { get; set; } = new List<Schedule>();
     public ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();

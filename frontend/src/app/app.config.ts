@@ -4,7 +4,6 @@ import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/
 import { provideMarkdown } from 'ngx-markdown';
 
 import { routes } from '@app/app.routes';
-import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
 import { authInterceptor } from '@app/core/interceptors/auth.interceptor';
 import { AuthService } from '@app/core/services/auth.service';
 
@@ -28,7 +27,6 @@ export const appConfig: ApplicationConfig = {
       withFetch(),
       withInterceptors([authInterceptor])
     ),
-    provideClientHydration(withEventReplay()),
     provideMarkdown(),
     {
       provide: APP_INITIALIZER,

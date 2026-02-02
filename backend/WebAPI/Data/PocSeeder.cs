@@ -34,11 +34,34 @@ public static class PocSeeder
 
     public static async Task SeedPocAsync(ApplicationDbContext context)
     {
-        // Verificar se já existem usuários de POC - se existir, não refaz
+        // Verificar se já existem usuários de POC - se existir, faz limpeza e refaz
         if (await context.Users.AnyAsync(u => u.Email.Contains("@telecuidar.com")))
         {
-            Console.WriteLine("[POC-SEEDER] Dados de POC já existem. Pulando seed...");
-            return;
+            Console.WriteLine("[POC-SEEDER] Dados de POC já existem. Limpando e refazendo seed...");
+            
+            // Limpar dados POC existentes
+            var pocUsers = await context.Users
+                .Where(u => u.Email.Contains("@telecuidar.com"))
+                .ToListAsync();
+            
+            foreach (var user in pocUsers)
+            {
+                context.Users.Remove(user);
+            }
+            
+            // Limpar appointments relacionados (cascade delete já deveria fazer isso, mas garantir)
+            var pocAppointments = await context.Appointments
+                .Where(a => a.Patient.Email.Contains("@telecuidar.com") || 
+                           a.Professional.Email.Contains("@telecuidar.com"))
+                .ToListAsync();
+            
+            foreach (var appointment in pocAppointments)
+            {
+                context.Appointments.Remove(appointment);
+            }
+            
+            await context.SaveChangesAsync();
+            Console.WriteLine("[POC-SEEDER] Dados POC anteriores removidos. Iniciando novo seed...");
         }
 
         Console.WriteLine("[POC-SEEDER] ========================================");
@@ -173,6 +196,23 @@ public static class PocSeeder
             context.Users.Add(user);
             Console.WriteLine($"  - ADMIN: adm_{code}@telecuidar.com ({participant.Name} {participant.LastName})");
         }
+        await context.SaveChangesAsync();
+
+        // Recepcionista (RECEPTIONIST)
+        Console.WriteLine($"  - RECEPCIONISTA: rec_ma@telecuidar.com (Maria Atendimento)");
+        var receptionist = new User
+        {
+            Name = "Maria",
+            LastName = "Atendimento",
+            Email = "rec_ma@telecuidar.com",
+            Cpf = (cpfCounter++).ToString("D11"),
+            Phone = (phoneCounter++).ToString(),
+            PasswordHash = hashedPassword,
+            Role = UserRole.RECEPTIONIST,
+            Status = UserStatus.Active,
+            EmailVerified = true
+        };
+        context.Users.Add(receptionist);
         await context.SaveChangesAsync();
 
         // Pacientes (PATIENT)
@@ -345,6 +385,8 @@ public static class PocSeeder
         {
             Console.WriteLine($"    - adm_{code}@telecuidar.com - {participant.Name} {participant.LastName}");
         }
+        Console.WriteLine("\n  RECEPCIONISTA:");
+        Console.WriteLine($"    - rec_ma@telecuidar.com - Maria Atendimento");
         Console.WriteLine("\n  PACIENTES:");
         foreach (var (code, participant) in Participants)
         {

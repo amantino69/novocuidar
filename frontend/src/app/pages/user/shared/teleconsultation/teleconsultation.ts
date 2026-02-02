@@ -39,7 +39,7 @@ import { environment } from '@env/environment';
 export class TeleconsultationComponent implements OnInit, OnDestroy {
   appointmentId: string | null = null;
   appointment: Appointment | null = null;
-  userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' = 'PATIENT';
+  userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PATIENT';
   
   // UI States
   isHeaderVisible = true;
@@ -447,5 +447,32 @@ export class TeleconsultationComponent implements OnInit, OnDestroy {
         }
       })
     );
+  }
+
+  /**
+   * Enfermeira inicia a consulta e notifica o médico
+   */
+  startConsultationAsNurse(): void {
+    if (!this.appointmentId || !this.appointment) return;
+
+    if (!confirm('Iniciar consulta e notificar o médico?')) return;
+
+    this.appointmentsService.startConsultation(this.appointmentId).subscribe({
+      next: () => {
+        this.modalService.alert({
+          title: 'Consulta Iniciada',
+          message: 'O médico foi notificado e está sendo direcionado para a consulta.',
+          variant: 'success'
+        }).subscribe();
+      },
+      error: (error) => {
+        console.error('Erro ao iniciar consulta:', error);
+        this.modalService.alert({
+          title: 'Erro',
+          message: 'Não foi possível iniciar a consulta. Tente novamente.',
+          variant: 'danger'
+        }).subscribe();
+      }
+    });
   }
 }

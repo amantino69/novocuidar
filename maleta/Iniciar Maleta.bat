@@ -30,8 +30,11 @@ echo.
 cd /d "%~dp0"
 set PYTHONIOENCODING=utf-8
 
+:: Ativa o ambiente virtual
+call ..\.venv\Scripts\activate.bat
+
 :: Inicia BLE (balanca, pressao, termometro) em janela separada minimizada
-start /min "TeleCuidar BLE" cmd /c "color 2F && python maleta_itinerante.py"
+start /min "TeleCuidar BLE" cmd /c "cd /d %~dp0.. && call .venv\Scripts\activate.bat && color 2F && python maleta\maleta_itinerante.py"
 
 :loop
 python maleta_automatica.py

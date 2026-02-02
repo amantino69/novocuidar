@@ -1,5 +1,6 @@
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Application.DTOs.Email;
 using DotNetEnv;
 using WebAPI.Hubs;
@@ -39,14 +40,18 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Load .env file
+DotNetEnv.Env.Load();
+
 // Database Configuration
 var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") 
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Data Source=telecuidar.db";
+    ?? "Host=localhost;Port=5432;Database=telecuidar;Username=postgres;Password=postgres";
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(connectionString)
-           .ConfigureWarnings(warnings => warnings.Ignore(
-               Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
+    options.UseNpgsql(connectionString)
+           .ConfigureWarnings(warnings =>
+               warnings.Ignore(RelationalEventId.PendingModelChangesWarning)));
 
 // Email Configuration
 var emailSettings = new EmailSettings

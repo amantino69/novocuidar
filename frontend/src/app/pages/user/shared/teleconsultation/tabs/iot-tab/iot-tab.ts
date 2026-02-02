@@ -25,7 +25,7 @@ interface BiometricReading {
 })
 export class IotTabComponent implements OnInit, OnDestroy, AfterViewInit {
   @Input() appointmentId: string | null = null;
-  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' = 'PATIENT';
+  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PATIENT';
   @Input() readonly = false;
 
   @ViewChild('heartRateCanvas') heartRateCanvas!: ElementRef<HTMLCanvasElement>;

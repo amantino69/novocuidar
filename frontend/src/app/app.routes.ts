@@ -43,6 +43,9 @@ import { MobileUploadComponent } from '@pages/mobile-upload/mobile-upload';
 // Assistant-specific components
 import { DigitalOfficeComponent } from '@pages/user/assistant/digital-office/digital-office';
 
+// Receptionist-specific components
+import { ReceptionistDashboardComponent } from '../app/features/receptionist/receptionist-dashboard/receptionist-dashboard.component';
+
 import { TeleconsultationComponent } from '@pages/user/shared/teleconsultation/teleconsultation';
 
 // Panel components (new design)
@@ -116,6 +119,9 @@ export const routes: Routes = [
       
       // Assistant only
       { path: 'consultorio-digital', component: DigitalOfficeComponent, canActivate: [roleGuard(['ASSISTANT'])] },
+      
+      // Receptionist only (Admin also has access)
+      { path: 'recepcao', component: ReceptionistDashboardComponent, canActivate: [roleGuard(['RECEPTIONIST', 'ADMIN'])] },
       
       // Teleconsultation (all authenticated users)
       { path: 'teleconsulta/:id', component: TeleconsultationComponent }

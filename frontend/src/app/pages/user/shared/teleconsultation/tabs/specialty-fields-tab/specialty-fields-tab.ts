@@ -27,7 +27,7 @@ interface SpecialtyField {
 export class SpecialtyFieldsTabComponent implements OnInit, OnDestroy {
   @Input() appointment: Appointment | null = null;
   @Input() appointmentId: string | null = null;
-  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' = 'PROFESSIONAL';
+  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PROFESSIONAL';
   @Input() readonly = false;
 
   specialtyFieldsForm: FormGroup;

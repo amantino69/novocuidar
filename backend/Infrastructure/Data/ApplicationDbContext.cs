@@ -1,5 +1,6 @@
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Infrastructure.Data;
 
@@ -31,10 +32,81 @@ public class ApplicationDbContext : DbContext
     public DbSet<ProfessionalCouncil> ProfessionalCouncils { get; set; }
     public DbSet<CboOccupation> CboOccupations { get; set; }
     public DbSet<SigtapProcedure> SigtapProcedures { get; set; }
+    
+    // Gerenciamento de fila de espera (NOVO)
+    public DbSet<WaitingList> WaitingLists { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        var boolConverter = new BoolToZeroOneConverter<int>();
+        var nullableBoolConverter = new ValueConverter<bool?, int?>(
+            v => v.HasValue ? (v.Value ? 1 : 0) : (int?)null,
+            v => v.HasValue ? v.Value == 1 : (bool?)null);
+
+        var guidConverter = new ValueConverter<Guid, string>(
+            v => v.ToString(),
+            v => Guid.Parse(v));
+
+        var nullableGuidConverter = new ValueConverter<Guid?, string?>(
+            v => v.HasValue ? v.Value.ToString() : null,
+            v => string.IsNullOrWhiteSpace(v) ? (Guid?)null : Guid.Parse(v));
+
+        var dateTimeConverter = new ValueConverter<DateTime, string>(
+            v => v.ToString("O"),
+            v => DateTime.Parse(v, null, System.Globalization.DateTimeStyles.RoundtripKind));
+
+        var nullableDateTimeConverter = new ValueConverter<DateTime?, string?>(
+            v => v.HasValue ? v.Value.ToString("O") : null,
+            v => string.IsNullOrWhiteSpace(v) ? (DateTime?)null : DateTime.Parse(v, null, System.Globalization.DateTimeStyles.RoundtripKind));
+
+        var timeSpanConverter = new ValueConverter<TimeSpan, string>(
+            v => v.ToString("c"),
+            v => TimeSpan.Parse(v));
+
+        var nullableTimeSpanConverter = new ValueConverter<TimeSpan?, string?>(
+            v => v.HasValue ? v.Value.ToString("c") : null,
+            v => string.IsNullOrWhiteSpace(v) ? (TimeSpan?)null : TimeSpan.Parse(v));
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(bool))
+                {
+                    property.SetValueConverter(boolConverter);
+                }
+                else if (property.ClrType == typeof(bool?))
+                {
+                    property.SetValueConverter(nullableBoolConverter);
+                }
+                else if (property.ClrType == typeof(Guid))
+                {
+                    property.SetValueConverter(guidConverter);
+                }
+                else if (property.ClrType == typeof(Guid?))
+                {
+                    property.SetValueConverter(nullableGuidConverter);
+                }
+                else if (property.ClrType == typeof(DateTime))
+                {
+                    property.SetValueConverter(dateTimeConverter);
+                }
+                else if (property.ClrType == typeof(DateTime?))
+                {
+                    property.SetValueConverter(nullableDateTimeConverter);
+                }
+                else if (property.ClrType == typeof(TimeSpan))
+                {
+                    property.SetValueConverter(timeSpanConverter);
+                }
+                else if (property.ClrType == typeof(TimeSpan?))
+                {
+                    property.SetValueConverter(nullableTimeSpanConverter);
+                }
+            }
+        }
 
         // User Configuration
         modelBuilder.Entity<User>(entity =>
@@ -148,6 +220,12 @@ public class ApplicationDbContext : DbContext
                 .WithMany(s => s.Appointments)
                 .HasForeignKey(e => e.SpecialtyId)
                 .OnDelete(DeleteBehavior.Restrict);
+            
+            // Relacionamento com Assistant (Enfermeira) - NOVO
+            entity.HasOne(e => e.Assistant)
+                .WithMany(u => u.AppointmentsAsAssistant)
+                .HasForeignKey(e => e.AssistantId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Notification Configuration
@@ -441,6 +519,34 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.StartCompetency).HasMaxLength(6);
             entity.Property(e => e.EndCompetency).HasMaxLength(6);
             entity.Property(e => e.Value).HasPrecision(18, 2);
+        });
+
+        // WaitingList Configuration (NOVO)
+        modelBuilder.Entity<WaitingList>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            
+            // Relacionamento com Appointment (1:1)
+            entity.HasOne(e => e.Appointment)
+                .WithOne(a => a.WaitingList)
+                .HasForeignKey<WaitingList>(e => e.AppointmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            // Relacionamento com Patient
+            entity.HasOne(e => e.Patient)
+                .WithMany(u => u.WaitingListsAsPatient)
+                .HasForeignKey(e => e.PatientId)
+                .OnDelete(DeleteBehavior.Restrict);
+            
+            // Relacionamento com Professional
+            entity.HasOne(e => e.Professional)
+                .WithMany(u => u.WaitingListsAsProfessional)
+                .HasForeignKey(e => e.ProfessionalId)
+                .OnDelete(DeleteBehavior.Restrict);
+            
+            // Índices para otimização de queries
+            entity.HasIndex(e => new { e.Status, e.Position });
+            entity.HasIndex(e => e.CheckInTime);
         });
     }
 

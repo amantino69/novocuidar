@@ -36,7 +36,7 @@ export const environment = {
   // Configurações do Jitsi Meet Self-Hosted
   jitsi: {
     domain: getJitsiDomain(),
-    enabled: true,
+    enabled: false,
     requiresAuth: true,
     appId: 'telecuidar'
   }

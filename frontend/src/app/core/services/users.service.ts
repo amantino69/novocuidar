@@ -5,7 +5,7 @@ import { environment } from '@env/environment';
 
 const API_BASE_URL = environment.apiUrl;
 
-export type UserRole = 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT';
+export type UserRole = 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST';
 export type UserStatus = 'Active' | 'Inactive';
 
 // ============================================

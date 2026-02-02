@@ -75,7 +75,7 @@ public class DigitalCertificateService : IDigitalCertificateService
         try
         {
             var pfxBytes = Convert.FromBase64String(dto.PfxBase64);
-            using var certificate = X509CertificateLoader.LoadPkcs12(pfxBytes, dto.Password, X509KeyStorageFlags.Exportable);
+            using var certificate = new X509Certificate2(pfxBytes, dto.Password, X509KeyStorageFlags.Exportable);
 
             // Extrair informações do certificado
             var cpf = ExtractCpfFromCertificate(certificate);
@@ -207,7 +207,7 @@ public class DigitalCertificateService : IDigitalCertificateService
 
                 try
                 {
-                    using var _ = X509CertificateLoader.LoadPkcs12(pfxBytes, dto.Password, X509KeyStorageFlags.Exportable);
+                    using var _ = new X509Certificate2(pfxBytes, dto.Password, X509KeyStorageFlags.Exportable);
                 }
                 catch (CryptographicException)
                 {
@@ -326,7 +326,7 @@ public class DigitalCertificateService : IDigitalCertificateService
             var pfxBytes = Convert.FromBase64String(pfxBase64);
             try
             {
-                x509Cert = X509CertificateLoader.LoadPkcs12(pfxBytes, password, X509KeyStorageFlags.Exportable);
+                x509Cert = new X509Certificate2(pfxBytes, password, X509KeyStorageFlags.Exportable);
             }
             catch (CryptographicException)
             {

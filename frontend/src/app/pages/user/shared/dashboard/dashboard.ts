@@ -38,7 +38,7 @@ interface ScheduleBlock {
   createdAt: string;
 }
 
-type ViewMode = 'ADMIN' | 'PATIENT' | 'PROFESSIONAL' | 'ASSISTANT';
+type ViewMode = 'ADMIN' | 'PATIENT' | 'PROFESSIONAL' | 'ASSISTANT' | 'RECEPTIONIST';
 
 @Component({
   selector: 'app-dashboard',

@@ -228,7 +228,8 @@ export class UserCreateModalComponent {
       PATIENT: 'user',
       PROFESSIONAL: 'users',
       ADMIN: 'shield',
-      ASSISTANT: 'phone'
+      ASSISTANT: 'phone',
+      RECEPTIONIST: 'phone'
     };
     return iconMap[role];
   }
@@ -238,7 +239,8 @@ export class UserCreateModalComponent {
       PATIENT: 'Paciente',
       PROFESSIONAL: 'Profissional',
       ADMIN: 'Administrador',
-      ASSISTANT: 'Assistente'
+      ASSISTANT: 'Assistente',
+      RECEPTIONIST: 'Recepcionista'
     };
     return labels[role];
   }
@@ -248,7 +250,8 @@ export class UserCreateModalComponent {
       PATIENT: 'Usuário que receberá atendimento médico',
       PROFESSIONAL: 'Profissional de saúde que realizará atendimentos',
       ADMIN: 'Administrador com acesso total ao sistema',
-      ASSISTANT: 'Assistente que auxilia pacientes no consultório digital'
+      ASSISTANT: 'Assistente que auxilia pacientes no consultório digital',
+      RECEPTIONIST: 'Recepcionista que gerencia agendamentos e atendimentos'
     };
     return descriptions[role];
   }

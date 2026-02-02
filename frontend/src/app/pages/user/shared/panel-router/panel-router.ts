@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, computed, effect } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@app/core/services/auth.service';
 
@@ -18,7 +18,7 @@ import { AssistantPanelComponent } from '@pages/user/assistant/assistant-panel/a
     AssistantPanelComponent
   ],
   template: `
-    @switch (userRole) {
+    @switch (userRole()) {
       @case ('ADMIN') {
         <app-admin-panel />
       }
@@ -56,14 +56,31 @@ export class PanelRouterComponent implements OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
   
-  userRole: string = '';
+  // Signal computed que reage a mudanças no currentUser
+  userRole = computed(() => {
+    const user = this.authService.getCurrentUser();
+    return user?.role || '';
+  });
+
+  constructor() {
+    // Effect que monitora mudanças no userRole
+    effect(() => {
+      const role = this.userRole();
+      if (!role) {
+        this.router.navigate(['/entrar']);
+        return;
+      }
+
+      // Recepcionista usa o dashboard dedicado
+      if (role === 'RECEPTIONIST') {
+        this.router.navigate(['/recepcao']);
+      }
+    });
+  }
 
   ngOnInit(): void {
-    const user = this.authService.currentUser();
-    if (user) {
-      this.userRole = user.role;
-    } else {
-      this.router.navigate(['/entrar']);
-    }
+    // O userRole já está sendo monitorado pelo computed signal
+    // Se houver usuário, ele será renderizado automaticamente
+    // Se não houver, o effect acima vai redirecionar
   }
 }

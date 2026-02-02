@@ -20,14 +20,14 @@ export const guestGuard: CanActivateFn = () => {
 
   // Se já está autenticado, redirecionar para o painel
   if (authService.isAuthenticated()) {
-    router.navigate(['/painel']);
+    router.navigate([authService.getDashboardUrl()]);
     return false;
   }
 
   // Fallback: verificar se existe token no storage
   const hasToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN) || sessionStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
   if (hasToken) {
-    router.navigate(['/painel']);
+    router.navigate([authService.getDashboardUrl()]);
     return false;
   }
 

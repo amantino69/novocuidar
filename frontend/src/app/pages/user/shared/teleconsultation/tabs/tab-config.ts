@@ -4,7 +4,7 @@ export interface TabConfig {
   id: string;
   label: string;
   icon: IconName;
-  roles: ('PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT')[];
+  roles: ('PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST')[];
   /** Se a tab deve aparecer na teleconsulta (modo de atendimento) */
   showInTeleconsultation: boolean;
   /** Se a tab deve aparecer nos detalhes da consulta (modo de visualização) */
@@ -107,7 +107,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     id: 'medical-devices',
     label: 'Sinais',
     icon: 'activity',
-    roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
+    roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT', 'RECEPTIONIST'],
     showInTeleconsultation: true, // ATIVADO - Sinais vitais e Fonocardiograma
     showInDetails: false,
     order: 0,
@@ -117,7 +117,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     id: 'auscultation',
     label: 'Ausculta',
     icon: 'mic',
-    roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
+    roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT', 'RECEPTIONIST'],
     showInTeleconsultation: false, // DESATIVADO - Removido do sistema
     showInDetails: false,
     order: 1,
@@ -127,7 +127,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     id: 'exam-camera',
     label: 'Câmera de Exame',
     icon: 'video',
-    roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
+    roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT', 'RECEPTIONIST'],
     showInTeleconsultation: false, // DESATIVADO - Focando apenas em ausculta
     showInDetails: false,
     order: 2,
@@ -137,7 +137,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     id: 'phonocardiogram',
     label: 'Fonocardio',
     icon: 'headphones',
-    roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
+    roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT', 'RECEPTIONIST'],
     showInTeleconsultation: true, // ATIVADO - Estetoscópio Digital
     showInDetails: false,
     order: 1,
@@ -147,7 +147,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     id: 'biometrics',
     label: 'Biométricos',
     icon: 'heart',
-    roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
+    roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT', 'RECEPTIONIST'],
     showInTeleconsultation: false, // REMOVIDO conforme solicitação
     showInDetails: false,
     order: 6,
@@ -157,7 +157,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     id: 'attachments',
     label: 'Anexos',
     icon: 'upload-cloud',
-    roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
+    roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT', 'RECEPTIONIST'],
     showInTeleconsultation: true,
     showInDetails: false,
     order: 0,
@@ -248,7 +248,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
 /**
  * Retorna as tabs disponíveis para a teleconsulta, filtradas por role
  */
-export function getTeleconsultationTabs(role: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT'): TabConfig[] {
+export function getTeleconsultationTabs(role: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST'): TabConfig[] {
   // ASSISTANT agora tem suas próprias permissões definidas no array roles
   return TELECONSULTATION_TABS
     .filter(tab => tab.showInTeleconsultation && tab.roles.includes(role))
@@ -258,7 +258,7 @@ export function getTeleconsultationTabs(role: 'PATIENT' | 'PROFESSIONAL' | 'ADMI
 /**
  * Retorna os grupos de tabs organizados para a teleconsulta
  */
-export function getTeleconsultationTabGroups(role: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT'): TabGroup[] {
+export function getTeleconsultationTabGroups(role: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST'): TabGroup[] {
   const tabs = getTeleconsultationTabs(role);
   
   const groups: TabGroup[] = [
@@ -338,3 +338,4 @@ export const TAB_ID_TO_LEGACY_NAME: Record<string, string> = {
 export const LEGACY_NAME_TO_TAB_ID: Record<string, string> = Object.fromEntries(
   Object.entries(TAB_ID_TO_LEGACY_NAME).map(([id, name]) => [name, id])
 );
+

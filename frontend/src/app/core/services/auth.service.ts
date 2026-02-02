@@ -220,18 +220,21 @@ export class AuthService {
     this.currentUser.set(response.user);
     this.isAuthenticated.set(true);
     
-    if (isPlatformBrowser(this.platformId)) {
+    // Salvar em localStorage - sem verificação isPlatformBrowser que pode estar falha
+    try {
+      console.log('💾 Salvando user em localStorage:', response.user);
+      localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, response.accessToken);
+      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken);
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.user));
+      console.log('✅ User salvo em localStorage:', localStorage.getItem(STORAGE_KEYS.USER));
+      
       if (rememberMe) {
-
-        localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, response.accessToken);
-        localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken);
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.user));
         localStorage.setItem(STORAGE_KEYS.REMEMBER_ME, 'true');
       } else {
-        sessionStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, response.accessToken);
-        sessionStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken);
-        sessionStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.user));
+        localStorage.removeItem(STORAGE_KEYS.REMEMBER_ME);
       }
+    } catch (error) {
+      console.error('❌ Erro ao salvar em localStorage:', error);
     }
   }
 
@@ -310,6 +313,7 @@ export class AuthService {
   getDashboardUrl(): string {
     const user = this.currentUser();
     if (!user) return '/entrar';
+    if (user.role === 'RECEPTIONIST') return '/recepcao';
     return '/painel';
   }
 
@@ -352,13 +356,15 @@ export class AuthService {
         this.updateCurrentUser(user);
       }),
       catchError(error => {
-        // Only log warning for 404 errors, as user may be recently deleted or data inconsistency
+        // If user not found (404), token is invalid - logout
         if (error.status === 404) {
-          console.warn('[AuthService] User not found on refetch, using cached data');
-        } else {
-          console.error('[AuthService] Error refetching user:', error);
+          console.warn('[AuthService] User not found (404), logging out...');
+          this.logout();
+          return throwError(() => new Error('User not found'));
         }
-        // Don't throw error - user is already authenticated with cached data
+        
+        console.error('[AuthService] Error refetching user:', error);
+        // For other errors, use cached data
         return of(this.currentUser()!);
       })
     );

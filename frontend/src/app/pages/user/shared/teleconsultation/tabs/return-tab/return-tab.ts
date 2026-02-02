@@ -1,4 +1,4 @@
-Ôªøimport { Component, Input, afterNextRender, inject, ChangeDetectorRef, LOCALE_ID, OnDestroy, OnChanges, SimpleChanges, HostListener } from '@angular/core';
+import { Component, Input, afterNextRender, inject, ChangeDetectorRef, LOCALE_ID, OnDestroy, OnChanges, SimpleChanges, HostListener } from '@angular/core';
 import { CommonModule, registerLocaleData } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { ButtonComponent } from '@shared/components/atoms/button/button';
@@ -46,7 +46,7 @@ interface TimeSlot {
 export class ReturnTabComponent implements OnDestroy, OnChanges {
   @Input() appointmentId: string | null = null;
   @Input() appointment: Appointment | null = null;
-  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' = 'PROFESSIONAL';
+  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PROFESSIONAL';
   @Input() readonly: boolean = false;
 
   // View mode: 'list' to show existing returns, 'scheduling' to create new
@@ -58,11 +58,11 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   
   steps: { id: Step, label: string }[] = [
     { id: 'date', label: 'Data' },
-    { id: 'time', label: 'Hor√°rio' },
-    { id: 'confirmation', label: 'Confirma√ß√£o' }
+    { id: 'time', label: 'Hor·rio' },
+    { id: 'confirmation', label: 'ConfirmaÁ„o' }
   ];
 
-  weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'S√°b'];
+  weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'S·b'];
 
   // Step 1: Date Selection
   currentMonth: Date = new Date();
@@ -101,7 +101,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
       this.initializeSignalR();
       this.loadExistingReturns();
       
-      // Monitorar expira√ß√£o de reserva
+      // Monitorar expiraÁ„o de reserva
       this.slotReservationService.getReservationExpired$().subscribe(() => {
         this.handleReservationExpired();
       });
@@ -115,7 +115,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   }
 
   /**
-   * Libera a reserva quando o usu√°rio fecha a aba/navegador
+   * Libera a reserva quando o usu·rio fecha a aba/navegador
    */
   @HostListener('window:beforeunload', ['$event'])
   onBeforeUnload(event: BeforeUnloadEvent): void {
@@ -132,7 +132,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   }
 
   /**
-   * Carrega os retornos j√° agendados para este paciente/profissional
+   * Carrega os retornos j· agendados para este paciente/profissional
    */
   loadExistingReturns(): void {
     if (!this.appointment) return;
@@ -140,14 +140,14 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
     this.isLoadingReturns = true;
     
     // Buscar agendamentos do tipo Return para o mesmo paciente e profissional
-    // que foram agendados ap√≥s a data desta consulta
+    // que foram agendados apÛs a data desta consulta
     this.appointmentsService.getAppointments({
       patientId: this.appointment.patientId,
       professionalId: this.appointment.professionalId,
       specialtyId: this.appointment.specialtyId
     }, 1, 50).subscribe({
       next: (response) => {
-        // Filtrar apenas retornos agendados ap√≥s esta consulta
+        // Filtrar apenas retornos agendados apÛs esta consulta
         const currentDate = new Date(this.appointment!.date);
         this.existingReturns = response.data.filter(apt => 
           apt.type === 'Return' && 
@@ -195,14 +195,14 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
     // Clean up SignalR subscriptions
     this.signalRSubscriptions.forEach(sub => sub.unsubscribe());
     
-    // Apenas desconectar - n√£o precisa chamar leaveProfessionalGroup antes
-    // pois o disconnect j√° limpa tudo e evita race condition
+    // Apenas desconectar - n„o precisa chamar leaveProfessionalGroup antes
+    // pois o disconnect j· limpa tudo e evita race condition
     this.currentProfessionalGroup = null;
     this.schedulingSignalR.disconnect();
   }
 
   /**
-   * Libera a reserva atual do usu√°rio
+   * Libera a reserva atual do usu·rio
    */
   private releaseCurrentReservation(): void {
     const reservation = this.slotReservationService.getCurrentReservation();
@@ -232,7 +232,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
     if (this.currentStep === 'confirmation') {
       this.modalService.alert({
         title: 'Reserva Expirada',
-        message: 'Sua reserva expirou. Por favor, selecione um novo hor√°rio.',
+        message: 'Sua reserva expirou. Por favor, selecione um novo hor·rio.',
         variant: 'warning'
       }).subscribe(() => {
         this.selectedSlot = null;
@@ -261,7 +261,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
     });
     this.signalRSubscriptions.push(daySub);
 
-    // Subscribe to slot professionals updates (para atualizar slots dispon√≠veis)
+    // Subscribe to slot professionals updates (para atualizar slots disponÌveis)
     const slotProfessionalsSub = this.schedulingSignalR.slotProfessionalsUpdated$.subscribe(notification => {
       if (notification) {
         this.handleSlotProfessionalsUpdate(notification);
@@ -300,12 +300,12 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
       return;
     }
 
-    // Ignorar notifica√ß√µes durante cria√ß√£o de agendamento
+    // Ignorar notificaÁıes durante criaÁ„o de agendamento
     if (this.isCreatingAppointment && this.currentStep === 'confirmation') {
       return;
     }
 
-    // Verificar se √© nossa pr√≥pria reserva (pendente ou confirmada)
+    // Verificar se È nossa prÛpria reserva (pendente ou confirmada)
     const currentReservation = this.slotReservationService.getCurrentReservation();
     const isPendingReservation = this.pendingReservation &&
         this.pendingReservation.professionalId === notification.professionalId &&
@@ -314,13 +314,13 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
         currentReservation.professionalId === notification.professionalId &&
         currentReservation.time === notification.time;
     
-    // Tamb√©m verificar se √© o slot selecionado no step de confirma√ß√£o (reserva em andamento)
+    // TambÈm verificar se È o slot selecionado no step de confirmaÁ„o (reserva em andamento)
     const isSelectedSlotBeingReserved = this.selectedSlot?.time === notification.time &&
         this.currentStep === 'confirmation' &&
         this.appointment.professionalId === notification.professionalId;
     
     if ((isPendingReservation || isCurrentReservation || isSelectedSlotBeingReserved) && !notification.isAvailable) {
-      console.log('[SignalR] Ignorando notifica√ß√£o - √© nossa pr√≥pria reserva ou slot selecionado');
+      console.log('[SignalR] Ignorando notificaÁ„o - È nossa prÛpria reserva ou slot selecionado');
       return;
     }
 
@@ -340,8 +340,8 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
             if (this.selectedSlot?.time === notification.time) {
               this.selectedSlot = null;
               this.modalService.alert({
-                title: 'Hor√°rio indispon√≠vel',
-                message: 'Este hor√°rio acabou de ser reservado. Por favor, escolha outro hor√°rio.',
+                title: 'Hor·rio indisponÌvel',
+                message: 'Este hor·rio acabou de ser reservado. Por favor, escolha outro hor·rio.',
                 variant: 'warning'
               }).subscribe(() => {
                 if (this.currentStep === 'confirmation') {
@@ -373,7 +373,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
     );
     
     if (dayIndex !== -1) {
-      // Aplicar o delta ao n√∫mero de slots
+      // Aplicar o delta ao n˙mero de slots
       const newSlots = Math.max(0, this.calendarDays[dayIndex].slots + notification.slotsDelta);
       this.calendarDays[dayIndex].slots = newSlots;
       this.calendarDays[dayIndex].available = newSlots > 0;
@@ -382,13 +382,13 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   }
 
   private handleSlotProfessionalsUpdate(notification: SlotProfessionalsUpdateNotification): void {
-    // Para return-tab, n√£o precisamos tratar profissionais pois √© fixo
+    // Para return-tab, n„o precisamos tratar profissionais pois È fixo
     // Mas podemos usar para atualizar a disponibilidade do slot
     if (!this.appointment || !this.selectedDate) {
       return;
     }
 
-    // Ignorar se √© nossa pr√≥pria reserva
+    // Ignorar se È nossa prÛpria reserva
     const currentReservation = this.slotReservationService.getCurrentReservation();
     const isPendingReservation = this.pendingReservation &&
         this.pendingReservation.professionalId === notification.professionalId &&
@@ -401,7 +401,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
         this.appointment.professionalId === notification.professionalId;
     
     if ((isPendingReservation || isCurrentReservation || isSelectedSlotBeingReserved) && !notification.isAvailable) {
-      console.log('[SignalR] Ignorando slotProfessionalsUpdate - √© nossa pr√≥pria reserva');
+      console.log('[SignalR] Ignorando slotProfessionalsUpdate - È nossa prÛpria reserva');
       return;
     }
 
@@ -411,14 +411,14 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
       
       if (slotIndex !== -1 && notification.professionalId === this.appointment.professionalId) {
         if (!notification.isAvailable) {
-          // Slot n√£o est√° mais dispon√≠vel
+          // Slot n„o est· mais disponÌvel
           this.availableSlots.splice(slotIndex, 1);
           
           if (this.selectedSlot?.time === notification.time) {
             this.selectedSlot = null;
             this.modalService.alert({
-              title: 'Hor√°rio indispon√≠vel',
-              message: 'Este hor√°rio acabou de ser reservado. Por favor, escolha outro.',
+              title: 'Hor·rio indisponÌvel',
+              message: 'Este hor·rio acabou de ser reservado. Por favor, escolha outro.',
               variant: 'warning'
             }).subscribe(() => {
               if (this.currentStep === 'confirmation') {
@@ -450,13 +450,13 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
       }
       
       if (affectsSelectedDate) {
-        // Se estamos na etapa de hor√°rio ou posterior, voltar e alertar
+        // Se estamos na etapa de hor·rio ou posterior, voltar e alertar
         if (this.currentStep === 'time' || this.currentStep === 'confirmation') {
           this.modalService.alert({
             title: notification.isBlocked ? 'Data bloqueada' : 'Data desbloqueada',
             message: notification.isBlocked 
               ? 'A data selecionada foi bloqueada. Por favor, escolha outra data.'
-              : 'A data selecionada foi desbloqueada e agora pode ter novos hor√°rios dispon√≠veis.',
+              : 'A data selecionada foi desbloqueada e agora pode ter novos hor·rios disponÌveis.',
             variant: notification.isBlocked ? 'warning' : 'info'
           }).subscribe(() => {
             if (notification.isBlocked) {
@@ -464,18 +464,18 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
               this.selectedSlot = null;
               this.currentStep = 'date';
             }
-            // Recarregar calend√°rio
+            // Recarregar calend·rio
             this.generateCalendar();
           });
         } else {
-          // Apenas recarregar o calend√°rio
+          // Apenas recarregar o calend·rio
           this.generateCalendar();
         }
         return;
       }
     }
     
-    // Se estamos na etapa de data, recarregar o calend√°rio
+    // Se estamos na etapa de data, recarregar o calend·rio
     if (this.currentStep === 'date') {
       this.generateCalendar();
     }
@@ -514,7 +514,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
         continue;
       }
       
-      // Verificar se o dia est√É¬° bloqueado para o profissional
+      // Verificar se o dia est√° bloqueado para o profissional
       dayChecks.push(
         new Observable((observer: Observer<{ date: Date, isAvailable: boolean, slotsCount: number }>) => {
           this.scheduleBlocksService.isDateBlocked(professionalId, date).subscribe({
@@ -622,7 +622,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   selectSlot(slot: TimeSlot) {
     this.selectedSlot = slot;
     
-    // Reservar o slot imediatamente quando o usu√°rio clica nele
+    // Reservar o slot imediatamente quando o usu·rio clica nele
     if (this.selectedDate && this.appointment) {
       this.reserveSlotImmediately(slot);
     }
@@ -631,7 +631,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   }
 
   /**
-   * Reserva um slot temporariamente assim que o usu√°rio clica nele
+   * Reserva um slot temporariamente assim que o usu·rio clica nele
    */
   private reserveSlotImmediately(slot: TimeSlot): void {
     if (!slot || !this.selectedDate || !this.appointment) {
@@ -664,8 +664,8 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
         this.pendingReservation = null;
         if (err.status === 409) {
           this.modalService.alert({
-            title: 'Slot Indispon√≠vel',
-            message: 'Este hor√°rio foi reservado por outro usu√°rio. Por favor, escolha outro hor√°rio.',
+            title: 'Slot IndisponÌvel',
+            message: 'Este hor·rio foi reservado por outro usu·rio. Por favor, escolha outro hor·rio.',
             variant: 'warning'
           }).subscribe(() => {
             this.selectedSlot = null;
@@ -775,7 +775,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
       'Scheduled': 'Agendado',
       'Confirmed': 'Confirmado',
       'InProgress': 'Em andamento',
-      'Completed': 'Conclu√≠do',
+      'Completed': 'ConcluÌdo',
       'Cancelled': 'Cancelado'
     };
     return statusLabels[status] || status;
