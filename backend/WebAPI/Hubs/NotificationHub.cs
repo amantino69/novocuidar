@@ -148,6 +148,7 @@ public class UserNotificationUpdate
     public bool IsRead { get; set; }
     public DateTime CreatedAt { get; set; }
     public int UnreadCount { get; set; }
+    public object? Data { get; set; } // Dados adicionais da notificação
 }
 
 /// <summary>

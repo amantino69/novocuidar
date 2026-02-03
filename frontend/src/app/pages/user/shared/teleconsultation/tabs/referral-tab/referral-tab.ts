@@ -1021,4 +1021,79 @@ export class ReferralTabComponent implements OnDestroy, OnChanges {
     };
     return statusClasses[status] || '';
   }
+
+  /**
+   * Imprime o encaminhamento (abre em nova aba para impressão)
+   */
+  printReferral(referral: Appointment): void {
+    // Cria conteúdo HTML para impressão
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Encaminhamento - ${referral.specialtyName}</title>
+        <style>
+          @media print {
+            body { margin: 20px; font-family: Arial, sans-serif; }
+            .no-print { display: none; }
+          }
+          body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+          h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+          .header { margin-bottom: 30px; }
+          .info-section { margin-bottom: 20px; }
+          .info-label { font-weight: bold; color: #34495e; }
+          .info-value { margin-left: 10px; }
+          .footer { margin-top: 40px; border-top: 1px solid #ccc; padding-top: 20px; text-align: center; color: #7f8c8d; }
+          button { padding: 10px 20px; background: #3498db; color: white; border: none; cursor: pointer; margin: 20px 0; }
+          button:hover { background: #2980b9; }
+        </style>
+      </head>
+      <body>
+        <div class="no-print">
+          <button onclick="window.print()">Imprimir Encaminhamento</button>
+          <button onclick="window.close()">Fechar</button>
+        </div>
+        
+        <div class="header">
+          <h1>Encaminhamento Médico</h1>
+        </div>
+
+        <div class="info-section">
+          <div><span class="info-label">Paciente:</span><span class="info-value">${this.appointment?.patientName || 'N/A'}</span></div>
+          <div><span class="info-label">Especialidade:</span><span class="info-value">${referral.specialtyName || 'N/A'}</span></div>
+          <div><span class="info-label">Profissional:</span><span class="info-value">${referral.professionalName || 'N/A'}</span></div>
+          <div><span class="info-label">Data:</span><span class="info-value">${new Date(referral.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
+          <div><span class="info-label">Horário:</span><span class="info-value">${referral.time || 'N/A'}</span></div>
+          <div><span class="info-label">Status:</span><span class="info-value">${this.getStatusLabel(referral.status)}</span></div>
+        </div>
+
+        ${referral.observation ? `
+          <div class="info-section">
+            <div class="info-label">Observações:</div>
+            <div style="margin-top: 10px; padding: 15px; background: #ecf0f1; border-left: 4px solid #3498db;">
+              ${referral.observation}
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="footer">
+          <p>TeleCuidar - Sistema de Teleconsultas</p>
+          <p>Documento gerado em ${new Date().toLocaleString('pt-BR')}</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Abre em nova janela
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      // Auto-print após carregar
+      printWindow.onload = () => {
+        printWindow.focus();
+        printWindow.print();
+      };
+    }
+  }
 }

@@ -257,7 +257,11 @@
           <div class="empty-state">
             <app-icon name="file" [size]="48" />
             <h4>Nenhuma receita emitida</h4>
-            <p>Clique em "Nova Receita" para criar uma receita médica para esta consulta.</p>
+            @if (canEdit) {
+              <p>Clique em "Nova Receita" para criar uma receita médica para esta consulta.</p>
+            } @else {
+              <p>Ainda não há receitas médicas geradas para esta consulta.</p>
+            }
           </div>
         } @else {
           @for (prescription of prescriptions; track prescription.id; let i = $index) {

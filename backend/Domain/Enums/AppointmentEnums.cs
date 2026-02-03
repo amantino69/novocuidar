@@ -19,5 +19,6 @@ public enum AppointmentType
     Routine,
     Emergency,
     Common,
-    Referral
+    Referral,
+    SpontaneousDemand
 }

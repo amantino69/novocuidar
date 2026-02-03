@@ -61,8 +61,9 @@
     <!-- Empty State -->
     <div class="empty-state" *ngIf="!isLoadingReferrals && existingReferrals.length === 0">
       <app-icon name="arrow-right" [size]="48"></app-icon>
-      <h4>Nenhum encaminhamento agendado</h4>
-      <p>Clique em "Novo Encaminhamento" para encaminhar o paciente para outra especialidade.</p>
+      <h4>Nenhum encaminhamento emitido</h4>
+      <p *ngIf="userrole === 'PROFESSIONAL' || userrole === 'ADMIN'">Clique em "Novo Encaminhamento" para encaminhar o paciente para outra especialidade.</p>
+      <p *ngIf="userrole === 'PATIENT' || userrole === 'ASSISTANT'">Ainda não há encaminhamentos médicos gerados para esta consulta.</p>
     </div>
 
     <!-- Referrals List -->
@@ -94,6 +95,15 @@
             <app-icon name="file" [size]="16"></app-icon>
             <span>{{ ref.observation }}</span>
           </div>
+        </div>
+        <div class="referral-actions">
+          <button 
+            class="action-btn print" 
+            (click)="printReferral(ref)" 
+            title="Imprimir Encaminhamento">
+            <app-icon name="file-text" [size]="16"></app-icon>
+            <span>Imprimir</span>
+          </button>
         </div>
       </div>
     </div>

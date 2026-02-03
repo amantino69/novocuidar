@@ -42,15 +42,27 @@
   <div class="compact-nav">
     <!-- Grupos principais + Finalizar como botões na mesma linha -->
     <div class="nav-groups">
-      @for (group of getGroupedTabs(); track group.id) {
+      <!-- Avaliação Clínica - Apenas PROFESSIONAL/ADMIN -->
+      @if ((userrole === 'PROFESSIONAL' || userrole === 'ADMIN')) {
         <button 
           class="group-btn" 
-          [class.active]="activeGroup === group.id"
-          (click)="setActiveGroup(group.id)">
-          <app-icon [name]="group.icon" [size]="16" />
-          <span>{{ group.label }}</span>
+          [class.active]="activeGroup === 'exame-fisico'"
+          (click)="setActiveGroup('exame-fisico')">
+          <app-icon name="stethoscope" [size]="16" />
+          <span>Avaliação Clínica</span>
         </button>
       }
+      <!-- Prescrições e Documentos - PROFESSIONAL/ADMIN como grupo -->
+      @if ((userrole === 'PROFESSIONAL' || userrole === 'ADMIN')) {
+        <button 
+          class="group-btn" 
+          [class.active]="activeGroup === 'documentos'"
+          (click)="setActiveGroup('documentos')">
+          <app-icon name="file-text" [size]="16" />
+          <span>Prescrições e Documentos</span>
+        </button>
+      }
+      <!-- Finalizar - Apenas PROFESSIONAL/ADMIN -->
       @if (userrole === 'PROFESSIONAL' || userrole === 'ADMIN') {
         <button 
           class="group-btn finish" 
@@ -62,9 +74,14 @@
       }
     </div>
 
-    <!-- Ícones das opções do grupo selecionado -->
+    <!-- Título não clicável para PATIENT/ASSISTANT -->
+    @if (userrole === 'PATIENT' || userrole === 'ASSISTANT') {
+      <div class="documents-title">Prescrições e Documentos</div>
+    }
+
+    <!-- Ícones das opções do grupo selecionado (para PROFESSIONAL/ADMIN com grupo 'documentos') -->
     @for (group of getGroupedTabs(); track group.id) {
-      @if (activeGroup === group.id) {
+      @if (activeGroup === group.id && (userrole === 'PROFESSIONAL' || userrole === 'ADMIN')) {
         <div class="nav-icons">
           @for (tab of group.tabs; track tab.id) {
             <button 
@@ -77,6 +94,21 @@
           }
         </div>
       }
+    }
+
+    <!-- Ícones sempre visíveis para PATIENT/ASSISTANT -->
+    @if (userrole === 'PATIENT' || userrole === 'ASSISTANT') {
+      <div class="nav-icons">
+        @for (tab of getDocumentsTabs(); track tab.id) {
+          <button 
+            class="icon-nav-btn" 
+            [class.active]="isTabActive(tab.label)"
+            (click)="onTabChange(tab.label)">
+            <app-icon [name]="tab.icon" [size]="20" />
+            <span class="icon-label">{{ getTabLabel(tab) }}</span>
+          </button>
+        }
+      </div>
     }
 
     <!-- Ferramentas removidas - agora fazem parte do grupo exame-fisico -->
@@ -208,7 +240,7 @@
       <app-receita-tab
         [appointmentId]="appointmentId"
         [userrole]="userrole"
-        [readonly]="userrole === 'ASSISTANT'">
+        [readonly]="userrole === 'PATIENT' || userrole === 'ASSISTANT'">
       </app-receita-tab>
     </div>
 
@@ -217,7 +249,7 @@
       <app-atestado-tab
         [appointmentId]="appointmentId"
         [userrole]="userrole"
-        [readonly]="userrole === 'ASSISTANT'">
+        [readonly]="userrole === 'PATIENT' || userrole === 'ASSISTANT'">
       </app-atestado-tab>
     </div>
 
@@ -231,12 +263,12 @@
     </div>
 
     <!-- Encaminhamento -->
-    <div class="tab-content" *ngIf="activeTab === 'Encaminhamento'" style="height: 100%">
+    <div class="tab-content" *ngIf="activeTab === 'Encaminhamento' || activeTab === 'Encaminhar'" style="height: 100%">
       <app-referral-tab
         [appointmentId]="appointmentId"
         [appointment]="appointment"
         [userrole]="userrole"
-        [readonly]="userrole === 'ASSISTANT'">
+        [readonly]="userrole === 'PATIENT' || userrole === 'ASSISTANT'">
       </app-referral-tab>
     </div>
 

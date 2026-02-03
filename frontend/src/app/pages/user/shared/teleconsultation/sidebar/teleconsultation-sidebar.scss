@@ -377,6 +377,31 @@
     }
 
     // Ícones das opções - ESTILO 3D/NEUMORFISMO
+    // Título do grupo (não clicável)
+    .group-title {
+      padding: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      background: var(--background);
+      border-radius: 6px;
+      margin: 0 12px;
+      cursor: default;
+      user-select: none;
+    }
+
+    // Título de documentos para PATIENT/ASSISTANT (não clicável)
+    .documents-title {
+      padding: 12px 16px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      background: var(--background);
+      border-bottom: 1px solid var(--border);
+      cursor: default;
+      user-select: none;
+    }
+
     // Layout: 4 ícones por linha, 2 linhas = 8 ícones
     .nav-icons {
       display: grid;

@@ -90,7 +90,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
     showInDetails: false,
-    order: 2,
+    order: 1,
     group: 'exame-fisico'
   },
   {
@@ -108,10 +108,10 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     label: 'Sinais',
     icon: 'activity',
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT', 'RECEPTIONIST'],
-    showInTeleconsultation: true, // ATIVADO - Sinais vitais e Fonocardiograma
+    showInTeleconsultation: false, // DESATIVADO - Removido da Avaliação Clínica
     showInDetails: false,
     order: 0,
-    group: 'exame-fisico'
+    group: 'standalone'
   },
   {
     id: 'auscultation',
@@ -138,10 +138,10 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     label: 'Fonocardio',
     icon: 'headphones',
     roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT', 'RECEPTIONIST'],
-    showInTeleconsultation: true, // ATIVADO - Estetoscópio Digital
+    showInTeleconsultation: false, // DESATIVADO - Removido da Avaliação Clínica
     showInDetails: false,
     order: 1,
-    group: 'exame-fisico'
+    group: 'standalone'
   },
   {
     id: 'biometrics',
@@ -167,7 +167,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     id: 'receita',
     label: 'Receita',
     icon: 'file',
-    roles: ['PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
+    roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: true,
     showInDetails: false,
     order: 1,
@@ -177,7 +177,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     id: 'atestado',
     label: 'Atestado',
     icon: 'file',
-    roles: ['PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
+    roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: true,
     showInDetails: false,
     order: 2,
@@ -197,7 +197,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     id: 'referral',
     label: 'Encaminhar',
     icon: 'external-link',
-    roles: ['PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
+    roles: ['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT'],
     showInTeleconsultation: true,
     showInDetails: false,
     order: 4,
@@ -210,7 +210,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
     showInDetails: false,
-    order: 6,
+    order: 3,
     group: 'exame-fisico'
   },
   {
@@ -230,7 +230,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     roles: ['PROFESSIONAL', 'ADMIN'],
     showInTeleconsultation: true,
     showInDetails: false,
-    order: 4,
+    order: 2,
     group: 'exame-fisico'
   },
   {

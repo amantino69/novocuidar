@@ -116,7 +116,11 @@
           <div class="empty-state">
             <app-icon name="file" [size]="48" />
             <h4>Nenhum atestado emitido</h4>
-            <p>Clique em "Novo Atestado" para criar um atestado médico para esta consulta.</p>
+            @if (canEdit) {
+              <p>Clique em "Novo Atestado" para criar um atestado médico para esta consulta.</p>
+            } @else {
+              <p>Ainda não há atestados médicos gerados para esta consulta.</p>
+            }
           </div>
         } @else {
           @for (cert of certificates; track cert.id) {

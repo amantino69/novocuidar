@@ -186,6 +186,11 @@ export class TeleconsultationSidebarComponent implements OnInit, OnDestroy, OnCh
     return this.tabGroups.filter(g => g.id !== 'standalone');
   }
 
+  getDocumentsTabs(): any[] {
+    const documentsGroup = this.tabGroups.find(g => g.id === 'documentos');
+    return documentsGroup?.tabs || [];
+  }
+
   getActiveGroupTabs(): any[] {
     if (!this.activeGroup) return [];
     const group = this.tabGroups.find(g => g.id === this.activeGroup);
