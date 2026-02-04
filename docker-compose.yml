@@ -75,6 +75,9 @@ services:
       - jitsi-web-config:/config
       - jitsi-web-certs:/etc/letsencrypt
       - jitsi-transcripts:/usr/share/jitsi-meet/transcripts
+      # Customizações TeleCuidar - Remove watermark
+      - ./jitsi-config/head.html:/usr/share/jitsi-meet/head.html:ro
+      - ./jitsi-config/custom/custom-interface_config.js:/defaults/interface_config.js:ro
     networks:
       meet.jitsi:
         aliases:
