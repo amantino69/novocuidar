@@ -1,0 +1,41 @@
+<style>
+/* TeleCuidar - Remove TODAS as watermarks do Jitsi */
+.watermark,
+.leftwatermark,
+.rightwatermark,
+.watermark-img,
+.jitsi-watermark,
+a.watermark,
+div.watermark,
+[class*="watermark"],
+[class*="oknj"],
+.oknj7u,
+.oknj7u-wrapper {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    max-width: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    background: none !important;
+    background-image: none !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    left: -99999px !important;
+    top: -99999px !important;
+}
+
+/* Remove qualquer elemento com background-image de watermark */
+div[style*="watermark"],
+div[style*="images/watermark"] {
+    display: none !important;
+    background-image: none !important;
+}
+
+/* Remove link para jitsi.org */
+a[href*="jitsi.org"] {
+    display: none !important;
+}
+</style>
