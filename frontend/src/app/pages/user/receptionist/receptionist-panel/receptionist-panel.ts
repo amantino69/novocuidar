@@ -1,0 +1,179 @@
+import { Component, OnInit, OnDestroy, effect, untracked, PLATFORM_ID, Inject, ChangeDetectorRef } from '@angular/core';
+import { CommonModule, DatePipe, isPlatformBrowser, registerLocaleData } from '@angular/common';
+import { RouterModule, Router } from '@angular/router';
+import { IconComponent, IconName } from '@app/shared/components/atoms/icon/icon';
+import { AvatarComponent } from '@app/shared/components/atoms/avatar/avatar';
+import { LogoComponent } from '@app/shared/components/atoms/logo/logo';
+import { ThemeToggleComponent } from '@app/shared/components/atoms/theme-toggle/theme-toggle';
+import { AuthService } from '@app/core/services/auth.service';
+import { User as AuthUser } from '@app/core/models/auth.model';
+import localePtBr from '@angular/common/locales/pt';
+
+registerLocaleData(localePtBr, 'pt-BR');
+
+interface PanelButton {
+  id: string;
+  title: string;
+  description: string;
+  icon: IconName;
+  route: string;
+  color: 'green' | 'blue' | 'red' | 'purple' | 'orange';
+  stats?: string | number;
+  isLogout?: boolean;
+}
+
+interface ReceptionistStats {
+  todayAppointments: number;
+  checkedInPatients: number;
+  pendingCheckIn: number;
+  totalPatients: number;
+}
+
+@Component({
+  selector: 'app-receptionist-panel',
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterModule,
+    IconComponent,
+    AvatarComponent,
+    LogoComponent,
+    ThemeToggleComponent
+  ],
+  providers: [DatePipe],
+  templateUrl: './receptionist-panel.html',
+  styleUrls: ['./receptionist-panel.scss']
+})
+export class ReceptionistPanelComponent implements OnInit, OnDestroy {
+  user: AuthUser | null = null;
+  stats: ReceptionistStats | null = null;
+  currentTime: string = '';
+  currentDate: string = '';
+  private timeInterval: any;
+
+  panelButtons: PanelButton[] = [
+    {
+      id: 'appointments',
+      title: 'Agendamentos',
+      description: 'Gerenciar consultas',
+      icon: 'calendar',
+      route: '/recepcao',
+      color: 'blue'
+    },
+    {
+      id: 'patients',
+      title: 'Pacientes',
+      description: 'Registro de pacientes',
+      icon: 'users',
+      route: '/recepcao/pacientes',
+      color: 'green'
+    },
+    {
+      id: 'check-in',
+      title: 'Confirmar Presença',
+      description: 'Entrada de pacientes',
+      icon: 'check-circle',
+      route: '/recepcao/check-in',
+      color: 'purple'
+    },
+    {
+      id: 'profile',
+      title: 'Meu Perfil',
+      description: 'Dados pessoais',
+      icon: 'user',
+      route: '/perfil',
+      color: 'orange'
+    },
+    {
+      id: 'logout',
+      title: 'Sair',
+      description: 'Encerrar sessão',
+      icon: 'log-out',
+      route: '',
+      color: 'red',
+      isLogout: true
+    }
+  ];
+
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    private datePipe: DatePipe,
+    private cdr: ChangeDetectorRef,
+    @Inject(PLATFORM_ID) private platformId: Object
+  ) {
+    effect(() => {
+      const authUser = this.authService.getCurrentUser();
+      if (authUser) {
+        untracked(() => {
+          this.user = authUser;
+          this.cdr.detectChanges();
+        });
+      }
+    });
+  }
+
+  ngOnInit(): void {
+    const authUser = this.authService.getCurrentUser();
+    if (authUser) {
+      this.user = authUser;
+    }
+    
+    this.loadStats();
+    this.updateTime();
+    
+    if (isPlatformBrowser(this.platformId)) {
+      this.timeInterval = setInterval(() => this.updateTime(), 1000);
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.timeInterval) {
+      clearInterval(this.timeInterval);
+    }
+  }
+
+  private updateTime(): void {
+    const now = new Date();
+    this.currentTime = this.datePipe.transform(now, 'HH:mm:ss') || '';
+    this.currentDate = this.formatDatePtBr(now);
+  }
+
+  private formatDatePtBr(date: Date): string {
+    const diasSemana = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    
+    const diaSemana = diasSemana[date.getDay()];
+    const dia = date.getDate().toString().padStart(2, '0');
+    const mes = meses[date.getMonth()];
+    const ano = date.getFullYear();
+    
+    return `${diaSemana}, ${dia} de ${mes} de ${ano}`;
+  }
+
+  private loadStats(): void {
+    this.stats = {
+      todayAppointments: 0,
+      checkedInPatients: 0,
+      pendingCheckIn: 0,
+      totalPatients: 0
+    };
+    this.cdr.detectChanges();
+  }
+
+  navigateTo(route: string): void {
+    this.router.navigate([route]);
+  }
+
+  logout(): void {
+    this.authService.logout();
+    this.router.navigate(['/entrar']);
+  }
+
+  getGreeting(): string {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Bom dia';
+    if (hour < 18) return 'Boa tarde';
+    return 'Boa noite';
+  }
+}
