@@ -223,8 +223,11 @@ public class JitsiService : IJitsiService
     {
         if (string.IsNullOrEmpty(_appSecret))
         {
+            Console.WriteLine("⚠️ JITSI: AppSecret está vazio! Token não será gerado.");
             return "";
         }
+
+        Console.WriteLine($"🔐 JITSI: Gerando token - AppId: {_appId}, Room: {roomName}, User: {displayName}");
 
         var now = DateTimeOffset.UtcNow;
         var exp = now.AddMinutes(_tokenExpirationMinutes);
@@ -254,6 +257,8 @@ public class JitsiService : IJitsiService
             { "moderator", isModerator }
         };
 
-        return new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(header, payload));
+        var token = new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(header, payload));
+        Console.WriteLine($"✅ JITSI: Token gerado com sucesso (tamanho: {token.Length} caracteres)");
+        return token;
     }
 }

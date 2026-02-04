@@ -9,6 +9,63 @@
     </div>
   </div>
 
+  <!-- SEÇÃO DE DEMANDAS ESPONTÂNEAS -->
+  @if (spontaneousDemands.length > 0) {
+    <div class="digital-office__spontaneous">
+      <div class="digital-office__spontaneous-header">
+        <app-icon name="alert-circle" [size]="24" />
+        <h2>🚨 Demandas Espontâneas Aguardando ({{ spontaneousDemands.length }})</h2>
+      </div>
+      
+      <div class="digital-office__spontaneous-grid">
+        @for (demand of spontaneousDemands; track demand.id) {
+          <div class="digital-office__spontaneous-card" [style.border-left-color]="getUrgencyColor(demand.urgencyLevel)">
+            <div class="digital-office__spontaneous-urgency" [style.background-color]="getUrgencyColor(demand.urgencyLevel)">
+              {{ getUrgencyLabel(demand.urgencyLevel) }}
+            </div>
+            
+            <div class="digital-office__spontaneous-info">
+              <div class="digital-office__spontaneous-patient">
+                <app-icon name="user" [size]="16" />
+                <strong>{{ demand.patientName }}</strong>
+              </div>
+              
+              <div class="digital-office__spontaneous-details">
+                <div class="digital-office__spontaneous-detail">
+                  <app-icon name="user-check" [size]="14" />
+                  <span>Dr(a). {{ demand.professionalName }}</span>
+                </div>
+                <div class="digital-office__spontaneous-detail">
+                  <app-icon name="activity" [size]="14" />
+                  <span>{{ demand.specialtyName }}</span>
+                </div>
+                <div class="digital-office__spontaneous-detail">
+                  <app-icon name="clock" [size]="14" />
+                  <span>Aguardando há {{ getWaitingTime(demand.checkInTime) }}</span>
+                </div>
+              </div>
+              
+              @if (demand.chiefComplaint) {
+                <div class="digital-office__spontaneous-complaint">
+                  <em>"{{ demand.chiefComplaint }}"</em>
+                </div>
+              }
+            </div>
+            
+            <button 
+              type="button" 
+              class="digital-office__spontaneous-btn"
+              (click)="startSpontaneousDemand(demand)"
+            >
+              <app-icon name="video" [size]="18" />
+              Iniciar Atendimento
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
   <div class="digital-office__filters">
     <div class="digital-office__filter-tabs">
       <button 

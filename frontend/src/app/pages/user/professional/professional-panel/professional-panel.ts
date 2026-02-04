@@ -8,6 +8,8 @@ import { ThemeToggleComponent } from '@app/shared/components/atoms/theme-toggle/
 import { AuthService } from '@app/core/services/auth.service';
 import { AppointmentsService } from '@app/core/services/appointments.service';
 import { User as AuthUser } from '@app/core/models/auth.model';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '@env/environment';
 import localePtBr from '@angular/common/locales/pt';
 
 // Registrar locale português brasileiro para DatePipe
@@ -31,6 +33,20 @@ interface ProfessionalStats {
   unreadNotifications: number;
 }
 
+// Interface para consultas aguardando o médico
+interface WaitingConsultation {
+  id: string;
+  patientName: string;
+  patientBirthDate: string | null;
+  patientSex: string | null;
+  patientAvatar: string | null;
+  specialtyName: string;
+  consultationStartedAt: string | null;
+  waitingMinutes: number;
+  meetLink: string | null;
+  type: string;
+}
+
 @Component({
   selector: 'app-professional-panel',
   standalone: true,
@@ -52,6 +68,10 @@ export class ProfessionalPanelComponent implements OnInit, OnDestroy {
   currentTime: string = '';
   currentDate: string = '';
   private timeInterval: any;
+  private waitingPollInterval: any;
+  
+  // Consultas aguardando o médico
+  waitingConsultations: WaitingConsultation[] = [];
 
   panelButtons: PanelButton[] = [
     {
@@ -116,6 +136,7 @@ export class ProfessionalPanelComponent implements OnInit, OnDestroy {
   constructor(
     private authService: AuthService,
     private appointmentsService: AppointmentsService,
+    private http: HttpClient,
     private router: Router,
     private datePipe: DatePipe,
     private cdr: ChangeDetectorRef,
@@ -139,16 +160,22 @@ export class ProfessionalPanelComponent implements OnInit, OnDestroy {
     }
     
     this.loadStats();
+    this.loadWaitingConsultations(); // Carregar consultas aguardando
     this.updateTime();
     
     if (isPlatformBrowser(this.platformId)) {
       this.timeInterval = setInterval(() => this.updateTime(), 1000);
+      // Polling a cada 15 segundos para consultas aguardando
+      this.waitingPollInterval = setInterval(() => this.loadWaitingConsultations(), 15000);
     }
   }
 
   ngOnDestroy(): void {
     if (this.timeInterval) {
       clearInterval(this.timeInterval);
+    }
+    if (this.waitingPollInterval) {
+      clearInterval(this.waitingPollInterval);
     }
   }
 
@@ -225,5 +252,66 @@ export class ProfessionalPanelComponent implements OnInit, OnDestroy {
     if (hour < 12) return 'Bom dia';
     if (hour < 18) return 'Boa tarde';
     return 'Boa noite';
+  }
+
+  // Carrega consultas aguardando o médico (polling)
+  private loadWaitingConsultations(): void {
+    this.http.get<WaitingConsultation[]>(`${environment.apiUrl}/appointments/waiting-for-doctor`)
+      .subscribe({
+        next: (consultations) => {
+          const hadConsultations = this.waitingConsultations.length;
+          this.waitingConsultations = consultations;
+          
+          // Se apareceu nova consulta, tocar som de alerta
+          if (consultations.length > hadConsultations && hadConsultations >= 0) {
+            this.playAlertSound();
+          }
+          
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Erro ao carregar consultas aguardando:', err);
+        }
+      });
+  }
+
+  // Tocar som de alerta
+  private playAlertSound(): void {
+    try {
+      const audio = new Audio('/assets/sounds/notification.mp3');
+      audio.volume = 0.7;
+      audio.play().catch(() => {
+        // Navegador pode bloquear autoplay - ignorar
+      });
+    } catch (e) {
+      // Ignorar erro de áudio
+    }
+  }
+
+  // Calcula idade a partir da data de nascimento
+  calculateAge(birthDate: string | null): number | null {
+    if (!birthDate) return null;
+    
+    const birth = new Date(birthDate);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    
+    return age;
+  }
+
+  // Formata sexo para exibição
+  formatSex(sex: string | null): string {
+    if (!sex) return '';
+    return sex.toUpperCase() === 'M' ? 'Masculino' : 'Feminino';
+  }
+
+  // Navega para a teleconsulta
+  enterConsultation(consultation: WaitingConsultation): void {
+    this.router.navigate(['/teleconsulta', consultation.id]);
   }
 }

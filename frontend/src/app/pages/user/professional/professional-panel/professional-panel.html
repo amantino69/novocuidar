@@ -66,6 +66,54 @@
     </section>
   }
 
+  <!-- Consultas Aguardando o Médico -->
+  @if (waitingConsultations.length > 0) {
+    <section class="waiting-section">
+      <div class="waiting-section__header">
+        <app-icon name="alert-circle" [size]="24" class="pulse-icon" />
+        <h2 class="waiting-section__title">Pacientes Aguardando Você</h2>
+        <span class="waiting-section__count">{{ waitingConsultations.length }}</span>
+      </div>
+      <div class="waiting-section__cards">
+        @for (consultation of waitingConsultations; track consultation.id) {
+          <div class="waiting-card">
+            <div class="waiting-card__avatar">
+              <app-avatar 
+                [name]="consultation.patientName" 
+                [imageUrl]="consultation.patientAvatar ?? undefined"
+                size="lg"
+              />
+            </div>
+            <div class="waiting-card__info">
+              <h3 class="waiting-card__name">{{ consultation.patientName }}</h3>
+              <div class="waiting-card__details">
+                @if (consultation.patientSex) {
+                  <span class="detail-badge">{{ formatSex(consultation.patientSex) }}</span>
+                }
+                @if (calculateAge(consultation.patientBirthDate)) {
+                  <span class="detail-badge">{{ calculateAge(consultation.patientBirthDate) }} anos</span>
+                }
+                <span class="detail-badge specialty">{{ consultation.specialtyName }}</span>
+              </div>
+              <div class="waiting-card__time">
+                <app-icon name="clock" [size]="14" />
+                <span>Aguardando há {{ consultation.waitingMinutes }} minuto(s)</span>
+              </div>
+            </div>
+            <button 
+              class="waiting-card__btn"
+              (click)="enterConsultation(consultation)"
+              type="button"
+            >
+              <app-icon name="video" [size]="20" />
+              Entrar na Consulta
+            </button>
+          </div>
+        }
+      </div>
+    </section>
+  }
+
   <!-- Main Control Panel Grid -->
   <section class="buttons-grid">
     @for (button of panelButtons; track button.id) {

@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef, PLATFORM_ID, I
 import { CommonModule, isPlatformBrowser, DatePipe } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { BadgeComponent, BadgeVariant } from '@shared/components/atoms/badge/badge';
 import { FilterSelectComponent, FilterOption } from '@shared/components/atoms/filter-select/filter-select';
@@ -12,8 +13,21 @@ import { ModalService } from '@core/services/modal.service';
 import { AuthService } from '@core/services/auth.service';
 import { RealTimeService, AppointmentStatusUpdate, EntityNotification } from '@core/services/real-time.service';
 import { CpfMaskDirective } from '@app/core/directives/cpf-mask.directive';
+import { environment } from '@env/environment';
 import { filter, take } from 'rxjs/operators';
 import { Subscription } from 'rxjs';
+
+// Interface para demandas espontâneas
+interface SpontaneousDemand {
+  id: string;
+  patientName: string;
+  professionalName: string;
+  specialtyName: string;
+  urgencyLevel: 'Red' | 'Orange' | 'Yellow' | 'Green';
+  chiefComplaint?: string;
+  checkInTime: string;
+  status: string;
+}
 
 type FilterMode = 'today' | 'all' | 'period' | 'cpf';
 
@@ -39,6 +53,10 @@ export class DigitalOfficeComponent implements OnInit, OnDestroy {
   appointments: Appointment[] = [];
   allAppointments: Appointment[] = [];
   loading = false;
+  
+  // Demandas Espontâneas
+  spontaneousDemands: SpontaneousDemand[] = [];
+  loadingSpontaneous = false;
   
   // Filtros
   filterMode: FilterMode = 'today';
@@ -73,6 +91,7 @@ export class DigitalOfficeComponent implements OnInit, OnDestroy {
   private appointmentsService = inject(AppointmentsService);
   private authService = inject(AuthService);
   private realTimeService = inject(RealTimeService);
+  private http = inject(HttpClient);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private modalService = inject(ModalService);
@@ -97,9 +116,89 @@ export class DigitalOfficeComponent implements OnInit, OnDestroy {
       .subscribe(() => {
         setTimeout(() => {
           this.loadAppointments();
+          this.loadSpontaneousDemands();
           this.initializeRealTime();
           this.cdr.detectChanges();
         }, 0);
+      });
+  }
+  
+  // Carrega demandas espontâneas aguardando atendimento
+  loadSpontaneousDemands(): void {
+    this.loadingSpontaneous = true;
+    const today = new Date().toISOString().split('T')[0];
+    
+    // pendingOnly=true retorna apenas demandas com status Scheduled ou CheckedIn
+    this.http.get<{ data: SpontaneousDemand[] }>(`${environment.apiUrl}/receptionist/spontaneous-demands?date=${today}&pendingOnly=true`)
+      .subscribe({
+        next: (response) => {
+          this.spontaneousDemands = response.data || [];
+          this.loadingSpontaneous = false;
+          this.cdr.detectChanges();
+        },
+        error: (error) => {
+          console.error('Erro ao carregar demandas espontâneas:', error);
+          this.spontaneousDemands = [];
+          this.loadingSpontaneous = false;
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  // Retorna a cor baseada na urgência
+  getUrgencyColor(level: string): string {
+    switch (level) {
+      case 'Red': return '#dc3545';
+      case 'Orange': return '#fd7e14';
+      case 'Yellow': return '#ffc107';
+      case 'Green': return '#28a745';
+      default: return '#6c757d';
+    }
+  }
+
+  // Retorna o label da urgência
+  getUrgencyLabel(level: string): string {
+    switch (level) {
+      case 'Red': return 'Crítica';
+      case 'Orange': return 'Muito Urgente';
+      case 'Yellow': return 'Urgente';
+      case 'Green': return 'Pouco Urgente';
+      default: return level;
+    }
+  }
+
+  // Formata o tempo de espera
+  getWaitingTime(checkInTime: string): string {
+    const checkIn = new Date(checkInTime);
+    const now = new Date();
+    const diffMs = now.getTime() - checkIn.getTime();
+    const diffMinutes = Math.floor(diffMs / 60000);
+    
+    if (diffMinutes < 60) {
+      return `${diffMinutes} min`;
+    } else {
+      const hours = Math.floor(diffMinutes / 60);
+      const mins = diffMinutes % 60;
+      return `${hours}h ${mins}min`;
+    }
+  }
+
+  // Inicia atendimento da demanda espontânea
+  startSpontaneousDemand(demand: SpontaneousDemand): void {
+    this.http.post(`${environment.apiUrl}/appointments/${demand.id}/start-consultation`, {})
+      .subscribe({
+        next: () => {
+          // Navegar para a teleconsulta
+          this.router.navigate(['/teleconsulta', demand.id]);
+        },
+        error: (error) => {
+          console.error('Erro ao iniciar atendimento:', error);
+          this.modalService.alert({
+            title: 'Erro',
+            message: 'Não foi possível iniciar o atendimento. Tente novamente.',
+            variant: 'danger'
+          });
+        }
       });
   }
   

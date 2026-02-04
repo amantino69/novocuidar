@@ -368,7 +368,14 @@ public class AppointmentsController : ControllerBase
                 Type = "PatientWaiting",
                 IsRead = false,
                 CreatedAt = DateTime.UtcNow,
-                UnreadCount = 1
+                UnreadCount = 1,
+                Data = new {
+                    AppointmentId = appointment.Id.ToString(),
+                    PatientName = appointment.Patient.Name + " " + appointment.Patient.LastName,
+                    PatientAge = patientAge,
+                    Specialty = appointment.Specialty.Name,
+                    MeetLink = appointment.MeetLink
+                }
             }
         );
 
@@ -433,6 +440,46 @@ public class AppointmentsController : ControllerBase
         }
 
         return Ok(new { Success = true, Message = "Médico entrou na consulta" });
+    }
+    
+    /// <summary>
+    /// Retorna consultas aguardando o médico (status InProgress, médico ainda não entrou)
+    /// Usado para polling no painel do médico
+    /// </summary>
+    [HttpGet("waiting-for-doctor")]
+    [Authorize(Roles = "PROFESSIONAL")]
+    public async Task<IActionResult> GetWaitingForDoctor()
+    {
+        var professionalId = GetCurrentUserId();
+        if (professionalId == null)
+            return Unauthorized(new { message = "Usuário não identificado" });
+
+        var waitingConsultations = await _context.Appointments
+            .Include(a => a.Patient)
+                .ThenInclude(p => p.PatientProfile)
+            .Include(a => a.Specialty)
+            .Where(a => a.ProfessionalId == professionalId.Value)
+            .Where(a => a.Status == AppointmentStatus.InProgress)
+            .Where(a => a.DoctorJoinedAt == null) // Médico ainda não entrou
+            .OrderBy(a => a.ConsultationStartedAt)
+            .Select(a => new
+            {
+                a.Id,
+                PatientName = a.Patient.Name + " " + a.Patient.LastName,
+                PatientBirthDate = a.Patient.PatientProfile != null ? a.Patient.PatientProfile.BirthDate : (DateTime?)null,
+                PatientSex = a.Patient.PatientProfile != null ? a.Patient.PatientProfile.Gender : null,
+                PatientAvatar = a.Patient.Avatar,
+                SpecialtyName = a.Specialty != null ? a.Specialty.Name : "Clínica Geral",
+                a.ConsultationStartedAt,
+                WaitingMinutes = a.ConsultationStartedAt.HasValue 
+                    ? (int)(DateTime.UtcNow - a.ConsultationStartedAt.Value).TotalMinutes 
+                    : 0,
+                a.MeetLink,
+                a.Type
+            })
+            .ToListAsync();
+
+        return Ok(waitingConsultations);
     }
 }
 

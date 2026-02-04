@@ -3,6 +3,7 @@ using Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Microsoft.Extensions.Logging;
 
 namespace WebAPI.Controllers;
 
@@ -15,11 +16,13 @@ public class JitsiController : ControllerBase
 {
     private readonly IJitsiService _jitsiService;
     private readonly IAuditLogService _auditLogService;
+    private readonly ILogger<JitsiController> _logger;
 
-    public JitsiController(IJitsiService jitsiService, IAuditLogService auditLogService)
+    public JitsiController(IJitsiService jitsiService, IAuditLogService auditLogService, ILogger<JitsiController> logger)
     {
         _jitsiService = jitsiService;
         _auditLogService = auditLogService;
+        _logger = logger;
     }
 
     private Guid? GetCurrentUserId()
@@ -54,10 +57,19 @@ public class JitsiController : ControllerBase
 
         // Gerar token com host da requisição para domínio dinâmico
         var requestHost = Request.Host.Value;
+        _logger.LogInformation("📹 Gerando token Jitsi - UserId: {UserId}, AppointmentId: {AppointmentId}, RequestHost: {RequestHost}", 
+            userId, appointmentId, requestHost);
+        
         var tokenResponse = await _jitsiService.GenerateTokenAsync(userId.Value, appointmentId, requestHost);
         
         if (tokenResponse == null)
+        {
+            _logger.LogWarning("❌ Token Jitsi não gerado - consulta não encontrada ou sem permissão");
             return NotFound(new { message = "Consulta não encontrada ou você não tem permissão para acessar esta sala" });
+        }
+
+        _logger.LogInformation("✅ Token Jitsi gerado - Domain: {Domain}, Room: {Room}, IsModerator: {IsModerator}", 
+            tokenResponse.Domain, tokenResponse.RoomName, tokenResponse.IsModerator);
 
         // Registrar acesso no audit log
         await _auditLogService.CreateAuditLogAsync(

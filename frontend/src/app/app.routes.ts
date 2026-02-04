@@ -45,6 +45,7 @@ import { DigitalOfficeComponent } from '@pages/user/assistant/digital-office/dig
 
 // Receptionist-specific components
 import { ReceptionistDashboardComponent } from '../app/features/receptionist/receptionist-dashboard/receptionist-dashboard.component';
+import { SpontaneousDemandComponent } from '../app/features/receptionist/spontaneous-demand/spontaneous-demand.component';
 
 import { TeleconsultationComponent } from '@pages/user/shared/teleconsultation/teleconsultation';
 
@@ -122,6 +123,7 @@ export const routes: Routes = [
       
       // Receptionist only (Admin also has access)
       { path: 'recepcao', component: ReceptionistDashboardComponent, canActivate: [roleGuard(['RECEPTIONIST', 'ADMIN'])] },
+      { path: 'recepcao/demanda-espontanea', component: SpontaneousDemandComponent, canActivate: [roleGuard(['RECEPTIONIST', 'ADMIN'])] },
       
       // Teleconsultation (all authenticated users)
       { path: 'teleconsulta/:id', component: TeleconsultationComponent }
