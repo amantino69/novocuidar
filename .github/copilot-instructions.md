@@ -23,6 +23,22 @@ Sistema ficou fora do ar por horas durante tentativa de deploy. Múltiplos probl
 > 
 > Não tente "rodar migrações" ou "sincronizar schema" - copie o banco inteiro.
 
+### 🚨 ALERTA CRÍTICO - BANCO DE DADOS EM PRODUÇÃO
+
+> **⚠️ ATENÇÃO: ANTES de qualquer operação que APAGUE, SOBRESCREVA ou MOVA banco de dados:**
+>
+> 1. **PERGUNTE AO USUÁRIO**: "O banco de produção contém dados reais de pacientes ou apenas dados de seeder/teste?"
+> 2. **Se houver dados reais**: FAÇA BACKUP COMPLETO antes de qualquer operação
+> 3. **Documente**: Anote data/hora do backup e onde foi salvo
+>
+> **Fase atual (POC)**: Banco contém apenas dados de seeder - pode ser sobrescrito
+> **Fase futura (Produção)**: Banco conterá dados reais de pacientes - NUNCA sobrescrever sem backup
+
+```powershell
+# ANTES de qualquer operação destrutiva, SEMPRE fazer backup:
+docker exec telecuidar-postgres pg_dump -U telecuidar -d telecuidar > backup_YYYYMMDD_HHMM.sql
+```
+
 ---
 
 ## ⚠️ PROCEDIMENTO OBRIGATÓRIO ANTES DE QUALQUER DEPLOY
