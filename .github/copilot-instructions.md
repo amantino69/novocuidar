@@ -5,7 +5,69 @@
 
 ---
 
-## 🔐 Repositório GitHub
+## � LIÇÕES APRENDIDAS - INCIDENTE DE DEPLOY 04/02/2026
+
+### O que aconteceu
+Sistema ficou fora do ar por horas durante tentativa de deploy. Múltiplos problemas:
+1. Arquivos novos estavam sendo ignorados pelo `.gitignore`
+2. Migrações do Entity Framework não estavam sendo aplicadas
+3. Inconsistência entre ambiente local e produção
+
+### Causa Raiz
+- **Arquivos ignorados**: Novos arquivos criados (WaitingList.cs, UrgencyLevel.cs, ReceptionistController.cs, signalr.service.ts, etc.) estavam em pastas que batiam com padrões do `.gitignore`
+- **Banco desatualizado**: O PostgreSQL na VPS tinha schema antigo, e as migrações não foram aplicadas corretamente
+- **Falta de verificação**: Não foi verificado se todos os arquivos estavam commitados antes do deploy
+
+### REGRA DE OURO PARA DEPLOYS
+> **Se funciona em homologação local, copie o banco local para produção!**
+> 
+> Não tente "rodar migrações" ou "sincronizar schema" - copie o banco inteiro.
+
+---
+
+## ⚠️ PROCEDIMENTO OBRIGATÓRIO ANTES DE QUALQUER DEPLOY
+
+### 1. Verificar arquivos ignorados
+```powershell
+# Listar TODOS os arquivos ignorados no projeto
+git status --ignored --porcelain | Select-String "backend/|frontend/src/"
+
+# Se aparecer algum arquivo .cs, .ts, .html, .scss - ADICIONAR!
+git add -f caminho/do/arquivo
+```
+
+### 2. Testar build local ANTES de commitar
+```powershell
+# Backend
+cd C:\telecuidar
+dotnet build backend/WebAPI/WebAPI.csproj
+
+# Frontend  
+cd C:\telecuidar\frontend
+npx ng build --configuration=production
+```
+
+### 3. Se build local passar, faça o deploy COPIANDO O BANCO
+```powershell
+# 1. Exportar banco do PostgreSQL local
+docker exec telecuidar-postgres-dev pg_dump -U postgres -d telecuidar --no-owner --no-acl > C:\telecuidar\backup_deploy.sql
+
+# 2. Converter para UTF8 (evita erros de encoding)
+[System.IO.File]::WriteAllText("C:\telecuidar\backup_deploy_utf8.sql", (Get-Content C:\telecuidar\backup_deploy.sql -Raw), [System.Text.Encoding]::UTF8)
+
+# 3. Copiar para VPS
+scp C:\telecuidar\backup_deploy_utf8.sql root@telecuidar.com.br:/opt/telecuidar/backup.sql
+
+# 4. Na VPS - Restaurar banco
+ssh root@telecuidar.com.br "cd /opt/telecuidar && docker compose stop backend && docker exec telecuidar-postgres psql -U telecuidar -d postgres -c 'DROP DATABASE IF EXISTS telecuidar;' && docker exec telecuidar-postgres psql -U telecuidar -d postgres -c 'CREATE DATABASE telecuidar;' && docker cp /opt/telecuidar/backup.sql telecuidar-postgres:/tmp/backup.sql && docker exec telecuidar-postgres psql -U telecuidar -d telecuidar -f /tmp/backup.sql"
+
+# 5. Subir sistema
+ssh root@telecuidar.com.br "cd /opt/telecuidar && git pull origin main && docker compose build backend frontend --no-cache && docker compose up -d"
+```
+
+---
+
+## �🔐 Repositório GitHub
 
 ### Conta e Repositório CORRETOS
 - **Proprietário**: `amantino69`
@@ -192,7 +254,7 @@ cd C:\telecuidar; dotnet run --project backend/WebAPI/WebAPI.csproj
 
 ## 🐳 Containers Docker
 
-### Arquitetura de Containers
+### Arquitetura de Containers (ATUALIZADA - PostgreSQL)
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      telecuidar-nginx                        │
@@ -205,8 +267,9 @@ cd C:\telecuidar; dotnet run --project backend/WebAPI/WebAPI.csproj
          └─────────────────────┘ └────────┬───────────┘
                                           │
                                ┌──────────▼──────────┐
-                               │  SQLite Database    │
-                               │ /app/data/telecuidar.db
+                               │ telecuidar-postgres │
+                               │   PostgreSQL 16     │
+                               │   (Porta 5432)      │
                                └─────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
@@ -218,6 +281,11 @@ cd C:\telecuidar; dotnet run --project backend/WebAPI/WebAPI.csproj
 │ telecuidar-jvb  │ (Portas 8080, 10000/udp)                  │
 └─────────────────┴───────────────────────────────────────────┘
 ```
+
+### ⚠️ IMPORTANTE - Banco de Dados é PostgreSQL (NÃO SQLite!)
+- **Produção (VPS)**: Container `telecuidar-postgres` com volume `telecuidar-postgres-data`
+- **Homologação (Local)**: Container `telecuidar-postgres-dev` 
+- **Connection String**: `Host=postgres;Port=5432;Database=telecuidar;Username=telecuidar;Password=...`
 
 ### Comandos Essenciais
 ```bash
@@ -249,7 +317,7 @@ docker compose build frontend --no-cache
 docker volume ls | grep telecuidar
 
 # Volumes críticos:
-# - telecuidar-backend-data     -> Banco de dados SQLite
+# - telecuidar-postgres-data    -> Banco de dados PostgreSQL (CRÍTICO!)
 # - telecuidar-backend-uploads  -> Arquivos enviados
 # - telecuidar-backend-avatars  -> Fotos de perfil
 # - telecuidar-backend-logs     -> Logs da aplicação
@@ -257,34 +325,39 @@ docker volume ls | grep telecuidar
 
 ---
 
-## 🗄️ Banco de Dados POC
+## 🗄️ Banco de Dados - PostgreSQL
 
-### Localização
-- **No container**: `/app/data/telecuidar.db`
-- **No código fonte**: `/opt/telecuidar/backend/WebAPI/telecuidar.db` (BACKUP!)
+### ⚠️ ATENÇÃO: Sistema usa PostgreSQL (migrado de SQLite em 04/02/2026)
 
-### ⚠️ CRÍTICO - Preservar o Banco POC
-O banco POC contém dados preparados para apresentação. **NUNCA** remover os volumes sem backup!
+### Containers PostgreSQL
+| Ambiente | Container | Usuário | Banco |
+|----------|-----------|---------|-------|
+| Homologação (Local) | `telecuidar-postgres-dev` | `postgres` | `telecuidar` |
+| Produção (VPS) | `telecuidar-postgres` | `telecuidar` | `telecuidar` |
 
-### Backup do Banco POC
-```bash
-# Copiar banco do container para local
-docker cp telecuidar-backend:/app/data/telecuidar.db /opt/telecuidar/backend/WebAPI/telecuidar.db
+### Backup do Banco (LOCAL → VPS)
+```powershell
+# 1. Exportar do container local
+docker exec telecuidar-postgres-dev pg_dump -U postgres -d telecuidar --no-owner --no-acl > C:\telecuidar\backup.sql
 
-# Verificar conteúdo
-sqlite3 /opt/telecuidar/backend/WebAPI/telecuidar.db "SELECT Email FROM Users WHERE Email LIKE '%@telecuidar.com';"
+# 2. Converter para UTF8
+[System.IO.File]::WriteAllText("C:\telecuidar\backup_utf8.sql", (Get-Content C:\telecuidar\backup.sql -Raw), [System.Text.Encoding]::UTF8)
+
+# 3. Enviar para VPS
+scp C:\telecuidar\backup_utf8.sql root@telecuidar.com.br:/opt/telecuidar/backup.sql
+
+# 4. Restaurar na VPS
+ssh root@telecuidar.com.br "docker compose stop backend && docker exec telecuidar-postgres psql -U telecuidar -d postgres -c 'DROP DATABASE IF EXISTS telecuidar;' && docker exec telecuidar-postgres psql -U telecuidar -d postgres -c 'CREATE DATABASE telecuidar;' && docker cp /opt/telecuidar/backup.sql telecuidar-postgres:/tmp/backup.sql && docker exec telecuidar-postgres psql -U telecuidar -d telecuidar -f /tmp/backup.sql && docker compose up -d backend"
 ```
 
-### Restaurar o Banco POC
+### Verificar Tabelas (VPS)
 ```bash
-# Se o banco foi corrompido/perdido:
-docker compose stop backend
-docker cp /opt/telecuidar/backend/WebAPI/telecuidar.db telecuidar-backend:/app/data/telecuidar.db
+ssh root@telecuidar.com.br "docker exec telecuidar-postgres psql -U telecuidar -d telecuidar -c '\dt'"
+```
 
-# Corrigir permissões
-docker run --rm -v telecuidar-backend-data:/data alpine sh -c "chmod 666 /data/telecuidar.db"
-
-docker compose start backend
+### Verificar Migrações Aplicadas
+```bash
+ssh root@telecuidar.com.br "echo 'SELECT MigrationId FROM \"__EFMigrationsHistory\" ORDER BY MigrationId;' | docker exec -i telecuidar-postgres psql -U telecuidar -d telecuidar"
 ```
 
 ### Usuários POC
@@ -423,16 +496,24 @@ docker logs telecuidar-frontend --tail=20
 ```bash
 # Se algo der errado após deploy:
 
-# 1. Restaurar banco POC
-docker compose stop backend
-docker cp /opt/telecuidar/backend/WebAPI/telecuidar.db telecuidar-backend:/app/data/telecuidar.db
-docker run --rm -v telecuidar-backend-data:/data alpine sh -c "chmod 666 /data/telecuidar.db"
-docker compose start backend
+# 1. Verificar logs do backend
+docker logs telecuidar-backend --tail=50
 
-# 2. Se precisar voltar código:
+# 2. Se o problema é no banco - restaurar backup anterior
+# (mantenha sempre o último backup funcional em /opt/telecuidar/)
+docker compose stop backend
+docker exec telecuidar-postgres psql -U telecuidar -d postgres -c 'DROP DATABASE IF EXISTS telecuidar;'
+docker exec telecuidar-postgres psql -U telecuidar -d postgres -c 'CREATE DATABASE telecuidar;'
+docker cp /opt/telecuidar/backup_anterior.sql telecuidar-postgres:/tmp/backup.sql
+docker exec telecuidar-postgres psql -U telecuidar -d telecuidar -f /tmp/backup.sql
+docker compose up -d backend
+
+# 3. Se precisar voltar código:
 git log --oneline -5  # Ver últimos commits
 git revert HEAD       # Reverter último commit
 git push origin main
+docker compose build backend frontend --no-cache
+docker compose up -d
 ```
 
 ---
@@ -453,38 +534,105 @@ POC_SEED_ENABLED=true
 
 ---
 
-## ❌ O QUE NÃO FAZER
+## ❌ O QUE NÃO FAZER (LIÇÕES APRENDIDAS)
 
 1. **NÃO executar `./deploy.sh`** - Ele clona o repositório antigo e apaga tudo
 
-2. **NÃO remover volumes Docker** sem fazer backup do banco:
-   ```bash
-   # ERRADO - NUNCA fazer isso sem backup:
-   docker volume rm telecuidar-backend-data
+2. **NÃO confiar que "MigrateAsync" vai funcionar em produção**
+   - Migrações EF podem falhar silenciosamente
+   - SEMPRE copie o banco de homologação para produção
+
+3. **NÃO fazer deploy sem verificar arquivos ignorados**
+   ```powershell
+   # ANTES de cada commit, verifique:
+   git status --ignored --porcelain | Select-String "backend/|frontend/src/"
    ```
 
-3. **NÃO fazer push para o repositório errado**:
+4. **NÃO remover volumes Docker sem backup**:
+   ```bash
+   # ERRADO - NUNCA fazer isso sem backup:
+   docker volume rm telecuidar-postgres-data
+   ```
+
+5. **NÃO fazer push para o repositório errado**:
    ```bash
    # ERRADO:
    git push origin main  # Se origin for guilhermevieirao/telecuidar
    ```
 
-4. **NÃO alterar o banco POC** sem necessidade - Os dados foram preparados para apresentação
+6. **NÃO usar npm install sem --legacy-peer-deps** no frontend
 
-5. **NÃO usar npm install sem --legacy-peer-deps** no frontend
+7. **NÃO confiar que Docker "isola tudo"**
+   - Diferenças de encoding (UTF-8 vs UTF-16) quebram imports de banco
+   - Diferenças de usuários PostgreSQL (postgres vs telecuidar) causam erros
+   - Connection strings devem ser EXATAMENTE iguais
+
+8. **NÃO tentar "sincronizar schema" manualmente**
+   - Se o banco de homologação funciona, COPIE ele inteiro
+   - Não tente aplicar migrações individualmente
+
+---
+
+## ✅ PROCEDIMENTO CORRETO DE DEPLOY (ATUALIZADO 04/02/2026)
+
+### Pré-Requisitos
+- Sistema funcionando 100% em homologação local
+- Todos os arquivos commitados e enviados para GitHub
+- Banco PostgreSQL local com dados corretos
+
+### Passo a Passo
+
+```powershell
+# 1. VERIFICAR ARQUIVOS IGNORADOS
+git status --ignored --porcelain | Select-String "backend/|frontend/src/"
+# Se aparecer qualquer .cs, .ts, .html -> git add -f <arquivo>
+
+# 2. TESTAR BUILD LOCAL
+dotnet build backend/WebAPI/WebAPI.csproj
+cd frontend; npx ng build --configuration=production; cd ..
+
+# 3. COMMIT E PUSH
+git add .
+git commit -m "descrição das mudanças"
+git push origin main
+
+# 4. EXPORTAR BANCO LOCAL
+docker exec telecuidar-postgres-dev pg_dump -U postgres -d telecuidar --no-owner --no-acl > C:\telecuidar\backup.sql
+[System.IO.File]::WriteAllText("C:\telecuidar\backup_utf8.sql", (Get-Content C:\telecuidar\backup.sql -Raw), [System.Text.Encoding]::UTF8)
+
+# 5. COPIAR PARA VPS
+scp C:\telecuidar\backup_utf8.sql root@telecuidar.com.br:/opt/telecuidar/backup.sql
+
+# 6. NA VPS - ATUALIZAR CÓDIGO
+ssh root@telecuidar.com.br "cd /opt/telecuidar && git pull origin main"
+
+# 7. NA VPS - RESTAURAR BANCO
+ssh root@telecuidar.com.br "cd /opt/telecuidar && docker compose stop backend && docker exec telecuidar-postgres psql -U telecuidar -d postgres -c 'DROP DATABASE IF EXISTS telecuidar;' && docker exec telecuidar-postgres psql -U telecuidar -d postgres -c 'CREATE DATABASE telecuidar;' && docker cp /opt/telecuidar/backup.sql telecuidar-postgres:/tmp/backup.sql && docker exec telecuidar-postgres psql -U telecuidar -d telecuidar -f /tmp/backup.sql"
+
+# 8. NA VPS - REBUILD E RESTART
+ssh root@telecuidar.com.br "cd /opt/telecuidar && docker compose build backend frontend --no-cache && docker compose up -d"
+
+# 9. VERIFICAR
+ssh root@telecuidar.com.br "docker compose ps"
+# Todos containers devem estar "healthy"
+```
 
 ---
 
 ## ✅ Checklist Pré-Deploy
 
-- [ ] Backup do banco de dados feito
-- [ ] Código testado localmente (`ng build --configuration=production`)
+- [ ] Sistema testado e funcionando em homologação local
+- [ ] Verificar arquivos ignorados: `git status --ignored --porcelain`
+- [ ] Build backend OK: `dotnet build backend/WebAPI/WebAPI.csproj`
+- [ ] Build frontend OK: `npx ng build --configuration=production`
 - [ ] Commit feito com mensagem descritiva
 - [ ] Push para `amantino69/novocuidar`
-- [ ] Containers reconstruídos (`docker compose build`)
-- [ ] Containers reiniciados (`docker compose up -d`)
-- [ ] Health check passando
-- [ ] Teste manual no navegador
+- [ ] Banco PostgreSQL exportado do local
+- [ ] Banco importado na VPS
+- [ ] Containers reconstruídos: `docker compose build --no-cache`
+- [ ] Containers iniciados: `docker compose up -d`
+- [ ] Todos containers healthy: `docker compose ps`
+- [ ] Teste manual no navegador: https://www.telecuidar.com.br
 
 ---
 
@@ -734,7 +882,7 @@ Destino: "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk https:/
 ---
 
 ## 📅 Última Atualização
-- **Data**: 31/01/2026
+- **Data**: 04/02/2026
 - **Autor**: IA Assistant
-- **Motivo**: Documentação completa da Maleta Itinerante e guia de configuração
+- **Motivo**: Lições aprendidas do incidente de deploy - migração para PostgreSQL e procedimentos atualizados
 
