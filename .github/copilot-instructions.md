@@ -550,6 +550,55 @@ POC_SEED_ENABLED=true
 
 ---
 
+## 🎥 JITSI - Remoção da Watermark (SOLUÇÃO DEFINITIVA)
+
+### ⚠️ IMPORTANTE - Não perder esta configuração!
+
+A watermark do Jitsi foi removida através de arquivos customizados montados no container.
+**NÃO REMOVER** os seguintes arquivos do repositório:
+
+### Arquivos Críticos
+| Arquivo | Função |
+|---------|--------|
+| `jitsi-config/head.html` | CSS injetado no Jitsi para ocultar watermark via display:none |
+| `jitsi-config/custom/custom-interface_config.js` | Configurações que desabilitam watermark server-side |
+
+### Como Funciona
+1. O `docker-compose.yml` monta esses arquivos no container `telecuidar-jitsi-web`
+2. O `head.html` é carregado pelo Jitsi e injeta CSS que oculta a watermark
+3. O `custom-interface_config.js` define `SHOW_JITSI_WATERMARK: false`
+
+### Volumes no docker-compose.yml (NÃO REMOVER!)
+```yaml
+jitsi-web:
+  volumes:
+    # ... outros volumes ...
+    # Customizações TeleCuidar - Remove watermark
+    - ./jitsi-config/head.html:/usr/share/jitsi-meet/head.html:ro
+    - ./jitsi-config/custom/custom-interface_config.js:/defaults/interface_config.js:ro
+```
+
+### Se a Watermark Voltar a Aparecer
+1. Verificar se os arquivos estão no repositório:
+   ```bash
+   ls -la jitsi-config/head.html
+   ls -la jitsi-config/custom/custom-interface_config.js
+   ```
+
+2. Verificar se estão montados no container:
+   ```bash
+   docker exec telecuidar-jitsi-web cat /usr/share/jitsi-meet/head.html | head -5
+   ```
+
+3. Reiniciar o container Jitsi:
+   ```bash
+   docker compose restart jitsi-web
+   ```
+
+4. Limpar cache do navegador (Ctrl+Shift+Delete)
+
+---
+
 ## ❌ O QUE NÃO FAZER (LIÇÕES APRENDIDAS)
 
 1. **NÃO executar `./deploy.sh`** - Ele clona o repositório antigo e apaga tudo
