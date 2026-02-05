@@ -295,10 +295,11 @@ public class BleBridgeController : ControllerBase
         _logger.LogInformation("[BLE Bridge] Dados enviados via MedicalDevicesHub para appointment_{Id}", appointmentId);
 
         // Também atualiza o cache global (para botão "Capturar Sinais")
+        // SEGURANÇA: Passa appointmentId para limpar cache se mudou de consulta
         if (!string.IsNullOrEmpty(dto.DeviceType))
         {
-            BleCacheStore.UpdateCache(dto.DeviceType.ToLower(), dto.Values);
-            _logger.LogInformation("[BLE Cache] Cache atualizado para {Type}", dto.DeviceType);
+            BleCacheStore.UpdateCache(dto.DeviceType.ToLower(), dto.Values, appointmentId);
+            _logger.LogInformation("[BLE Cache] Cache atualizado para {Type} (appointment: {AppId})", dto.DeviceType, appointmentId);
         }
 
         return Ok(new { message = "Leitura processada", biometrics });
@@ -428,14 +429,21 @@ public class BleBridgeController : ControllerBase
     /// <summary>
     /// Retorna todas as leituras BLE em cache (usado pelo botão "Capturar Sinais")
     /// O frontend pode buscar os dados e aplicar na consulta específica
+    /// SEGURANÇA: Se appointmentId for passado, só retorna dados dessa consulta
     /// </summary>
     [HttpGet("ble-cache")]
-    public ActionResult GetBleCache()
+    public ActionResult GetBleCache([FromQuery] Guid? appointmentId = null)
     {
         // Limpa entradas com mais de 5 minutos
         BleCacheStore.ClearOldEntries(TimeSpan.FromMinutes(5));
         
-        var cache = BleCacheStore.GetAllCache();
+        // SEGURANÇA: Se appointmentId mudou, cache é limpo automaticamente
+        if (appointmentId.HasValue)
+        {
+            BleCacheStore.SetCurrentAppointment(appointmentId.Value);
+        }
+        
+        var cache = BleCacheStore.GetAllCache(appointmentId);
         
         if (cache.Count == 0)
             return Ok(new { message = "Nenhuma leitura recente", devices = new Dictionary<string, object>() });
@@ -447,11 +455,12 @@ public class BleBridgeController : ControllerBase
             {
                 values = kvp.Value.Values,
                 timestamp = kvp.Value.Timestamp.ToString("o"),
-                ageSeconds = (DateTime.UtcNow - kvp.Value.Timestamp).TotalSeconds
+                ageSeconds = (DateTime.UtcNow - kvp.Value.Timestamp).TotalSeconds,
+                appointmentId = kvp.Value.AppointmentId
             };
         }
         
-        _logger.LogInformation("[BLE Cache] Consulta de cache: {Count} dispositivos", cache.Count);
+        _logger.LogInformation("[BLE Cache] Consulta de cache: {Count} dispositivos (appointment: {AppId})", cache.Count, appointmentId);
         return Ok(new { message = "Cache recuperado", devices = result });
     }
     
@@ -500,29 +509,48 @@ public class BleReadingDto
 
 /// <summary>
 /// Cache estático para últimas leituras BLE (solução para múltiplas consultas em andamento)
+/// SEGURANÇA: Cache é limpo automaticamente quando muda de consulta ou após 5 minutos
 /// </summary>
 public static class BleCacheStore
 {
     private static readonly Dictionary<string, BleCacheEntry> _cache = new();
     private static readonly object _lock = new object();
+    private static Guid? _currentAppointmentId = null;
     
-    public static void UpdateCache(string deviceType, Dictionary<string, object> values)
+    public static void UpdateCache(string deviceType, Dictionary<string, object> values, Guid? appointmentId = null)
     {
         lock (_lock)
         {
+            // SEGURANÇA: Se mudou de consulta, limpa TODO o cache
+            if (appointmentId.HasValue && _currentAppointmentId.HasValue && appointmentId != _currentAppointmentId)
+            {
+                _cache.Clear();
+            }
+            
+            if (appointmentId.HasValue)
+            {
+                _currentAppointmentId = appointmentId;
+            }
+            
             _cache[deviceType] = new BleCacheEntry
             {
                 DeviceType = deviceType,
                 Values = values,
-                Timestamp = DateTime.UtcNow
+                Timestamp = DateTime.UtcNow,
+                AppointmentId = appointmentId
             };
         }
     }
     
-    public static Dictionary<string, BleCacheEntry> GetAllCache()
+    public static Dictionary<string, BleCacheEntry> GetAllCache(Guid? appointmentId = null)
     {
         lock (_lock)
         {
+            // SEGURANÇA: Se o appointmentId não bate, retorna cache vazio
+            if (appointmentId.HasValue && _currentAppointmentId.HasValue && appointmentId != _currentAppointmentId)
+            {
+                return new Dictionary<string, BleCacheEntry>();
+            }
             return new Dictionary<string, BleCacheEntry>(_cache);
         }
     }
@@ -539,6 +567,28 @@ public static class BleCacheStore
             }
         }
     }
+    
+    public static void ClearAll()
+    {
+        lock (_lock)
+        {
+            _cache.Clear();
+            _currentAppointmentId = null;
+        }
+    }
+    
+    public static void SetCurrentAppointment(Guid appointmentId)
+    {
+        lock (_lock)
+        {
+            // Se mudou de consulta, limpa cache
+            if (_currentAppointmentId.HasValue && appointmentId != _currentAppointmentId)
+            {
+                _cache.Clear();
+            }
+            _currentAppointmentId = appointmentId;
+        }
+    }
 }
 
 public class BleCacheEntry
@@ -546,6 +596,7 @@ public class BleCacheEntry
     public string DeviceType { get; set; } = "";
     public Dictionary<string, object> Values { get; set; } = new();
     public DateTime Timestamp { get; set; }
+    public Guid? AppointmentId { get; set; }
 }
 
 public class BiometricsDto

@@ -913,6 +913,7 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy, OnChan
   /**
    * Busca os dados do cache da maleta e aplica no formulário desta consulta.
    * Resolve o problema de múltiplas consultas "Em Andamento".
+   * SEGURANÇA: Passa appointmentId para garantir que dados são desta consulta
    */
   capturarSinais(): void {
     console.log('========================================');
@@ -922,7 +923,8 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy, OnChan
     this.isCapturing = true;
     this.captureMessage = '';
 
-    const apiUrl = `${environment.apiUrl}/biometrics/ble-cache`;
+    // SEGURANÇA: Passa appointmentId para limpar cache de outras consultas
+    const apiUrl = `${environment.apiUrl}/biometrics/ble-cache${this.appointmentId ? '?appointmentId=' + this.appointmentId : ''}`;
     console.log('[Capturar] 🔍 Buscando cache em:', apiUrl);
 
     this.http.get<any>(apiUrl)

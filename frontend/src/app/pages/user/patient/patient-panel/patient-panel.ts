@@ -88,6 +88,7 @@ export class PatientPanelComponent implements OnInit, OnDestroy {
     },
     {
       id: 'logout',
+     
       title: 'Sair',
       description: 'Encerrar sessão',
       icon: 'log-out',

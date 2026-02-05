@@ -61,6 +61,7 @@ estado_balanca = {
 # Controle de conexão do Omron
 omron_conectando = False
 omron_ultima_leitura = None
+scanner_global = None  # Referência para pausar durante conexão GATT
 
 
 def sfloat_to_float(raw: int) -> float:
@@ -204,7 +205,7 @@ def processar_balanca(data: bytes):
 
 async def conectar_omron():
     """Conecta ao Omron e lê medição de pressão via GATT"""
-    global omron_conectando, omron_ultima_leitura
+    global omron_conectando, omron_ultima_leitura, scanner_global
     
     if omron_conectando:
         return None
@@ -216,12 +217,25 @@ async def conectar_omron():
     
     print(f"\n🔗 Conectando ao {device['name']}...")
     
+    # IMPORTANTE: Parar o scanner durante conexão GATT
+    # Isso evita conflitos no adapter Bluetooth
+    scanner_parado = False
+    if scanner_global:
+        try:
+            await scanner_global.stop()
+            scanner_parado = True
+            print("🔇 Scanner pausado para conexão GATT")
+            await asyncio.sleep(0.5)  # Pequena pausa para liberar o adapter
+        except Exception as e:
+            print(f"⚠️  Erro ao pausar scanner: {e}")
+    
     dados_pressao = None
     pressao_recebida = asyncio.Event()
     
     def notification_handler(sender, data):
         """Callback quando recebe notification do Omron"""
         nonlocal dados_pressao
+        print(f"📩 Dados recebidos: {len(data)} bytes")
         resultado = processar_pressao(data)
         if resultado:
             dados_pressao = resultado
@@ -231,7 +245,7 @@ async def conectar_omron():
         async with BleakClient(mac, timeout=15.0) as client:
             if client.is_connected:
                 print(f"✅ Conectado ao {device['name']}")
-                print("📊 Aguardando medição do aparelho...")
+                print("📊 Aguardando medição... (pressione botão Bluetooth no Omron)")
                 
                 # Ativa notificações
                 await client.start_notify(char_uuid, notification_handler)
@@ -255,6 +269,7 @@ async def conectar_omron():
                         
                 except asyncio.TimeoutError:
                     print("\n⏱️  Timeout - nenhuma medição recebida")
+                    print("   Dica: Faça a medição e depois pressione o botão Bluetooth")
                 
                 await client.stop_notify(char_uuid)
                 
@@ -262,6 +277,13 @@ async def conectar_omron():
         print(f"❌ Erro ao conectar ao Omron: {e}")
     finally:
         omron_conectando = False
+        # Reiniciar o scanner
+        if scanner_parado and scanner_global:
+            try:
+                await scanner_global.start()
+                print("🔊 Scanner reiniciado")
+            except Exception as e:
+                print(f"⚠️  Erro ao reiniciar scanner: {e}")
     
     return None
 
@@ -287,7 +309,7 @@ def detection_callback(device, advertisement_data):
 
 
 async def main():
-    global APPOINTMENT_ID, BACKEND_URL, ACTIVE_APPOINTMENT_URL
+    global APPOINTMENT_ID, BACKEND_URL, ACTIVE_APPOINTMENT_URL, scanner_global
     
     # Parse argumentos
     parser = argparse.ArgumentParser(description='BLE Bridge - TeleCuidar')
@@ -328,11 +350,12 @@ async def main():
     print("🔊 ESCUTANDO DISPOSITIVOS...")
     print("   - Suba na balança para medir peso")
     print("   - Ligue o Omron e faça a medição de pressão")
+    print("   - IMPORTANTE: Após medir no Omron, pressione o botão Bluetooth!")
     print("-" * 50)
     print("\nPressione Ctrl+C para sair\n")
     
-    scanner = BleakScanner(detection_callback)
-    await scanner.start()
+    scanner_global = BleakScanner(detection_callback)
+    await scanner_global.start()
     
     try:
         while True:
@@ -340,7 +363,7 @@ async def main():
     except KeyboardInterrupt:
         print("\n\n👋 Encerrando BLE Bridge...")
     finally:
-        await scanner.stop()
+        await scanner_global.stop()
 
 
 if __name__ == "__main__":

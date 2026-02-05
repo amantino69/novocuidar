@@ -132,6 +132,8 @@ class ServiceState:
         
         # Controle do Omron
         self.omron_connecting = False
+        self.omron_last_attempt = None  # Cooldown para não conectar repetidamente
+        self.omron_cooldown = 30  # Espera 30 segundos entre tentativas
         
         # Controle do Termômetro
         self.thermometer_connecting = False
@@ -143,6 +145,9 @@ class ServiceState:
         self.eko_packet_count = 0
         self.eko_last_capture = None  # Cooldown para não capturar repetidamente
         self.eko_cooldown = 60  # Espera 60 segundos entre capturas
+        
+        # Referência ao scanner BLE (para pausar durante conexão GATT)
+        self.scanner = None
 
 state = ServiceState()
 
@@ -389,52 +394,109 @@ async def enviar_leitura(tipo: str, valores: dict):
 # === CONEXÃO OMRON ===
 
 async def conectar_omron():
-    """Conecta ao Omron via GATT"""
+    """Conecta ao Omron via GATT - usando técnica do pressao.py que funciona"""
+    # Verifica cooldown
+    if state.omron_last_attempt:
+        elapsed = (datetime.now() - state.omron_last_attempt).total_seconds()
+        if elapsed < state.omron_cooldown:
+            return None  # Ainda em cooldown, ignora
+    
     if state.omron_connecting:
         return None
     
     state.omron_connecting = True
+    state.omron_last_attempt = datetime.now()
     device_info = DEVICES.get("00:5F:BF:9A:64:DF")
     mac = "00:5F:BF:9A:64:DF"
     char_uuid = device_info["char_uuid"]
     
     logger.info(f"🔗 Conectando ao {device_info['name']}...")
     
+    # IMPORTANTE: Parar o scanner durante conexão GATT
+    scanner_parado = False
+    if state.scanner:
+        try:
+            await state.scanner.stop()
+            scanner_parado = True
+            logger.info("🔇 Scanner pausado para conexão GATT")
+            await asyncio.sleep(0.3)
+        except Exception as e:
+            logger.warning(f"⚠️ Erro ao pausar scanner: {e}")
+    
     dados_pressao = None
     pressao_recebida = asyncio.Event()
     
     def notification_handler(sender, data):
         nonlocal dados_pressao
+        logger.info(f"📩 Dados recebidos: {len(data)} bytes - {data.hex()}")
         resultado = processar_pressao(data)
         if resultado:
             dados_pressao = resultado
             pressao_recebida.set()
     
     try:
-        async with BleakClient(mac, timeout=15.0) as client:
+        # Técnica do pressao.py: scan dedicado primeiro
+        logger.info("🔍 Buscando Omron...")
+        devices = await BleakScanner.discover(timeout=10.0)
+        target = next((d for d in devices if d.address.upper() == mac.upper()), None)
+        
+        if not target:
+            logger.warning("⚠️ Omron não encontrado no scan")
+            return None
+        
+        logger.info(f"✅ Encontrado: {target.name}")
+        
+        # Conecta usando objeto device - timeout de 90s para dar tempo da medição
+        async with BleakClient(target, timeout=90.0) as client:
             if client.is_connected:
-                logger.info(f"✅ Conectado ao Omron")
+                logger.info(f"✅ Conectado ao Omron!")
                 
                 await client.start_notify(char_uuid, notification_handler)
+                logger.info("📊 Aguardando medição... (3 minutos)")
+                logger.info("   → Faça a medição normalmente no aparelho")
                 
-                try:
-                    await asyncio.wait_for(pressao_recebida.wait(), timeout=60.0)
-                    
-                    if dados_pressao:
-                        pulse_info = f", Pulso: {dados_pressao['pulse']} bpm" if 'pulse' in dados_pressao else ""
-                        logger.info(f"💓 PRESSÃO: {dados_pressao['systolic']}/{dados_pressao['diastolic']} mmHg{pulse_info}")
-                        await enviar_leitura("blood_pressure", dados_pressao)
-                        return dados_pressao
-                        
-                except asyncio.TimeoutError:
-                    logger.warning("⏱️ Timeout - faça a medição no aparelho")
+                # Loop de 3 minutos - tempo suficiente para medição completa (~50s)
+                for i in range(180):  # 3 minutos
+                    if not client.is_connected:
+                        logger.warning("❌ Conexão perdida!")
+                        break
+                    if pressao_recebida.is_set():
+                        break
+                    await asyncio.sleep(1)
                 
-                await client.stop_notify(char_uuid)
+                if dados_pressao:
+                    pulse_info = f", Pulso: {dados_pressao['pulse']} bpm" if 'pulse' in dados_pressao else ""
+                    logger.info(f"💓 PRESSÃO: {dados_pressao['systolic']}/{dados_pressao['diastolic']} mmHg{pulse_info}")
+                    await enviar_leitura("blood_pressure", dados_pressao)
+                    state.omron_last_attempt = None  # Reseta cooldown após sucesso
+                    return dados_pressao
+                else:
+                    logger.warning("⏱️ Timeout - nenhuma medição recebida")
+                    logger.info(f"⏳ Aguardando {state.omron_cooldown}s antes de tentar novamente...")
+                
+                if client.is_connected:
+                    try:
+                        await client.stop_notify(char_uuid)
+                    except:
+                        pass
                 
     except Exception as e:
         logger.error(f"❌ Erro Omron: {e}")
+        logger.info(f"⏳ Aguardando {state.omron_cooldown}s antes de tentar novamente...")
     finally:
         state.omron_connecting = False
+        # Reiniciar o scanner com retry
+        if scanner_parado:
+            for attempt in range(3):
+                try:
+                    await asyncio.sleep(0.5)  # Aguarda estado estabilizar
+                    state.scanner = BleakScanner(detection_callback)
+                    await state.scanner.start()
+                    logger.info("🔊 Scanner reiniciado")
+                    break
+                except Exception as e:
+                    logger.warning(f"⚠️ Tentativa {attempt+1}/3 de reiniciar scanner: {e}")
+                    await asyncio.sleep(1)
     
     return None
 
@@ -452,6 +514,17 @@ async def conectar_termometro():
     char_uuid = device_info["char_uuid"]
     
     logger.info(f"🔗 Conectando ao {device_info['name']}...")
+    
+    # IMPORTANTE: Parar o scanner durante conexão GATT
+    scanner_parado = False
+    if state.scanner:
+        try:
+            await state.scanner.stop()
+            scanner_parado = True
+            logger.info("🔇 Scanner pausado para conexão GATT")
+            await asyncio.sleep(0.5)
+        except Exception as e:
+            logger.warning(f"⚠️ Erro ao pausar scanner: {e}")
     
     dados_temp = None
     temp_recebida = asyncio.Event()
@@ -500,6 +573,18 @@ async def conectar_termometro():
         logger.error(f"❌ Erro Termômetro: {e}")
     finally:
         state.thermometer_connecting = False
+        # Reiniciar o scanner com retry
+        if scanner_parado:
+            for attempt in range(3):
+                try:
+                    await asyncio.sleep(0.5)
+                    state.scanner = BleakScanner(detection_callback)
+                    await state.scanner.start()
+                    logger.info("🔊 Scanner reiniciado")
+                    break
+                except Exception as e:
+                    logger.warning(f"⚠️ Tentativa {attempt+1}/3 de reiniciar scanner: {e}")
+                    await asyncio.sleep(1)
     
     return None
 
@@ -801,8 +886,19 @@ async def main():
     logger.info("-" * 60)
     logger.info("\n⏳ Aguardando consulta ativa...\n")
     
-    scanner = BleakScanner(detection_callback)
-    await scanner.start()
+    # Cria scanner com retry em caso de erro de estado
+    scanner = None
+    for attempt in range(3):
+        try:
+            scanner = BleakScanner(detection_callback)
+            state.scanner = scanner
+            await scanner.start()
+            break
+        except Exception as e:
+            logger.warning(f"⚠️ Erro ao iniciar scanner (tentativa {attempt+1}/3): {e}")
+            await asyncio.sleep(2)
+            if attempt == 2:
+                raise
     
     last_status_check = None
     

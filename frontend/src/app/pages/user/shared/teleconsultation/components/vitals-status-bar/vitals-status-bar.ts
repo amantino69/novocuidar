@@ -1092,7 +1092,8 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     this.captureMessage = '';
 
     try {
-      const url = `${environment.apiUrl}/biometrics/ble-cache`;
+      // SEGURANÇA: Passa appointmentId para garantir dados são desta consulta
+      const url = `${environment.apiUrl}/biometrics/ble-cache?appointmentId=${this.appointmentId}`;
       console.log('[VitalsBar] Buscando cache de:', url);
       const response = await this.http.get<any>(url).toPromise();
       console.log('[VitalsBar] Resposta do cache:', JSON.stringify(response, null, 2));

@@ -291,13 +291,15 @@ export class BiometricsTabComponent implements OnInit, OnDestroy {
   /**
    * Busca os dados do cache da maleta e aplica no formulário desta consulta.
    * Resolve o problema de múltiplas consultas "Em Andamento".
+   * SEGURANÇA: Passa appointmentId para garantir dados são desta consulta
    */
   capturarSinais(): void {
     this.isCapturing = true;
     this.captureMessage = '';
     this.cdr.detectChanges();
 
-    this.http.get<any>(`${environment.apiUrl}/biometrics/ble-cache`)
+    const cacheUrl = `${environment.apiUrl}/biometrics/ble-cache${this.appointmentId ? '?appointmentId=' + this.appointmentId : ''}`;
+    this.http.get<any>(cacheUrl)
       .subscribe({
         next: (response) => {
           const devices = response.devices || {};
