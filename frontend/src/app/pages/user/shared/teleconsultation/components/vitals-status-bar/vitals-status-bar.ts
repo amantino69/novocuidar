@@ -18,6 +18,28 @@ import { environment } from '@env/environment';
   imports: [CommonModule, FormsModule, IconComponent],
   template: `
     <div class="vitals-bar" [class.professional]="isProfessional">
+      <!-- GUIA DE DISPOSITIVOS - Aparece para paciente/operador -->
+      <div class="device-guide" *ngIf="!isProfessional && showDeviceGuide">
+        <div class="guide-header">
+          <span>📋 Como usar os dispositivos</span>
+          <button class="close-guide" (click)="showDeviceGuide = false">✕</button>
+        </div>
+        <div class="guide-items">
+          <div class="guide-item">
+            <span class="guide-icon">⚖️</span>
+            <div><strong>Balança</strong><br>Suba na balança e aguarde estabilizar. O peso aparece automaticamente.</div>
+          </div>
+          <div class="guide-item">
+            <span class="guide-icon">💓</span>
+            <div><strong>Pressão (Omron)</strong><br>1) Ligue o aparelho<br>2) Aguarde "Conectado" aparecer<br>3) <strong>Depois</strong> aperte START para medir</div>
+          </div>
+          <div class="guide-item">
+            <span class="guide-icon">🌡️</span>
+            <div><strong>Termômetro</strong><br>Posicione e aguarde o bip. A temperatura é enviada automaticamente.</div>
+          </div>
+        </div>
+      </div>
+      
       <!-- LINHA 1: Info Profissional (esq) + Paciente (dir) -->
       <div class="row-1">
         <div class="left-info">
@@ -166,6 +188,15 @@ import { environment } from '@env/environment';
           </button>
         </div>
       </div>
+      
+      <!-- TOAST DE NOTIFICAÇÃO - Feedback visual para paciente -->
+      <div class="device-toast" *ngIf="deviceToast" [class]="'device-toast ' + deviceToast.type">
+        <div class="toast-icon">{{ deviceToast.icon }}</div>
+        <div class="toast-content">
+          <strong>{{ deviceToast.title }}</strong>
+          <span>{{ deviceToast.message }}</span>
+        </div>
+      </div>
     </div>
   `,
   styles: [`
@@ -182,6 +213,66 @@ import { environment } from '@env/environment';
       background: #1e293b;
       color: #f1f5f9;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    /* ============ GUIA DE DISPOSITIVOS ============ */
+    .device-guide {
+      background: linear-gradient(135deg, #1e3a5f, #1e293b);
+      border-bottom: 2px solid #3b82f6;
+      padding: 12px 24px;
+      
+      .guide-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #60a5fa;
+        
+        .close-guide {
+          background: transparent;
+          border: none;
+          color: #94a3b8;
+          font-size: 18px;
+          cursor: pointer;
+          padding: 4px 8px;
+          border-radius: 4px;
+          
+          &:hover { background: rgba(255,255,255,0.1); color: white; }
+        }
+      }
+      
+      .guide-items {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+      }
+      
+      .guide-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        flex: 1;
+        min-width: 200px;
+        max-width: 300px;
+        background: rgba(255,255,255,0.05);
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 12px;
+        line-height: 1.4;
+        color: #cbd5e1;
+        
+        .guide-icon {
+          font-size: 24px;
+          line-height: 1;
+        }
+        
+        strong {
+          color: #f1f5f9;
+          font-size: 13px;
+        }
+      }
     }
     
     /* ============ LINHA 1: INFO PROFISSIONAL (ESQ) + PACIENTE (DIR) ============ */
@@ -289,6 +380,67 @@ import { environment } from '@env/environment';
     @keyframes pulse-green {
       0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.5); }
       50% { box-shadow: 0 0 30px rgba(34, 197, 94, 0.8); }
+    }
+    
+    /* Toast de notificação - Feedback visual para dispositivos BLE */
+    .device-toast {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      border-radius: 12px;
+      background: #1e293b;
+      color: white;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+      z-index: 9999;
+      animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 4.7s;
+      max-width: 350px;
+      
+      &.success {
+        background: linear-gradient(135deg, #059669, #10b981);
+        border-left: 4px solid #34d399;
+      }
+      &.info {
+        background: linear-gradient(135deg, #0284c7, #0ea5e9);
+        border-left: 4px solid #38bdf8;
+      }
+      &.warning {
+        background: linear-gradient(135deg, #d97706, #f59e0b);
+        border-left: 4px solid #fbbf24;
+      }
+      
+      .toast-icon {
+        font-size: 32px;
+        line-height: 1;
+      }
+      
+      .toast-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        
+        strong {
+          font-size: 15px;
+          font-weight: 700;
+        }
+        span {
+          font-size: 13px;
+          opacity: 0.9;
+        }
+      }
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
     }
 
     /* Fonocardiograma - Estetoscópio Digital */
@@ -581,6 +733,11 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   lastSync: Date | null = null;
   isAcontecendo = false;  // Controle interno (marcar automaticamente)
   isConnected = false;    // Indicador de conexão SignalR
+  showDeviceGuide = true; // Guia de uso dos dispositivos (visível inicialmente)
+
+  // Toast de notificação para feedback visual de dispositivos
+  deviceToast: { icon: string; title: string; message: string; type: 'success' | 'info' | 'warning' } | null = null;
+  private toastTimeout: any = null;
 
   // Fonocardiograma - Estetoscópio Digital
   phonocardiogram: PhonocardiogramData | null = null;
@@ -773,19 +930,68 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
   private updateFromRemote(data: VitalSignsData): void {
     const v = data.vitals;
-    if (v.weight != null) this.weight = v.weight;
+    
+    // Detecta quais medições chegaram para mostrar notificação
+    const newMeasurements: string[] = [];
+    
+    if (v.weight != null && v.weight !== this.weight) {
+      this.weight = v.weight;
+      newMeasurements.push(`Peso: ${v.weight} kg`);
+    }
     if (v.height != null) this.height = v.height;
-    if (v.spo2 != null) this.spo2 = v.spo2;
-    if (v.pulseRate != null) this.heartRate = v.pulseRate;
-    if (v.heartRate != null) this.heartRate = v.heartRate;
-    if (v.systolic != null) this.systolic = v.systolic;
-    if (v.diastolic != null) this.diastolic = v.diastolic;
-    if (v.temperature != null) this.temperature = v.temperature;
+    if (v.spo2 != null && v.spo2 !== this.spo2) {
+      this.spo2 = v.spo2;
+      newMeasurements.push(`SpO₂: ${v.spo2}%`);
+    }
+    if (v.pulseRate != null && v.pulseRate !== this.heartRate) {
+      this.heartRate = v.pulseRate;
+      newMeasurements.push(`FC: ${v.pulseRate} bpm`);
+    }
+    if (v.heartRate != null && v.heartRate !== this.heartRate) {
+      this.heartRate = v.heartRate;
+      if (!newMeasurements.some(m => m.includes('FC'))) {
+        newMeasurements.push(`FC: ${v.heartRate} bpm`);
+      }
+    }
+    if (v.systolic != null && v.systolic !== this.systolic) {
+      this.systolic = v.systolic;
+      if (v.diastolic != null) {
+        this.diastolic = v.diastolic;
+        newMeasurements.push(`PA: ${v.systolic}/${v.diastolic} mmHg`);
+      }
+    } else if (v.diastolic != null) {
+      this.diastolic = v.diastolic;
+    }
+    if (v.temperature != null && v.temperature !== this.temperature) {
+      this.temperature = v.temperature;
+      newMeasurements.push(`Temp: ${v.temperature}°C`);
+    }
     if (v.gender) this.patientGender = v.gender;
     if (v.birthDate) this.patientAge = this.calculateAge(new Date(v.birthDate));
 
     this.calculateIMC();
     this.lastSync = new Date(data.timestamp);
+    
+    // Mostra notificação visual se chegaram novas medições
+    if (newMeasurements.length > 0 && !this.isProfessional) {
+      this.showDeviceToast('⚕️', 'Medição Recebida!', newMeasurements.join(' • '), 'success');
+    }
+  }
+  
+  /** Mostra toast de notificação para o paciente */
+  private showDeviceToast(icon: string, title: string, message: string, type: 'success' | 'info' | 'warning'): void {
+    // Limpa timeout anterior
+    if (this.toastTimeout) {
+      clearTimeout(this.toastTimeout);
+    }
+    
+    // Mostra o toast
+    this.deviceToast = { icon, title, message, type };
+    
+    // Remove após 5 segundos
+    this.toastTimeout = setTimeout(() => {
+      this.deviceToast = null;
+    }, 5000);
   }
 
   onVitalChange(): void {
