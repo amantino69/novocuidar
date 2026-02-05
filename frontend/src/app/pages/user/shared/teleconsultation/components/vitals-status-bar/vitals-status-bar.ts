@@ -31,7 +31,7 @@ import { environment } from '@env/environment';
           </div>
           <div class="guide-item">
             <span class="guide-icon">💓</span>
-            <div><strong>Pressão (Omron)</strong><br>1) Ligue o aparelho<br>2) Aguarde "Conectado" aparecer<br>3) <strong>Depois</strong> aperte START para medir</div>
+            <div><strong>Pressão (Omron)</strong><br>1) Coloque braçadeira e aperte START<br>2) Aguarde medição terminar (~30s)<br>3) <strong>Aperte botão 🔵 Bluetooth</strong> no aparelho</div>
           </div>
           <div class="guide-item">
             <span class="guide-icon">🌡️</span>
@@ -174,11 +174,10 @@ import { environment } from '@env/environment';
             {{ captureMessage }}
           </span>
           
-          <!-- ÚNICO BOTÃO: Status da consulta (automático) -->
-          <div *ngIf="!isProfessional" class="status-indicator" [class.active]="isConnected">
-            <span class="status-dot" [class.active]="isConnected"></span>
-            <span>{{ isConnected ? '🟢 Conectado' : '⚪ Aguardando...' }}</span>
-          </div>
+          <!-- Botão de ajuda - abre guia de dispositivos -->
+          <button *ngIf="!isProfessional && !showDeviceGuide" class="btn-help" (click)="showDeviceGuide = true" title="Como usar os dispositivos">
+            ❓
+          </button>
           
           <!-- MÉDICO: botão analisar -->
           <button *ngIf="isProfessional" class="btn-analyze" (click)="analisarSinais()" [disabled]="!hasAnyVitals() || isAnalyzing">
@@ -380,6 +379,26 @@ import { environment } from '@env/environment';
     @keyframes pulse-green {
       0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.5); }
       50% { box-shadow: 0 0 30px rgba(34, 197, 94, 0.8); }
+    }
+    
+    /* Botão de ajuda - abre guia de dispositivos */
+    .btn-help {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #3b82f6;
+      border-radius: 50%;
+      background: rgba(59, 130, 246, 0.2);
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.2s;
+      
+      &:hover {
+        background: #3b82f6;
+        transform: scale(1.1);
+      }
     }
     
     /* Toast de notificação - Feedback visual para dispositivos BLE */
