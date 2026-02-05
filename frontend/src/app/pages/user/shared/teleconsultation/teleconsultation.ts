@@ -450,29 +450,30 @@ export class TeleconsultationComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Enfermeira inicia a consulta e notifica o médico
+   * 🔔 CAMPAINHA - Enfermeira chama o médico
+   * Envia notificação visual e sonora ao médico associado a esta consulta
    */
-  startConsultationAsNurse(): void {
-    if (!this.appointmentId || !this.appointment) return;
+  callDoctor(): void {
+    if (!this.appointmentId) return;
 
-    if (!confirm('Iniciar consulta e notificar o médico?')) return;
-
-    this.appointmentsService.startConsultation(this.appointmentId).subscribe({
-      next: () => {
-        this.modalService.alert({
-          title: 'Consulta Iniciada',
-          message: 'O médico foi notificado e está sendo direcionado para a consulta.',
-          variant: 'success'
-        }).subscribe();
-      },
-      error: (error) => {
-        console.error('Erro ao iniciar consulta:', error);
-        this.modalService.alert({
-          title: 'Erro',
-          message: 'Não foi possível iniciar a consulta. Tente novamente.',
-          variant: 'danger'
-        }).subscribe();
-      }
-    });
+    // Chamar endpoint simples que envia notificação ao médico
+    this.http.post(`${environment.apiUrl}/appointments/${this.appointmentId}/call-doctor`, {})
+      .subscribe({
+        next: () => {
+          this.modalService.alert({
+            title: '🔔 Médico Chamado',
+            message: 'O médico recebeu sua notificação.',
+            variant: 'success'
+          }).subscribe();
+        },
+        error: (error) => {
+          console.error('Erro ao chamar médico:', error);
+          this.modalService.alert({
+            title: 'Erro',
+            message: 'Não foi possível notificar o médico. Tente novamente.',
+            variant: 'danger'
+          }).subscribe();
+        }
+      });
   }
 }

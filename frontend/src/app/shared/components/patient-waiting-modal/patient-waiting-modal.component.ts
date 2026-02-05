@@ -303,16 +303,18 @@ export class PatientWaitingModalComponent implements OnInit, OnDestroy {
     this.signalRService.patientWaiting$
       .pipe(takeUntil(this.destroy$))
       .subscribe((notification: any) => {
-        console.log('📬 PatientWaitingModal recebeu patientWaiting$:', notification);
+        console.log('� CAMPAINHA recebida:', notification);
         if (notification && notification.type === 'PatientWaiting') {
-          console.log('✅ Configurando modal com notificação PatientWaiting');
+          console.log('✅ Mostrando modal de paciente aguardando');
           
-          // Extrair dados adicionais se existirem
-          if (notification.data) {
-            this.appointmentId = notification.data.appointmentId || notification.data.AppointmentId || '';
-            this.meetLink = notification.data.meetLink || notification.data.MeetLink || '';
-            console.log('💾 Dados extraídos:', { appointmentId: this.appointmentId, meetLink: this.meetLink });
-          }
+          // Extrair appointmentId de várias fontes possíveis
+          this.appointmentId = notification.data?.appointmentId 
+                            || notification.data?.AppointmentId 
+                            || notification.notificationId 
+                            || '';
+          this.meetLink = notification.data?.meetLink || notification.data?.MeetLink || '';
+          
+          console.log('💾 Dados da campainha:', { appointmentId: this.appointmentId });
           
           this.notification = notification;
           this.playNotificationSound();

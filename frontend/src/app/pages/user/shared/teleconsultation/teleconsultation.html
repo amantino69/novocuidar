@@ -39,14 +39,14 @@
           </div>
 
           <div class="controls-section">
-            <!-- Botão Iniciar Consulta (apenas para ASSISTANT) -->
+            <!-- Botão CAMPAINHA - Enfermeira chama o médico -->
             <app-button 
-              *ngIf="userrole === 'ASSISTANT' && appointment?.status !== 'InProgress'"
+              *ngIf="userrole === 'ASSISTANT'"
               variant="primary" 
               size="sm" 
-              (click)="startConsultationAsNurse()">
-              <app-icon name="play" [size]="18" />
-              Iniciar Consulta
+              (click)="callDoctor()">
+              <app-icon name="bell" [size]="18" />
+              Chamar Médico
             </app-button>
 
             <app-button variant="primary" size="sm" (click)="toggleSidebar()" *ngIf="!isSidebarOpen">

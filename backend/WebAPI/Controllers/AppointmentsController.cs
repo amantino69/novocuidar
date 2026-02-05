@@ -2,6 +2,7 @@ using Application.DTOs.Appointments;
 using Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
 using WebAPI.Extensions;
 using WebAPI.Services;
@@ -22,19 +23,22 @@ public class AppointmentsController : ControllerBase
     private readonly ISchedulingNotificationService _schedulingNotificationService;
     private readonly IRealTimeNotificationService _realTimeNotification;
     private readonly ApplicationDbContext _context;
+    private readonly IHubContext<NotificationHub> _notificationHub;
 
     public AppointmentsController(
         IAppointmentService appointmentService, 
         IAuditLogService auditLogService,
         ISchedulingNotificationService schedulingNotificationService,
         IRealTimeNotificationService realTimeNotification,
-        ApplicationDbContext context)
+        ApplicationDbContext context,
+        IHubContext<NotificationHub> notificationHub)
     {
         _appointmentService = appointmentService;
         _auditLogService = auditLogService;
         _schedulingNotificationService = schedulingNotificationService;
         _realTimeNotification = realTimeNotification;
         _context = context;
+        _notificationHub = notificationHub;
     }
     
     private Guid? GetCurrentUserId()
@@ -397,6 +401,46 @@ public class AppointmentsController : ControllerBase
             Message = "Atendimento iniciado. Médico foi notificado.",
             NotificationSent = true
         });
+    }
+
+    /// <summary>
+    /// 🔔 CAMPAINHA - Enfermeira chama o médico
+    /// Envia notificação visual e sonora ao médico, independente do status da consulta
+    /// </summary>
+    [HttpPost("{id}/call-doctor")]
+    [Authorize(Roles = "ASSISTANT,ADMIN,PATIENT")]
+    public async Task<IActionResult> CallDoctor(Guid id)
+    {
+        var appointment = await _context.Appointments
+            .Include(a => a.Patient)
+            .Include(a => a.Professional)
+            .FirstOrDefaultAsync(a => a.Id == id);
+            
+        if (appointment == null)
+            return NotFound(new { message = "Consulta não encontrada" });
+
+        if (appointment.Professional == null)
+            return BadRequest(new { message = "Consulta sem médico associado" });
+
+        var callerName = User.FindFirst(ClaimTypes.Name)?.Value ?? "Equipe";
+        var patientName = appointment.Patient?.Name ?? "Paciente";
+
+        // Atualizar LastActivityAt para que o médico receba a notificação se logar depois
+        appointment.LastActivityAt = DateTime.UtcNow;
+        appointment.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        // 🔔 Enviar evento WaitingInRoom diretamente ao médico via SignalR
+        // O frontend escuta este evento para destacar o botão "Entrar na Consulta"
+        await _notificationHub.Clients.Group($"user_{appointment.ProfessionalId}")
+            .SendAsync("WaitingInRoom", new {
+                AppointmentId = appointment.Id.ToString(),
+                PatientName = patientName,
+                UserRole = "ASSISTANT",
+                Timestamp = DateTime.UtcNow
+            });
+
+        return Ok(new { Success = true, Message = "Médico notificado!" });
     }
     
     /// <summary>

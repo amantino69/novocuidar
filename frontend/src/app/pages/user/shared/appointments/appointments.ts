@@ -13,6 +13,7 @@ import { PreConsultationDetailsModalComponent } from './pre-consultation-details
 import { ModalService } from '@core/services/modal.service';
 import { AuthService } from '@core/services/auth.service';
 import { RealTimeService, AppointmentStatusUpdate, EntityNotification } from '@core/services/real-time.service';
+import { SoundNotificationService } from '@core/services/sound-notification.service';
 import { filter, take } from 'rxjs/operators';
 import { Subscription } from 'rxjs';
 import localePt from '@angular/common/locales/pt';
@@ -115,6 +116,7 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
   private modalService = inject(ModalService);
   private cdr = inject(ChangeDetectorRef);
   private datePipe = inject(DatePipe);
+  private soundService = inject(SoundNotificationService);
 
   constructor(@Inject(PLATFORM_ID) platformId: Object) {
     this.isBrowser = isPlatformBrowser(platformId);
@@ -176,6 +178,8 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
         (data) => {
           console.log('[Appointments] 🔔 Paciente aguardando na sala:', data);
           this.waitingAppointments.add(data.appointmentId);
+          // 🔊 Tocar som de notificação para o médico
+          this.soundService.playUrgentAlert();
           this.cdr.detectChanges();
         }
       );

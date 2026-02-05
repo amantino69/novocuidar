@@ -79,6 +79,15 @@ export class SignalRService {
       }
     });
 
+    // Escutar quando paciente entra na sala (WaitingInRoom - evento direto do NotificationHub)
+    // Funciona como uma "campainha" - enfermeira chama o médico
+    // NÃO toca som aqui - o som é tocado no appointments.ts via RealTimeService.waitingInRoom$
+    // para garantir que toque apenas no computador do médico
+    this.hubConnection.on('WaitingInRoom', (data: any) => {
+      console.log('🔔 CAMPAINHA! Evento WaitingInRoom recebido (SignalRService):', data);
+      // Não faz nada aqui - o RealTimeService já trata este evento
+    });
+
     // Escutar quando médico entra
     this.hubConnection.on('DoctorJoinedRoom', () => {
       console.log('✅ Médico entrou na sala');

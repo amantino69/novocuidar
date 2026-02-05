@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using Infrastructure.Data;
+using Domain.Enums;
 
 namespace WebAPI.Hubs;
 
@@ -9,10 +12,12 @@ namespace WebAPI.Hubs;
 public class NotificationHub : Hub
 {
     private readonly ILogger<NotificationHub> _logger;
+    private readonly ApplicationDbContext _context;
 
-    public NotificationHub(ILogger<NotificationHub> logger)
+    public NotificationHub(ILogger<NotificationHub> logger, ApplicationDbContext context)
     {
         _logger = logger;
+        _context = context;
     }
 
     public override async Task OnConnectedAsync()
@@ -29,11 +34,15 @@ public class NotificationHub : Hub
 
     /// <summary>
     /// Inscreve o cliente para receber atualizações de um usuário específico (notificações pessoais)
+    /// Também verifica se há consultas aguardando este médico
     /// </summary>
     public async Task JoinUserGroup(string userId)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, $"user_{userId}");
         _logger.LogInformation("Cliente {ConnectionId} inscrito no grupo do usuário {UserId}", Context.ConnectionId, userId);
+        
+        // Verificar se é um médico com consultas aguardando
+        await CheckPendingConsultationsForDoctor(userId);
     }
 
     /// <summary>
@@ -79,6 +88,66 @@ public class NotificationHub : Hub
     {
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"{entityType}_{entityId}");
         _logger.LogInformation("Cliente {ConnectionId} removido do grupo {EntityType}_{EntityId}", Context.ConnectionId, entityType, entityId);
+    }
+
+    /// <summary>
+    /// Verifica se há consultas aguardando o médico quando ele se conecta
+    /// CAMPAINHA: Se enfermeira entrou nos últimos 20 minutos, notifica o médico
+    /// </summary>
+    private async Task CheckPendingConsultationsForDoctor(string userId)
+    {
+        try
+        {
+            if (!Guid.TryParse(userId, out var doctorId))
+            {
+                return;
+            }
+
+            // Verificar se o usuário é um médico (Professional)
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == doctorId);
+            if (user == null || user.Role != UserRole.PROFESSIONAL)
+            {
+                return;
+            }
+
+            // CAMPAINHA: Buscar consultas deste médico com atividade recente (últimos 20 minutos)
+            // Isso garante que se o médico logar dentro de 20 min após a enfermeira entrar,
+            // ele receberá a notificação
+            var twentyMinutesAgo = DateTime.UtcNow.AddMinutes(-20);
+            var pendingConsultations = await _context.Appointments
+                .Include(a => a.Patient)
+                .Where(a => a.ProfessionalId == doctorId 
+                         && a.Status == AppointmentStatus.InProgress
+                         && a.LastActivityAt != null 
+                         && a.LastActivityAt > twentyMinutesAgo)
+                .ToListAsync();
+
+            _logger.LogInformation("[CAMPAINHA] Médico {DoctorId} conectou. Encontradas {Count} consultas com pacientes aguardando (últimos 20 min).", 
+                userId, pendingConsultations.Count);
+
+            foreach (var appointment in pendingConsultations)
+            {
+                var patientName = appointment.Patient?.Name ?? "Paciente";
+                
+                // Enviar notificação "campainha" para o médico
+                await Clients.Caller.SendAsync("WaitingInRoom", new
+                {
+                    AppointmentId = appointment.Id.ToString(),
+                    PatientName = patientName,
+                    UserRole = "ASSISTANT",
+                    Timestamp = appointment.LastActivityAt ?? appointment.UpdatedAt,
+                    Message = $"🔔 {patientName} está aguardando você na sala."
+                });
+                
+                _logger.LogInformation("[CAMPAINHA] Notificação enviada ao médico {DoctorId}: {PatientName} aguardando na consulta {AppointmentId}", 
+                    userId, patientName, appointment.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[CAMPAINHA] Erro ao verificar consultas pendentes para médico {UserId}: {Message}", 
+                userId, ex.Message);
+        }
     }
 }
 
