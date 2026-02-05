@@ -7,10 +7,9 @@ DISPOSITIVOS SUPORTADOS:
 - Omron HEM-7156T: Conecta via GATT quando detectado (automático)
 
 USO:
-  python ble_bridge.py [appointment_id]
-  
-  Exemplo:
-  python ble_bridge.py 46af9522-4317-4349-b526-8db327d8cc04
+  python ble_bridge.py --prod          # Produção (detecta consulta automaticamente)
+  python ble_bridge.py                  # Local (detecta consulta automaticamente)
+  python ble_bridge.py ID --prod        # Com ID específico
 
 O sistema fica escutando continuamente. Quando:
 - Balança: Detecta peso estável automaticamente
@@ -30,8 +29,11 @@ import argparse
 # === CONFIGURAÇÃO ===
 BACKEND_URL_LOCAL = "http://localhost:5239/api/biometrics/ble-reading"
 BACKEND_URL_PROD = "https://www.telecuidar.com.br/api/biometrics/ble-reading"
+ACTIVE_APPOINTMENT_LOCAL = "http://localhost:5239/api/biometrics/active-appointment"
+ACTIVE_APPOINTMENT_PROD = "https://www.telecuidar.com.br/api/biometrics/active-appointment"
 BACKEND_URL = BACKEND_URL_LOCAL  # Será alterado se --prod
-APPOINTMENT_ID = None  # Definido via argumento de linha de comando
+ACTIVE_APPOINTMENT_URL = ACTIVE_APPOINTMENT_LOCAL
+APPOINTMENT_ID = None  # Definido via argumento ou buscado automaticamente
 
 # Dispositivos conhecidos
 DEVICES = {
@@ -108,8 +110,15 @@ def processar_pressao(data: bytes) -> dict:
 
 async def enviar_leitura(tipo: str, valores: dict):
     """Envia leitura para o backend TeleCuidar"""
+    global APPOINTMENT_ID
+    
+    # Se não tem ID, tenta buscar automaticamente
     if not APPOINTMENT_ID:
-        print(f"⚠️  Sem appointment_id - dados exibidos mas não enviados ao backend")
+        APPOINTMENT_ID = await buscar_consulta_ativa()
+    
+    if not APPOINTMENT_ID:
+        print(f"⚠️  Sem consulta ativa - dados NÃO enviados ao backend")
+        print(f"    Certifique-se que há uma consulta 'Em Andamento' no sistema")
         return False
         
     payload = {
@@ -132,6 +141,26 @@ async def enviar_leitura(tipo: str, valores: dict):
     except Exception as e:
         print(f"❌ Erro de conexão com backend: {e}")
         return False
+
+
+async def buscar_consulta_ativa():
+    """Busca consulta ativa automaticamente no backend"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(ACTIVE_APPOINTMENT_URL) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    appointment_id = data.get('id')
+                    if appointment_id:
+                        print(f"🔍 Consulta ativa encontrada: {appointment_id}")
+                        return appointment_id
+                elif resp.status == 404:
+                    print("⚠️  Nenhuma consulta ativa no momento")
+                else:
+                    print(f"⚠️  Erro ao buscar consulta: {resp.status}")
+    except Exception as e:
+        print(f"❌ Erro ao buscar consulta ativa: {e}")
+    return None
 
 
 def processar_balanca(data: bytes):
@@ -258,20 +287,22 @@ def detection_callback(device, advertisement_data):
 
 
 async def main():
-    global APPOINTMENT_ID, BACKEND_URL
+    global APPOINTMENT_ID, BACKEND_URL, ACTIVE_APPOINTMENT_URL
     
     # Parse argumentos
     parser = argparse.ArgumentParser(description='BLE Bridge - TeleCuidar')
-    parser.add_argument('appointment_id', nargs='?', help='ID da consulta (appointment)')
+    parser.add_argument('appointment_id', nargs='?', help='ID da consulta (opcional - busca automaticamente)')
     parser.add_argument('--prod', action='store_true', help='Usar servidor de produção')
     args = parser.parse_args()
     
     if args.prod:
         BACKEND_URL = BACKEND_URL_PROD
-        print("\n🌐 MODO PRODUÇÃO: " + BACKEND_URL)
+        ACTIVE_APPOINTMENT_URL = ACTIVE_APPOINTMENT_PROD
+        print("\n🌐 MODO PRODUÇÃO: telecuidar.com.br")
     else:
         BACKEND_URL = BACKEND_URL_LOCAL
-        print("\n🏠 MODO LOCAL: " + BACKEND_URL)
+        ACTIVE_APPOINTMENT_URL = ACTIVE_APPOINTMENT_LOCAL
+        print("\n🏠 MODO LOCAL: localhost:5239")
     
     print("=" * 50)
     print("   🏥 BLE BRIDGE - TeleCuidar (AUTOMÁTICO)")
@@ -280,11 +311,14 @@ async def main():
     # Pega appointment_id 
     if args.appointment_id:
         APPOINTMENT_ID = args.appointment_id
-        print(f"\n📡 Consulta: {APPOINTMENT_ID}")
+        print(f"\n📡 Consulta fixa: {APPOINTMENT_ID}")
     else:
-        print("\n⚠️  Uso: python ble_bridge.py <appointment_id>")
-        print("   Exemplo: python ble_bridge.py 46af9522-4317-4349-b526-8db327d8cc04")
-        print("\n   Executando em modo demonstração (dados não serão enviados)")
+        print("\n🔍 Buscando consulta ativa automaticamente...")
+        APPOINTMENT_ID = await buscar_consulta_ativa()
+        if not APPOINTMENT_ID:
+            print("⚠️  Nenhuma consulta ativa encontrada.")
+            print("   O script vai continuar escutando e tentará novamente")
+            print("   quando um dispositivo for detectado.")
     
     print("\nDispositivos monitorados:")
     for key, device in DEVICES.items():

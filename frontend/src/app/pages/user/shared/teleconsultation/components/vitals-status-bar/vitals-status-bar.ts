@@ -139,32 +139,24 @@ import { environment } from '@env/environment';
           </div>
         </div>
         
-        <!-- Ações à direita -->
+        <!-- Ações à direita - SIMPLIFICADO -->
         <div class="actions">
+          <!-- Indicador de sincronização -->
           <span *ngIf="lastSync" class="sync-info">
             <app-icon name="check-circle" [size]="16" />
             {{ lastSync | date:'HH:mm:ss' }}
           </span>
           
+          <!-- Mensagem de captura (temporária) -->
           <span *ngIf="captureMessage" class="msg" [class.ok]="captureSuccess" [class.err]="!captureSuccess">
             {{ captureMessage }}
           </span>
           
-          <!-- OPERADOR: botão "Acontecendo" para marcar consulta ativa -->
-          <button *ngIf="!isProfessional" class="btn-acontecendo" 
-                  [class.active]="isAcontecendo" 
-                  (click)="toggleAcontecendo()"
-                  [title]="isAcontecendo ? 'Clique para desmarcar' : 'Clique para ativar captura de sinais'">
-            <span class="status-dot" [class.active]="isAcontecendo"></span>
-            <span>{{ isAcontecendo ? '🟢 Acontecendo' : '⚪ Iniciar Captura' }}</span>
-          </button>
-          
-          <!-- OPERADOR: botão capturar -->
-          <button *ngIf="!isProfessional" class="btn-capture" (click)="capturarSinais()" [disabled]="isCapturing">
-            <span *ngIf="isCapturing" class="spinner"></span>
-            <app-icon *ngIf="!isCapturing" name="radio" [size]="20" />
-            <span>{{ isCapturing ? 'Buscando...' : '📡 Capturar Sinais' }}</span>
-          </button>
+          <!-- ÚNICO BOTÃO: Status da consulta (automático) -->
+          <div *ngIf="!isProfessional" class="status-indicator" [class.active]="isConnected">
+            <span class="status-dot" [class.active]="isConnected"></span>
+            <span>{{ isConnected ? '🟢 Conectado' : '⚪ Aguardando...' }}</span>
+          </div>
           
           <!-- MÉDICO: botão analisar -->
           <button *ngIf="isProfessional" class="btn-analyze" (click)="analisarSinais()" [disabled]="!hasAnyVitals() || isAnalyzing">
@@ -259,8 +251,8 @@ import { environment } from '@env/environment';
       box-shadow: 0 4px 12px rgba(139,92,246,0.4);
     }
     
-    /* Botão Acontecendo */
-    .btn-acontecendo {
+    /* Indicador de Status (substituiu btn-acontecendo) */
+    .status-indicator {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -269,15 +261,8 @@ import { environment } from '@env/environment';
       border-radius: 20px;
       font-size: 14px;
       font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
       background: #334155;
       color: #94a3b8;
-      
-      &:hover { 
-        border-color: #22c55e;
-        color: #22c55e;
-      }
       
       &.active {
         background: linear-gradient(135deg, #22c55e, #16a34a);
@@ -594,7 +579,8 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   captureMessage = '';
   captureSuccess = false;
   lastSync: Date | null = null;
-  isAcontecendo = false;  // Botão "Acontecendo" para maleta itinerante
+  isAcontecendo = false;  // Controle interno (marcar automaticamente)
+  isConnected = false;    // Indicador de conexão SignalR
 
   // Fonocardiograma - Estetoscópio Digital
   phonocardiogram: PhonocardiogramData | null = null;
@@ -621,7 +607,20 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
   ngOnInit(): void {
     this.setupSubscriptions();
-    this.checkAcontecendoStatus();
+    
+    // Subscreve ao status de conexão SignalR
+    const connectionSub = this.medicalDevicesSync.isConnected$.subscribe(
+      connected => {
+        this.isConnected = connected;
+        console.log('[VitalsBar] SignalR conectado:', connected);
+      }
+    );
+    this.subscriptions.add(connectionSub);
+    
+    // AUTO-MARCAR como "acontecendo" quando entrar (não-profissional)
+    if (!this.isProfessional && this.appointmentId) {
+      this.autoMarcarAcontecendo();
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -819,6 +818,22 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
     this.medicalDevicesSync.sendVitalSigns(vitalsData);
     this.lastSync = new Date();
+  }
+
+  /**
+   * Marca automaticamente a consulta como "Acontecendo" ao entrar na teleconsulta
+   * Isso permite que a maleta envie sinais para esta consulta automaticamente
+   */
+  private async autoMarcarAcontecendo(): Promise<void> {
+    if (!this.appointmentId) return;
+    
+    try {
+      await this.http.post(`${environment.apiUrl}/biometrics/acontecendo/${this.appointmentId}`, {}).toPromise();
+      this.isAcontecendo = true;
+      console.log('[VitalsBar] 🟢 AUTO: Consulta marcada como acontecendo:', this.appointmentId);
+    } catch (error) {
+      console.error('[VitalsBar] Erro ao auto-marcar acontecendo:', error);
+    }
   }
 
   /**

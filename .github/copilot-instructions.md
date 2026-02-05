@@ -691,49 +691,54 @@ jitsi-web:
 
 ---
 
-## ✅ PROCEDIMENTO CORRETO DE DEPLOY (ATUALIZADO 04/02/2026)
+## ✅ PROCEDIMENTO CORRETO DE DEPLOY (ATUALIZADO 05/02/2026)
+
+### 🚀 Método Recomendado (1 comando)
+
+```powershell
+cd C:\telecuidar
+.\deploy-vps.ps1
+```
+
+O script faz **TUDO** automaticamente:
+1. Verifica se localhost está funcionando
+2. Exporta banco local (com schema correto)
+3. Commit/push se necessário
+4. Envia backup para VPS
+5. Executa ./deploy.sh na VPS (restore banco + rebuild)
+6. Valida que está funcionando em produção
 
 ### Pré-Requisitos
 - Sistema funcionando 100% em homologação local
-- Todos os arquivos commitados e enviados para GitHub
-- Banco PostgreSQL local com dados corretos
+- Docker Desktop rodando (para PostgreSQL)
+- Credenciais SSH configuradas para root@telecuidar.com.br
 
-### Passo a Passo
+### Scripts na VPS (criados 05/02/2026)
+| Script | Descrição |
+|--------|-----------|
+| `/opt/telecuidar/deploy.sh` | Deploy completo (git pull + restore + build + up) |
+| `/opt/telecuidar/restore-db.sh` | Somente restore de banco |
 
-```powershell
-# 1. VERIFICAR ARQUIVOS IGNORADOS
-git status --ignored --porcelain | Select-String "backend/|frontend/src/"
-# Se aparecer qualquer .cs, .ts, .html -> git add -f <arquivo>
+### Se Deploy Falhar
 
-# 2. TESTAR BUILD LOCAL
-dotnet build backend/WebAPI/WebAPI.csproj
-cd frontend; npx ng build --configuration=production; cd ..
+```bash
+# Ver logs do backend
+ssh root@telecuidar.com.br "docker logs telecuidar-backend --tail=50"
 
-# 3. COMMIT E PUSH
-git add .
-git commit -m "descrição das mudanças"
-git push origin main
+# Reexecutar deploy
+ssh root@telecuidar.com.br "cd /opt/telecuidar && ./deploy.sh"
 
-# 4. EXPORTAR BANCO LOCAL
-docker exec telecuidar-postgres-dev pg_dump -U postgres -d telecuidar --no-owner --no-acl > C:\telecuidar\backup.sql
-[System.IO.File]::WriteAllText("C:\telecuidar\backup_utf8.sql", (Get-Content C:\telecuidar\backup.sql -Raw), [System.Text.Encoding]::UTF8)
-
-# 5. COPIAR PARA VPS
-scp C:\telecuidar\backup_utf8.sql root@telecuidar.com.br:/opt/telecuidar/backup.sql
-
-# 6. NA VPS - ATUALIZAR CÓDIGO
-ssh root@telecuidar.com.br "cd /opt/telecuidar && git pull origin main"
-
-# 7. NA VPS - RESTAURAR BANCO
-ssh root@telecuidar.com.br "cd /opt/telecuidar && docker compose stop backend && docker exec telecuidar-postgres psql -U telecuidar -d postgres -c 'DROP DATABASE IF EXISTS telecuidar;' && docker exec telecuidar-postgres psql -U telecuidar -d postgres -c 'CREATE DATABASE telecuidar;' && docker cp /opt/telecuidar/backup.sql telecuidar-postgres:/tmp/backup.sql && docker exec telecuidar-postgres psql -U telecuidar -d telecuidar -f /tmp/backup.sql"
-
-# 8. NA VPS - REBUILD E RESTART
-ssh root@telecuidar.com.br "cd /opt/telecuidar && docker compose build backend frontend --no-cache && docker compose up -d"
-
-# 9. VERIFICAR
-ssh root@telecuidar.com.br "docker compose ps"
-# Todos containers devem estar "healthy"
+# Só restaurar banco (se erro de schema)
+ssh root@telecuidar.com.br "cd /opt/telecuidar && ./restore-db.sh"
 ```
+
+### ⚠️ LIÇÃO APRENDIDA (05/02/2026)
+
+**Problema:** Deploy falha com `column xxx does not exist`
+
+**Causa:** EF Core migrations rodam no local mas não na VPS (Windows CRLF corrompe comandos SSH).
+
+**Solução:** O script `deploy-vps.ps1` copia o banco inteiro do local para VPS, garantindo schema igual. Scripts bash ficam NA VPS para evitar problemas de encoding.
 
 ---
 
