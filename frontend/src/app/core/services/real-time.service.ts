@@ -77,6 +77,10 @@ export class RealTimeService implements OnDestroy {
   private _appointmentStatusChanged$ = new Subject<AppointmentStatusUpdate>();
   public appointmentStatusChanged$ = this._appointmentStatusChanged$.asObservable();
 
+  // Paciente aguardando na sala de vídeo
+  private _waitingInRoom$ = new Subject<{ appointmentId: string; patientName: string; userRole: string; timestamp: Date }>();
+  public waitingInRoom$ = this._waitingInRoom$.asObservable();
+
   // Grupos inscritos
   private subscribedGroups = new Set<string>();
 
@@ -238,6 +242,12 @@ export class RealTimeService implements OnDestroy {
     // Mudanças de status de consulta
     this.hubConnection.on('AppointmentStatusChanged', (update: AppointmentStatusUpdate) => {
       this.ngZone.run(() => this._appointmentStatusChanged$.next(update));
+    });
+
+    // Paciente/Enfermeira aguardando na sala de vídeo
+    this.hubConnection.on('WaitingInRoom', (data: { appointmentId: string; patientName: string; userRole: string; timestamp: Date }) => {
+      console.log('[RealTimeService] 🔔 WaitingInRoom recebido:', data);
+      this.ngZone.run(() => this._waitingInRoom$.next(data));
     });
 
     // Role notifications

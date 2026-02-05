@@ -6,8 +6,11 @@
 // Determina dinamicamente a URL da API baseado no host atual
 const getApiUrl = () => {
   if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    // Se acessando via IP ou não-localhost, usar o mesmo host para API
+    const host = window.location.hostname;    const protocol = window.location.protocol;
+    // Em HTTPS local, usar backend HTTPS (evita mixed content)
+    if (protocol === 'https:' && (host === 'localhost' || host === '127.0.0.1')) {
+      return 'https://localhost:7121/api';
+    }    // Se acessando via IP ou não-localhost, usar o mesmo host para API
     if (host !== 'localhost' && host !== '127.0.0.1') {
       return `http://${host}:5239/api`;
     }

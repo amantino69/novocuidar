@@ -68,6 +68,7 @@ export class TeleconsultationRealTimeService implements OnDestroy {
   private connectionPromise: Promise<void> | null = null;
   private isBrowser: boolean;
   private currentAppointmentId: string | null = null;
+  private activityCheckInterval: any = null; // Para atividade periódica (timeout prevention)
   
   // Subjects para eventos
   private _participantJoined$ = new Subject<ParticipantEvent>();
@@ -114,6 +115,7 @@ export class TeleconsultationRealTimeService implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clearActivityInterval();
     this.disconnect();
   }
 
@@ -232,8 +234,23 @@ export class TeleconsultationRealTimeService implements OnDestroy {
     await this.connect();
     if (this.hubConnection) {
       this.currentAppointmentId = appointmentId;
-      await this.hubConnection.invoke('JoinConsultation', appointmentId);
-      console.log('[TeleconsultationRealTime] Entrou na consulta:', appointmentId);
+      
+      // Obter role e nome do usuário para notificar o médico
+      const user = this.authService.getCurrentUser();
+      const userRole = user?.role || null;
+      const userName = user ? `${user.name} ${user.lastName || ''}`.trim() : null;
+      
+      await this.hubConnection.invoke('JoinConsultation', appointmentId, userRole, userName);
+      console.log('[TeleconsultationRealTime] Entrou na consulta:', appointmentId, '- Role:', userRole);
+      
+      // Iniciar intervalo para atualizar atividade (a cada 2 minutos)
+      // Isso previne que a consulta seja marcada como Abandoned pelo timeout job
+      this.clearActivityInterval();
+      this.activityCheckInterval = setInterval(() => {
+        this.updateActivity(appointmentId);
+      }, 2 * 60 * 1000); // 2 minutos em milissegundos
+      
+      console.log('[TeleconsultationRealTime] Intervalo de atividade iniciado (a cada 2 min)');
     }
   }
 
@@ -241,7 +258,35 @@ export class TeleconsultationRealTimeService implements OnDestroy {
     if (this.hubConnection) {
       await this.hubConnection.invoke('LeaveConsultation', appointmentId);
       this.currentAppointmentId = null;
+      this.clearActivityInterval();
       console.log('[TeleconsultationRealTime] Saiu da consulta:', appointmentId);
+    }
+  }
+
+  /**
+   * Atualiza LastActivityAt no backend (chamado periodicamente durante a consulta)
+   * Previne que a consulta seja marcada como Abandoned pelo timeout job
+   */
+  private async updateActivity(appointmentId: string): Promise<void> {
+    if (this.hubConnection && this.hubConnection.state === 'Connected') {
+      try {
+        await this.hubConnection.invoke('UpdateActivity', appointmentId);
+        console.log('[TeleconsultationRealTime] Atividade atualizada para consulta:', appointmentId);
+      } catch (error) {
+        // Silenciar erros para não poluir o console (chamadas frequentes)
+        console.debug('[TeleconsultationRealTime] Erro ao atualizar atividade:', error);
+      }
+    }
+  }
+
+  /**
+   * Limpa o intervalo de atividade
+   */
+  private clearActivityInterval(): void {
+    if (this.activityCheckInterval) {
+      clearInterval(this.activityCheckInterval);
+      this.activityCheckInterval = null;
+      console.log('[TeleconsultationRealTime] Intervalo de atividade cancelado');
     }
   }
 

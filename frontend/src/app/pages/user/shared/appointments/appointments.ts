@@ -99,6 +99,9 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
   isDetailsModalOpen = false;
   isPreConsultationModalOpen = false;
 
+  // Consultas com alguém aguardando na sala de vídeo
+  waitingAppointments = new Set<string>();
+
   // Real-time subscriptions
   private realTimeSubscriptions: Subscription[] = [];
   private isBrowser: boolean;
@@ -167,6 +170,16 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
         }
       );
       this.realTimeSubscriptions.push(entitySub);
+      
+      // Subscribe to WaitingInRoom notifications (alguém aguardando na sala de vídeo)
+      const waitingSub = this.realTimeService.waitingInRoom$.subscribe(
+        (data) => {
+          console.log('[Appointments] 🔔 Paciente aguardando na sala:', data);
+          this.waitingAppointments.add(data.appointmentId);
+          this.cdr.detectChanges();
+        }
+      );
+      this.realTimeSubscriptions.push(waitingSub);
     }).catch(error => {
       console.error('[Appointments] Erro ao conectar SignalR:', error);
     });
@@ -328,6 +341,8 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
   }
 
   accessConsultation(appointment: Appointment) {
+    // Remover indicador de "aguardando" ao entrar na consulta
+    this.waitingAppointments.delete(appointment.id);
     // Navigate to teleconsultation screen within the app
     this.router.navigate(['/teleconsulta', appointment.id]);
   }
@@ -374,6 +389,11 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
   closePreConsultationModal() {
     this.isPreConsultationModalOpen = false;
     this.selectedAppointment = null;
+  }
+
+  // Verifica se há alguém aguardando na sala de vídeo para uma consulta
+  isWaitingInRoom(appointmentId: string): boolean {
+    return this.waitingAppointments.has(appointmentId);
   }
 
   getAppointmentTypeLabel(type: AppointmentType): string {

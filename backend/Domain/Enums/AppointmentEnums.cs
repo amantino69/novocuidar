@@ -9,7 +9,8 @@ public enum AppointmentStatus
     InConsultation, // Médico entrou na consulta (NOVO)
     Completed,      // Encerrada
     Cancelled,      // Cancelada
-    NoShow          // Paciente não compareceu (NOVO)
+    NoShow,         // Paciente não compareceu (NOVO)
+    Abandoned       // Consulta abandonada por inatividade (TIMEOUT - NOVO)
 }
 
 public enum AppointmentType

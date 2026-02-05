@@ -36,6 +36,9 @@ public class Appointment : BaseEntity
     public string? SoapJson { get; set; } // Store SOAP notes as JSON
     public string? SpecialtyFieldsJson { get; set; } // Store specialty-specific fields as JSON
     
+    // Timeout/Abandonment Control
+    public DateTime? LastActivityAt { get; set; } // Última atividade registrada (para timeout de abandono)
+    
     // AI Generated Data
     public string? AISummary { get; set; } // AI-generated summary of the consultation
     public DateTime? AISummaryGeneratedAt { get; set; }

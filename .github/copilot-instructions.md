@@ -1,9 +1,27 @@
 # 📋 Instruções para IA - TeleCuidar POC
 
-> **IMPORTANTE**: Este arquivo contém instruções críticas para qualquer IA que trabalhe neste projeto.
+> ** SOMENTE RODE LOCALHOST NA PORTA 4200 (FRONTEND) E 5239 (BACKEND) 
+Se tiverem ocupadas mate elas sem me perguntar**
+
+
+IMPORTANTE**: Este arquivo contém instruções críticas para qualquer IA que trabalhe neste projeto.
 > Leia completamente antes de fazer qualquer alteração.
 
 ---
+***
+VResolva com pragmatismo: Sem Hangfire. Sem migrations complexas. Sem burocracia.
+
+Estratégia:
+
+✅ Migration simples (LastActivityAt apenas)
+✅ UpdateActivity é método trivial (sem background job)
+✅ Seed resetável em 30 segundos
+✅ Script automático de startup
+✅ Documentação clara para NUNCA voltar a isso
+
+***
+
+
 
 ## � LIÇÕES APRENDIDAS - INCIDENTE DE DEPLOY 04/02/2026
 
@@ -411,26 +429,61 @@ ssh root@telecuidar.com.br "echo 'SELECT MigrationId FROM \"__EFMigrationsHistor
 
 ---
 
-## 📝 POP - Procedimento Operacional Padrão
+## �️ PROTEÇÃO MÁXIMA CONTRA QUEBRAS (LIÇÃO APRENDIDA 05/02/2026)
 
-### 1️⃣ Antes de Iniciar Qualquer Trabalho
+> **Problema**: Sistema cai aleatoriamente → Restart leva 2 dias → 75% de overhead infraestrutura  
+> **Solução**: Checkpoints automáticos + Restore em <2 minutos
+
+### ⚡ INICIAR O SISTEMA (SEMPRE USE ISTO)
+```powershell
+cd c:\telecuidar
+.\start.ps1
+```
+Faz tudo automaticamente:
+- Mata processos das portas
+- Verifica Git, Docker, PostgreSQL
+- Inicia Frontend + Backend
+- Valida autenticação
+- Pronto em 30 segundos
+
+### 💾 SALVAR ESTADO (Quando está funcionando)
+```powershell
+cd c:\telecuidar
+.\checkpoint-create.ps1
+```
+Cria backup completo de:
+- Código (git tag)
+- Banco (dump PostgreSQL)
+- Configurações (.env)
+
+**Executar:** Toda manhã, antes de features grandes, antes de riscos
+
+### ↩️ RESTAURAR (Quando quebra)
+```powershell
+cd c:\telecuidar
+.\checkpoint-restore.ps1 -CheckpointDate 20260205_093000
+```
+Volta tudo em <2 minutos:
+- Git checkout
+- DROP + RESTORE banco
+- Limpa cache
+- Pronto!
+
+**Documentação completa**: [PROTECAO-SISTEMA.md](PROTECAO-SISTEMA.md)
+
+---
+
+## 📝 POP - Procedimento Operacional Padrão (DESENVOLVIMENTO)
+
+### 1️⃣ Iniciar Trabalho Diário
 ```bash
-cd /opt/telecuidar
+cd c:\telecuidar
 
-# Verificar branch atual
-git branch
+# Usar script robusto de startup
+.\start.ps1
 
-# Verificar se há mudanças não commitadas
-git status
-
-# Verificar remote configurado
-git remote -v
-# DEVE mostrar: novocuidar ou origin -> github.com/amantino69/novocuidar.git
-
-# Atualizar código do repositório
+# Verificar se código está atualizado
 git pull origin main
-# ou
-git pull novocuidar main
 ```
 
 ### 2️⃣ Após Fazer Alterações no Código
@@ -681,6 +734,70 @@ ssh root@telecuidar.com.br "cd /opt/telecuidar && docker compose build backend f
 ssh root@telecuidar.com.br "docker compose ps"
 # Todos containers devem estar "healthy"
 ```
+
+---
+
+## ✅ POP - Rodar Sistema Localmente (SEM ERROS)
+
+### 🚀 Método Rápido (RECOMENDADO)
+
+**Duplo-clique em**: `C:\telecuidar\start-local.bat`
+
+Isso vai:
+1. ✅ Matar todos processos nas portas (4200, 5239, 8443, 3000)
+2. ✅ Iniciar PostgreSQL local (Docker)
+3. ✅ Limpar cache do Angular
+4. ✅ Regenerar arquivos de environment
+5. ✅ Fazer build verificação do backend
+6. ✅ Iniciar Frontend HTTPS na 4200
+7. ✅ Iniciar Backend (HTTP 5239 + HTTPS 7121)
+8. ✅ Abrir automaticamente https://localhost:4200/
+
+**Credenciais:**
+- Email: `med_gt@telecuidar.com`
+- Senha: `123`
+
+### 🔧 Método Manual (se o .bat não funcionar)
+
+```powershell
+# Terminal PowerShell como Admin em C:\telecuidar
+
+# 1. Matar processos nas portas
+Get-NetTCPConnection -LocalPort 4200 | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+Get-NetTCPConnection -LocalPort 5239 | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+Get-NetTCPConnection -LocalPort 8443 | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+
+# 2. Limpar cache
+Remove-Item -Path "C:\telecuidar\frontend\.angular" -Recurse -Force -ErrorAction SilentlyContinue
+
+# 3. Regenerar environment
+cd C:\telecuidar\frontend
+node scripts\generate-env.js
+cd C:\telecuidar
+
+# 4. Frontend (Terminal 1)
+cd C:\telecuidar\frontend
+ng serve --host 0.0.0.0 --port 4200 --ssl --disable-host-check
+
+# 5. Backend (Terminal 2)
+cd C:\telecuidar
+dotnet run --project backend/WebAPI/WebAPI.csproj
+
+# 6. Abrir navegador
+https://localhost:4200/
+```
+
+### ❌ Troubleshooting
+
+| Problema | Solução |
+|----------|---------|
+| Porta já em uso | Rodar `start-local.bat` novamente (mata processos) |
+| "Mixed content" no HTTPS | Regenerar environment: `cd frontend && node scripts\generate-env.js` |
+| Docker não inicia | Abrir Docker Desktop e rodar novamente |
+| Backend não responde | Verificar: `Invoke-WebRequest https://localhost:7121/Health` |
+| Frontend branco | Acessar via https://localhost:4200 e aceitar certificado |
+| Erro de build | `dotnet clean backend/WebAPI/WebAPI.csproj` antes de rodar |
+| Porta 5239 ocupada após crash | `Get-Process | Where {$_.ProcessName -match "dotnet"} | Stop-Process -Force` |
 
 ---
 

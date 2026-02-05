@@ -293,10 +293,17 @@
               Cancelar
           </app-button>
 
+          <!-- Indicador de paciente aguardando na sala de vídeo -->
+          <div class="waiting-indicator" *ngIf="isWaitingInRoom(appointment.id)">
+            <span class="waiting-dot"></span>
+            <span class="waiting-text">Aguardando</span>
+          </div>
+
           <app-button 
               *ngIf="appointment.status === 'Scheduled' || appointment.status === 'Confirmed' || appointment.status === 'InProgress'" 
               variant="primary" 
               size="sm" 
+              [ngClass]="{'waiting-button': isWaitingInRoom(appointment.id)}"
               (click)="accessConsultation(appointment)">
               <app-icon name="video" [size]="16"></app-icon>
               Entrar na Consulta
