@@ -8,6 +8,7 @@
 # 1. Clique com botao direito neste arquivo
 # 2. Selecione "Executar com PowerShell"
 # 3. Se pedir permissao, clique "Sim"
+
 # ============================================================
 
 Write-Host ""
