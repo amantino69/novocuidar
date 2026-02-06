@@ -176,12 +176,17 @@ public class BleBridgeController : ControllerBase
 
     /// <summary>
     /// Retorna a consulta ativa no momento (para maleta itinerante)
-    /// PRIORIDADE: 1) Marcada como "Acontecendo" 2) InProgress 3) Scheduled/Confirmed
+    /// REGRA: Consulta é considerada "ativa" se teve atividade nos últimos 5 minutos
+    /// Isso evita que consultas abandonadas (paciente saiu) sejam confundidas com a atual
     /// </summary>
     [HttpGet("active-appointment")]
     public async Task<ActionResult> GetActiveAppointment()
     {
-        // PRIORIDADE 1: Consulta marcada como "Acontecendo" pelo paciente
+        // Janela de atividade: 5 minutos
+        var activityWindow = TimeSpan.FromMinutes(5);
+        var cutoffTime = DateTime.UtcNow - activityWindow;
+
+        // PRIORIDADE 1: Consulta marcada como "Acontecendo" pelo paciente (ainda válida)
         if (!string.IsNullOrEmpty(_acontecendoAppointmentId) && 
             _acontecendoTimestamp != null &&
             DateTime.UtcNow - _acontecendoTimestamp.Value <= AcontecendoTimeout)
@@ -190,43 +195,48 @@ public class BleBridgeController : ControllerBase
             {
                 var acontecendo = await _context.Appointments
                     .Where(a => a.Id == acontecendoGuid)
-                    .Select(a => new { a.Id, a.PatientId, a.ProfessionalId, a.Date, a.Time })
+                    .Select(a => new { a.Id, a.PatientId, a.ProfessionalId, a.Date, a.Time, a.LastActivityAt })
                     .FirstOrDefaultAsync();
                 
                 if (acontecendo != null)
                 {
                     _logger.LogInformation("[Maleta] Consulta ACONTECENDO: {Id}", acontecendo.Id);
-                    return Ok(acontecendo);
+                    return Ok(new { acontecendo.Id, acontecendo.PatientId, acontecendo.ProfessionalId, acontecendo.Date, acontecendo.Time });
                 }
             }
         }
 
-        // PRIORIDADE 2: Consultas InProgress (mais recente primeiro)
+        // PRIORIDADE 2: Consulta InProgress COM ATIVIDADE RECENTE (últimos 5 minutos)
         var activeAppointment = await _context.Appointments
-            .Where(a => a.Status == Domain.Enums.AppointmentStatus.InProgress)
-            .OrderByDescending(a => a.UpdatedAt)
-            .Select(a => new { a.Id, a.PatientId, a.ProfessionalId, a.Date, a.Time })
+            .Where(a => a.Status == Domain.Enums.AppointmentStatus.InProgress &&
+                       a.LastActivityAt != null && 
+                       a.LastActivityAt > cutoffTime)
+            .OrderByDescending(a => a.LastActivityAt)
+            .Select(a => new { a.Id, a.PatientId, a.ProfessionalId, a.Date, a.Time, a.LastActivityAt })
             .FirstOrDefaultAsync();
         
-        // PRIORIDADE 3: Scheduled/Confirmed mais recente
-        if (activeAppointment == null)
+        if (activeAppointment != null)
         {
-            activeAppointment = await _context.Appointments
-                .Where(a => a.Status == Domain.Enums.AppointmentStatus.Scheduled || 
-                           a.Status == Domain.Enums.AppointmentStatus.Confirmed)
-                .OrderByDescending(a => a.UpdatedAt)
-                .Select(a => new { a.Id, a.PatientId, a.ProfessionalId, a.Date, a.Time })
-                .FirstOrDefaultAsync();
+            _logger.LogInformation("[Maleta] Consulta ativa (LastActivityAt={Activity}): {Id}", 
+                activeAppointment.LastActivityAt, activeAppointment.Id);
+            return Ok(new { activeAppointment.Id, activeAppointment.PatientId, activeAppointment.ProfessionalId, activeAppointment.Date, activeAppointment.Time });
+        }
+
+        // Nenhuma consulta com atividade recente - informar o motivo
+        var inProgressCount = await _context.Appointments
+            .CountAsync(a => a.Status == Domain.Enums.AppointmentStatus.InProgress);
+        
+        if (inProgressCount > 0)
+        {
+            _logger.LogWarning("[Maleta] {Count} consulta(s) InProgress, mas nenhuma com atividade nos ultimos 5 min", inProgressCount);
+            return NotFound(new { 
+                message = $"Ha {inProgressCount} consulta(s) InProgress, mas nenhuma com atividade recente. Paciente pode ter saido.",
+                hint = "Aguarde o paciente entrar na teleconsulta ou finalize as consultas abandonadas."
+            });
         }
         
-        if (activeAppointment == null)
-        {
-            _logger.LogWarning("[Maleta] Nenhuma consulta encontrada");
-            return NotFound(new { message = "Nenhuma consulta ativa no momento" });
-        }
-        
-        _logger.LogInformation("[Maleta] Consulta ativa: {Id}", activeAppointment.Id);
-        return Ok(activeAppointment);
+        _logger.LogWarning("[Maleta] Nenhuma consulta InProgress encontrada");
+        return NotFound(new { message = "Nenhuma consulta em andamento no momento" });
     }
 
     /// <summary>
