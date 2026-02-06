@@ -5,6 +5,7 @@ import { LogoComponent } from '@app/shared/components/atoms/logo/logo';
 import { IconComponent } from '@app/shared/components/atoms/icon/icon';
 import { AvatarComponent } from '@app/shared/components/atoms/avatar/avatar';
 import { ThemeToggleComponent } from '@app/shared/components/atoms/theme-toggle/theme-toggle';
+import { DoctorCallAlertComponent } from '@app/shared/components/doctor-call-alert/doctor-call-alert';
 import { AuthService } from '@core/services/auth.service';
 import { NotificationsService, Notification } from '@core/services/notifications.service';
 import { RealTimeService, UserNotificationUpdate } from '@core/services/real-time.service';
@@ -21,7 +22,8 @@ import { Subscription } from 'rxjs';
     LogoComponent,
     IconComponent,
     AvatarComponent,
-    ThemeToggleComponent
+    ThemeToggleComponent,
+    DoctorCallAlertComponent
   ],
   templateUrl: './user-layout.html',
   styleUrl: './user-layout.scss'
