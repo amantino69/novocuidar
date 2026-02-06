@@ -144,13 +144,13 @@ import { environment } from '@env/environment';
         
         <!-- Fonocardiograma - Esteto. Digital -->
         <div class="vital phono" [class.has-value]="phonocardiogram">
-          <label><app-icon name="heart" [size]="18" /> 🩺 Fono</label>
+          <label><app-icon name="heart" [size]="18" /> Fono</label>
           <div class="phono-box">
             @if (phonocardiogram) {
               <div class="phono-waveform">
                 <canvas #waveformCanvas width="200" height="40"></canvas>
               </div>
-              <span class="phono-bpm">{{ phonocardiogram.heartRate || '--' }} bpm</span>
+              <span class="phono-mic" title="Microfone atual do navegador">{{ currentBrowserMicrophone }}</span>
               <button class="btn-play" (click)="playPhonocardiogram()" [title]="'Ouvir fonocardiograma'">
                 <app-icon [name]="isPlayingPhono ? 'pause' : 'play'" [size]="16" />
               </button>
@@ -167,21 +167,22 @@ import { environment } from '@env/environment';
               }
             } @else if (!isProfessional) {
               <!-- Selector de duração + Botão Capturar -->
-              <select class="duration-select" [(ngModel)]="auscultaDuration" title="Duração da captura">
+              <span class="phono-mic" title="Microfone atual do navegador">{{ currentBrowserMicrophone }}</span>
+              <select class="duration-select" [(ngModel)]="auscultaDuration" title="Duracao da captura">
                 <option value="10">10s</option>
                 <option value="15">15s</option>
                 <option value="20">20s</option>
                 <option value="30">30s</option>
               </select>
-              <button class="btn-ausculta" (click)="solicitarAusculta()" [disabled]="isCapturingAusculta" [title]="'Captura ' + auscultaDuration + 's de áudio'">
+              <button class="btn-ausculta" (click)="solicitarAusculta()" [disabled]="isCapturingAusculta" [title]="'Captura ' + auscultaDuration + 's de audio'">
                 @if (isCapturingAusculta) {
                   <span class="spinner-small"></span> Gravando...
                 } @else {
-                  🩺 Capturar
+                  Capturar
                 }
               </button>
             } @else {
-              <span class="phono-bpm waiting">Aguardando...</span>
+              <span class="phono-mic waiting">Aguardando captura...</span>
             }
           </div>
         </div>
@@ -517,16 +518,20 @@ import { environment } from '@env/environment';
           }
         }
         
-        .phono-bpm {
-          font-size: 16px;
-          font-weight: 700;
-          color: #dc2626;
+        .phono-mic {
+          font-size: 11px;
+          font-weight: 500;
+          color: #10b981;
+          background: rgba(16, 185, 129, 0.1);
+          padding: 2px 6px;
+          border-radius: 4px;
         }
 
-        .phono-bpm.waiting {
+        .phono-mic.waiting {
           font-size: 11px;
           font-weight: 400;
           color: #92400e;
+          background: transparent;
           opacity: 0.7;
         }
         
@@ -867,6 +872,9 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   phonocardiogramAudioUrl = '';
   isPlayingPhono = false;
   private needsWaveformRedraw = false;
+  
+  // Microfone atual do navegador (detectado dinamicamente)
+  currentBrowserMicrophone = 'Detectando...';
 
   private subscriptions = new Subscription();
   private patientData: User | null = null;
@@ -901,6 +909,10 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     if (!this.isProfessional && this.appointmentId) {
       this.autoMarcarAcontecendo();
     }
+    
+    // Detecta microfone do navegador (para mostrar ao lado do fono)
+    this.detectBrowserMicrophone();
+    this.listenMicrophoneChanges();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -996,18 +1008,17 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     // Subscription para fonocardiograma (Estetoscópio Digital)
     this.subscriptions.add(
       this.medicalDevicesSync.phonocardiogramReceived$.subscribe((data: PhonocardiogramData) => {
-        console.log('[VitalsBar] 🩺 Fonocardiograma chegou! data.appointmentId:', data.appointmentId, 'this.appointmentId:', this.appointmentId);
+        console.log('[VitalsBar] Fonocardiograma chegou! data.appointmentId:', data.appointmentId, 'this.appointmentId:', this.appointmentId);
         // Aceita o fonocardiograma se for da consulta atual OU se não tiver appointmentId definido
         if (data.appointmentId === this.appointmentId || !this.appointmentId) {
-          console.log('[VitalsBar] 🩺 Fonocardiograma aceito:', data);
+          console.log('[VitalsBar] Fonocardiograma aceito:', data);
           this.phonocardiogram = data;
           if (data.audioUrl) {
             this.phonocardiogramAudioUrl = environment.apiUrl.replace('/api', '') + data.audioUrl;
           }
-          // Atualiza FC se detectada
-          if (data.heartRate) {
-            this.heartRate = data.heartRate;
-          }
+          // NOTA: NÃO atualiza FC com heartRate da ausculta - cálculo impreciso
+          // O médico avalia o som diretamente
+          
           // Marcar para redesenhar waveform
           if (data.waveform && data.waveform.length > 0) {
             this.needsWaveformRedraw = true;
@@ -1424,15 +1435,15 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     }
 
     this.isCapturingAusculta = true;
-    console.log(`[VitalsBar] 🩺 Solicitando captura de ausculta (${duration}s)...`);
+    console.log(`[VitalsBar] Solicitando captura de ausculta (${duration}s)...`);
 
     this.http.post(`${environment.apiUrl}/biometrics/ausculta-request/${this.appointmentId}`, {
       durationSeconds: duration,
       position: 'cardiac'
     }).subscribe({
       next: (response: any) => {
-        console.log('[VitalsBar] ✅ Solicitação enviada:', response);
-        this.showDeviceToast('🩺', 'Ausculta Solicitada', `Gravando ${duration}s...`, 'info');
+        console.log('[VitalsBar] Solicitacao enviada:', response);
+        this.showDeviceToast('MIC', 'Ausculta Solicitada', `Gravando ${duration}s...`, 'info');
         
         // Aguarda duração + 2s buffer antes de liberar botão
         setTimeout(() => {
@@ -1440,10 +1451,64 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
         }, (duration + 2) * 1000);
       },
       error: (err) => {
-        console.error('[VitalsBar] ❌ Erro ao solicitar ausculta:', err);
+        console.error('[VitalsBar] Erro ao solicitar ausculta:', err);
         this.isCapturingAusculta = false;
-        this.showDeviceToast('❌', 'Erro', 'Não foi possível solicitar ausculta', 'warning');
+        this.showDeviceToast('X', 'Erro', 'Nao foi possivel solicitar ausculta', 'warning');
       }
+    });
+  }
+
+  /**
+   * Detecta o microfone padrão do navegador
+   */
+  private async detectBrowserMicrophone(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) {
+      this.currentBrowserMicrophone = 'N/A (SSR)';
+      return;
+    }
+
+    try {
+      // Solicita permissão de microfone (necessário para listar dispositivos)
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop()); // Para o stream imediatamente
+      
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = devices.filter(d => d.kind === 'audioinput');
+      
+      if (audioInputs.length === 0) {
+        this.currentBrowserMicrophone = 'Nenhum';
+        return;
+      }
+      
+      // Encontra o microfone padrão (geralmente o primeiro ou o marcado como default)
+      const defaultMic = audioInputs.find(d => d.deviceId === 'default') || audioInputs[0];
+      
+      // Formata o nome para exibição (remove prefixos longos)
+      let micName = defaultMic.label || 'Microfone ' + (audioInputs.indexOf(defaultMic) + 1);
+      
+      // Limita tamanho e remove "Default - " se houver
+      micName = micName.replace(/^Default\s*-\s*/i, '').replace(/\s*\(.*?\)\s*$/, '');
+      if (micName.length > 25) {
+        micName = micName.substring(0, 22) + '...';
+      }
+      
+      this.currentBrowserMicrophone = micName;
+      console.log('[VitalsBar] Microfone detectado:', micName);
+    } catch (error) {
+      console.warn('[VitalsBar] Erro ao detectar microfone:', error);
+      this.currentBrowserMicrophone = 'Sem permissao';
+    }
+  }
+
+  /**
+   * Escuta mudanças nos dispositivos de mídia (quando usuário troca microfone)
+   */
+  private listenMicrophoneChanges(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    
+    navigator.mediaDevices.addEventListener('devicechange', () => {
+      console.log('[VitalsBar] Dispositivos de midia alterados - redetectando microfone...');
+      this.detectBrowserMicrophone();
     });
   }
 }

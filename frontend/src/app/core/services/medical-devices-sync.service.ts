@@ -53,6 +53,7 @@ export interface PhonocardiogramData {
   durationSeconds: number;
   waveform?: number[];  // 500 pontos para visualização
   timestamp: string;
+  microphone?: string;  // Nome do dispositivo de captura (ex: "Ausculta (KT USB Audio)")
 }
 
 @Injectable({

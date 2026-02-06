@@ -243,7 +243,8 @@ async def check_for_request():
 
 
 async def send_phonocardiogram(appointment_id: str, samples: np.ndarray, 
-                               sample_rate: int, analysis: dict, waveform: list):
+                               sample_rate: int, analysis: dict, waveform: list,
+                               microphone_name: str = None):
     """Envia o fonocardiograma para o servidor"""
     url = f"{get_api_url()}/api/biometrics/phonocardiogram"
     
@@ -260,6 +261,7 @@ async def send_phonocardiogram(appointment_id: str, samples: np.ndarray,
         "format": "pcm_s16le",
         "durationSeconds": duration,
         "waveform": waveform,
+        "microphone": microphone_name or "USB",
         "values": {
             # BPM removido - deteccao por audio nao e confiavel
             # O medico avalia o som diretamente
@@ -286,7 +288,7 @@ async def send_phonocardiogram(appointment_id: str, samples: np.ndarray,
         return False
 
 
-async def process_request(device_id: int, request: dict):
+async def process_request(device_id: int, device_name: str, request: dict):
     """Processa uma solicitação de captura"""
     appointment_id = request.get('appointmentId')
     duration = request.get('durationSeconds', 10)
@@ -297,6 +299,7 @@ async def process_request(device_id: int, request: dict):
     print(f"   Consulta: {appointment_id[:8]}...")
     print(f"   Duracao: {duration}s")
     print(f"   Posicao: {position}")
+    print(f"   Microfone: {device_name}")
     print("=" * 50)
     
     # Captura
@@ -319,12 +322,12 @@ async def process_request(device_id: int, request: dict):
     
     # Envia
     print("\n[ENVIANDO] Para servidor...")
-    success = await send_phonocardiogram(appointment_id, samples, sr, analysis, waveform)
+    success = await send_phonocardiogram(appointment_id, samples, sr, analysis, waveform, device_name)
     
     return success
 
 
-async def polling_loop(device_id: int):
+async def polling_loop(device_id: int, device_name: str):
     """Loop principal de polling"""
     print(f"\n[AGUARDANDO] Solicitacoes de captura...")
     print(f"   Polling a cada {POLL_INTERVAL}s")
@@ -339,7 +342,7 @@ async def polling_loop(device_id: int):
             
             if request:
                 # Processa a solicitação
-                await process_request(device_id, request)
+                await process_request(device_id, device_name, request)
                 print(f"\n[AGUARDANDO] Proxima solicitacao...")
             else:
                 # Status periódico (a cada 30s)
@@ -385,11 +388,12 @@ async def main():
         print("\n[ERRO] Nenhum microfone encontrado!")
         return
     
-    print(f"\n[MIC] Microfone: [{device_id}] {sd.query_devices(device_id)['name']}")
+    device_name = sd.query_devices(device_id)['name']
+    print(f"\n[MIC] Microfone: [{device_id}] {device_name}")
     print(f"[API] Servidor: {'PRODUCAO' if USE_PRODUCTION else 'LOCAL'} ({get_api_url()})")
     
     try:
-        await polling_loop(device_id)
+        await polling_loop(device_id, device_name)
     except KeyboardInterrupt:
         print("\n\n[FIM] Encerrado pelo usuario")
     
