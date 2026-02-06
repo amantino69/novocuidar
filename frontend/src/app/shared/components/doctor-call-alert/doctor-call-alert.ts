@@ -10,10 +10,11 @@
  * - Botão para entrar diretamente na teleconsulta
  */
 
-import { Component, OnInit, OnDestroy, PLATFORM_ID, Inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, PLATFORM_ID, Inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { RealTimeService } from '@core/services/real-time.service';
 import { SoundNotificationService } from '@core/services/sound-notification.service';
 import { AuthService } from '@core/services/auth.service';
@@ -224,32 +225,73 @@ export class DoctorCallAlertComponent implements OnInit, OnDestroy {
   
   private subscriptions: Subscription[] = [];
   private dismissTimeout: any;
+  private waitingRoomSubscribed = false;
   
   constructor(
     private realTimeService: RealTimeService,
     private soundService: SoundNotificationService,
     private authService: AuthService,
     private router: Router,
+    private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object
   ) {}
   
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;
     
-    // Verificar se é profissional de saúde
-    const user = this.authService.getCurrentUser();
-    this.isProfessional = user?.role === 'PROFESSIONAL';
+    console.log('[DoctorCallAlert] Inicializando componente global...');
     
-    if (!this.isProfessional) return;
-    
-    // Conectar ao RealTimeService e escutar chamadas
-    this.realTimeService.connect().then(() => {
-      const sub = this.realTimeService.waitingInRoom$.subscribe(data => {
-        console.log('[DoctorCallAlert] Chamada recebida:', data);
-        this.showAlert(data);
-      });
-      this.subscriptions.push(sub);
+    // Usar authState$ para detectar quando usuario esta pronto
+    const authSub = this.authService.authState$.pipe(
+      filter(state => state.isAuthenticated && !!state.user)
+    ).subscribe(state => {
+      this.isProfessional = state.user?.role === 'PROFESSIONAL';
+      console.log('[DoctorCallAlert] Usuario autenticado, isProfessional:', this.isProfessional);
+      
+      if (this.isProfessional && !this.waitingRoomSubscribed) {
+        this.subscribeToWaitingRoom();
+      }
     });
+    this.subscriptions.push(authSub);
+    
+    // Tambem verificar o usuario atual (caso ja logado)
+    const user = this.authService.getCurrentUser();
+    if (user?.role === 'PROFESSIONAL') {
+      this.isProfessional = true;
+      console.log('[DoctorCallAlert] Usuario ja logado como PROFESSIONAL');
+      this.subscribeToWaitingRoom();
+    }
+  }
+  
+  private subscribeToWaitingRoom(): void {
+    if (this.waitingRoomSubscribed) return;
+    this.waitingRoomSubscribed = true;
+    
+    console.log('[DoctorCallAlert] Conectando ao SignalR e inscrevendo em waitingInRoom$...');
+    
+    // IMPORTANTE: Esperar a conexao SignalR estar pronta antes de inscrever
+    // Isso garante que o medico esta no grupo correto (user_{userId})
+    this.realTimeService.connect().then(() => {
+      console.log('[DoctorCallAlert] SignalR conectado! Inscrevendo em waitingInRoom$...');
+      
+      const waitingSub = this.realTimeService.waitingInRoom$.subscribe(data => {
+        console.log('[DoctorCallAlert] *** CHAMADA RECEBIDA ***:', data);
+        this.showAlert(data);
+        this.cdr.detectChanges();
+      });
+      this.subscriptions.push(waitingSub);
+      
+      // Log estado da conexao
+      console.log('[DoctorCallAlert] Inscricao em waitingInRoom$ ativa!');
+    }).catch(err => {
+      console.error('[DoctorCallAlert] Erro ao conectar SignalR:', err);
+    });
+    
+    // Tambem verificar estado da conexao
+    const connSub = this.realTimeService.isConnected$.subscribe(connected => {
+      console.log('[DoctorCallAlert] Status conexao SignalR:', connected);
+    });
+    this.subscriptions.push(connSub);
   }
   
   ngOnDestroy(): void {

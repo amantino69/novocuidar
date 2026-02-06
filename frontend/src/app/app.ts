@@ -2,6 +2,7 @@ import { Component, signal, inject, OnInit, OnDestroy } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { ModalComponent } from '@shared/components/atoms/modal/modal';
 import { PatientWaitingModalComponent } from '@shared/components/patient-waiting-modal/patient-waiting-modal.component';
+import { DoctorCallAlertComponent } from '@shared/components/doctor-call-alert/doctor-call-alert';
 import { TitleService } from '@core/services/title.service';
 import { SignalRService } from '@core/services/signalr.service';
 import { AuthService } from '@core/services/auth.service';
@@ -9,7 +10,7 @@ import { Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, ModalComponent, PatientWaitingModalComponent],
+  imports: [RouterOutlet, ModalComponent, PatientWaitingModalComponent, DoctorCallAlertComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
