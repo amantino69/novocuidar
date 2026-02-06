@@ -45,31 +45,42 @@ def get_api_url():
 
 
 def find_default_microphone():
-    """Encontra o microfone padrão do sistema"""
+    """Encontra o microfone padrão do sistema - PRIORIZA dispositivo 'Ausculta' (estetoscópio USB)"""
     if not SOUNDDEVICE_AVAILABLE:
         return None, None
     
     devices = sd.query_devices()
     mic_candidates = []
     
-    search_terms = ['realtek', 'microfone', 'microphone', 'grupo de microfones', 'mic array']
+    # PRIORIDADE: 'ausculta' e 'kt usb' são o estetoscópio USB - máxima prioridade
+    # Depois: microfones comuns do sistema
+    search_terms = ['ausculta', 'kt usb', 'eko', 'stethoscope', 'realtek', 'microfone', 'microphone', 'grupo de microfones', 'mic array']
     
     for i, dev in enumerate(devices):
         if dev['max_input_channels'] > 0:
             name = dev['name'].lower()
             sr = int(dev['default_samplerate'])
             
+            # Ignorar mixagem estéreo e loopback
             if 'mixagem' in name or 'stereo mix' in name or 'loopback' in name:
+                continue
+            
+            # Ignorar dispositivos com taxa muito baixa (telefonia)
+            if sr < 16000:
                 continue
             
             priority = 0
             for idx, term in enumerate(search_terms):
                 if term in name:
-                    priority = len(search_terms) - idx
+                    # Quanto menor o índice, maior a prioridade (ausculta = 0 = máxima)
+                    priority = (len(search_terms) - idx) * 10
                     break
             
+            # Preferir 44100Hz (padrão CD)
             if sr == 44100:
-                priority += 10
+                priority += 5
+            elif sr == 48000:
+                priority += 3
             
             mic_candidates.append((i, dev, sr, priority))
     
@@ -77,7 +88,9 @@ def find_default_microphone():
         return None, None
     
     mic_candidates.sort(key=lambda x: x[3], reverse=True)
-    return mic_candidates[0][0], mic_candidates[0][1]
+    selected = mic_candidates[0]
+    print(f"[MIC] Selecionado: [{selected[0]}] {selected[1]['name']} (sr={selected[2]}, pri={selected[3]})")
+    return selected[0], selected[1]
 
 
 def capture_audio(device_id: int, duration: int = 10, sample_rate: int = None):
