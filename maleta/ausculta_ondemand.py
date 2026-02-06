@@ -26,7 +26,7 @@ try:
     SOUNDDEVICE_AVAILABLE = True
 except ImportError:
     SOUNDDEVICE_AVAILABLE = False
-    print("❌ Execute: pip install sounddevice")
+    print("[ERRO] Execute: pip install sounddevice")
 
 # Configuração
 SAMPLE_RATE = 44100
@@ -86,7 +86,7 @@ def capture_audio(device_id: int, duration: int = 10, sample_rate: int = None):
         dev_info = sd.query_devices(device_id)
         sample_rate = int(dev_info['default_samplerate'])
     
-    print(f"\n🎤 Capturando {duration}s de áudio...")
+    print(f"\n[REC] Capturando {duration}s de audio...")
     print(f"   🔴 GRAVANDO...")
     
     try:
@@ -107,12 +107,12 @@ def capture_audio(device_id: int, duration: int = 10, sample_rate: int = None):
             time.sleep(0.2)
         
         sd.wait()
-        print(f"\n   ✅ Captura concluída!")
+        print(f"\n   [OK] Captura concluida!")
         
         return recording.flatten(), sample_rate
         
     except Exception as e:
-        print(f"\n   ❌ Erro: {e}")
+        print(f"\n   [ERRO] {e}")
         return None, 0
 
 
@@ -258,17 +258,17 @@ async def send_phonocardiogram(appointment_id: str, samples: np.ndarray,
             async with session.post(url, json=payload, timeout=30) as resp:
                 if resp.status == 200:
                     result = await resp.json()
-                    print(f"   ✅ Enviado para servidor!")
+                    print(f"   [OK] Enviado para servidor!")
                     if result.get('audioUrl'):
                         base_url = get_api_url().replace('/api', '')
-                        print(f"   🔊 {base_url}{result['audioUrl']}")
+                        print(f"   [AUDIO] {base_url}{result['audioUrl']}")
                     return True
                 else:
                     text = await resp.text()
-                    print(f"   ❌ Erro {resp.status}: {text[:100]}")
+                    print(f"   [ERRO] {resp.status}: {text[:100]}")
                     return False
     except Exception as e:
-        print(f"   ❌ Erro ao enviar: {e}")
+        print(f"   [ERRO] Ao enviar: {e}")
         return False
 
 
@@ -288,7 +288,7 @@ async def process_request(device_id: int, request: dict):
     # Captura
     samples, sr = capture_audio(device_id, duration)
     if samples is None:
-        print("   ❌ Falha na captura")
+        print("   [ERRO] Falha na captura")
         return False
     
     # Processa
@@ -330,7 +330,7 @@ async def polling_loop(device_id: int):
             else:
                 # Status periódico (a cada 30s)
                 if time.time() - last_status_time > 30:
-                    print(f"   ⏳ [{datetime.now().strftime('%H:%M:%S')}] Aguardando...")
+                    print(f"   [...] [{datetime.now().strftime('%H:%M:%S')}] Aguardando...")
                     last_status_time = time.time()
             
             # Aguarda antes de verificar novamente
@@ -348,17 +348,17 @@ async def main():
     
     parser = argparse.ArgumentParser(description='Ausculta ON-DEMAND - Captura só quando solicitado')
     parser.add_argument('--prod', action='store_true', help='Usar servidor de produção')
-    parser.add_argument('--device', type=int, help='ID do dispositivo de áudio')
+    parser.add_argument('--device', type=int, help='ID do dispositivo de audio')
     
     args = parser.parse_args()
     USE_PRODUCTION = args.prod
     
     print("\n" + "=" * 55)
-    print("   🩺 AUSCULTA ON-DEMAND - ESTETOSCÓPIO DIGITAL")
+    print("   [AUSCULTA] ESTETOSCOPIO DIGITAL - ON-DEMAND")
     print("=" * 55)
     
     if not SOUNDDEVICE_AVAILABLE:
-        print("\n❌ Instale: pip install sounddevice")
+        print("\n[ERRO] Instale: pip install sounddevice")
         return
     
     # Encontra microfone
@@ -368,18 +368,18 @@ async def main():
         device_id = args.device
     
     if device_id is None:
-        print("\n❌ Nenhum microfone encontrado!")
+        print("\n[ERRO] Nenhum microfone encontrado!")
         return
     
-    print(f"\n🎤 Microfone: [{device_id}] {sd.query_devices(device_id)['name']}")
-    print(f"📡 Servidor: {'PRODUÇÃO' if USE_PRODUCTION else 'LOCAL'} ({get_api_url()})")
+    print(f"\n[MIC] Microfone: [{device_id}] {sd.query_devices(device_id)['name']}")
+    print(f"[API] Servidor: {'PRODUCAO' if USE_PRODUCTION else 'LOCAL'} ({get_api_url()})")
     
     try:
         await polling_loop(device_id)
     except KeyboardInterrupt:
-        print("\n\n👋 Encerrado pelo usuário")
+        print("\n\n[FIM] Encerrado pelo usuario")
     
-    print("\n✅ Finalizado!")
+    print("\n[OK] Finalizado!")
 
 
 if __name__ == "__main__":
