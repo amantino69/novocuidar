@@ -146,7 +146,6 @@ import { environment } from '@env/environment';
         <div class="vital phono" [class.has-value]="phonocardiogram">
           <label>
             <app-icon name="heart" [size]="18" /> Fono
-            <span class="mic-label" *ngIf="!isProfessional">{{ currentBrowserMicrophone }}</span>
           </label>
           <div class="phono-box">
             @if (phonocardiogram) {
@@ -185,6 +184,11 @@ import { environment } from '@env/environment';
             } @else {
               <span class="phono-mic waiting">Aguardando captura...</span>
             }
+          </div>
+          <!-- Linha do microfone - sempre visivel para operador -->
+          <div class="mic-info" *ngIf="!isProfessional">
+            <span class="mic-icon">MIC:</span>
+            <span class="mic-name">{{ currentBrowserMicrophone }}</span>
           </div>
         </div>
         
@@ -630,6 +634,29 @@ import { environment } from '@env/environment';
             opacity: 0.5;
             cursor: not-allowed;
           }
+        }
+      }
+      
+      .mic-info {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 6px;
+        padding: 4px 10px;
+        background: rgba(30, 41, 59, 0.8);
+        border-radius: 4px;
+        border-left: 3px solid #3b82f6;
+        
+        .mic-icon {
+          font-size: 10px;
+          font-weight: 700;
+          color: #64748b;
+        }
+        
+        .mic-name {
+          font-size: 11px;
+          font-weight: 500;
+          color: #10b981;
         }
       }
     }
