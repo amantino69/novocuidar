@@ -1,0 +1,16 @@
+﻿ALTER TABLE "Appointments" ADD COLUMN IF NOT EXISTS "AssistantId" TEXT;
+ALTER TABLE "Appointments" ADD COLUMN IF NOT EXISTS "CheckInTime" TEXT;
+ALTER TABLE "Appointments" ADD COLUMN IF NOT EXISTS "ConsultationStartedAt" TEXT;
+ALTER TABLE "Appointments" ADD COLUMN IF NOT EXISTS "DoctorJoinedAt" TEXT;
+ALTER TABLE "Appointments" ADD COLUMN IF NOT EXISTS "ConsultationEndedAt" TEXT;
+ALTER TABLE "Appointments" ADD COLUMN IF NOT EXISTS "DurationInMinutes" INTEGER;
+ALTER TABLE "Appointments" ADD COLUMN IF NOT EXISTS "NotificationsSentCount" INTEGER DEFAULT 0;
+ALTER TABLE "Appointments" ADD COLUMN IF NOT EXISTS "LastNotificationSentAt" TEXT;
+ALTER TABLE "Appointments" ADD COLUMN IF NOT EXISTS "LastActivityAt" TEXT;
+ALTER TABLE "Appointments" ADD COLUMN IF NOT EXISTS "SpontaneousDemand" INTEGER DEFAULT 0;
+ALTER TABLE "Appointments" ADD COLUMN IF NOT EXISTS "UrgencyLevel" INTEGER DEFAULT 0;
+ALTER TABLE "Appointments" ADD COLUMN IF NOT EXISTS "PositionInQueue" INTEGER;
+ALTER TABLE "Appointments" ADD COLUMN IF NOT EXISTS "TriageNotes" TEXT;
+ALTER TABLE "Appointments" ADD COLUMN IF NOT EXISTS "ReasonForVisit" TEXT;
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion") VALUES ('20260201000000_AddReceptionistAndWaitingList', '8.0.0') ON CONFLICT DO NOTHING;
+INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion") VALUES ('20260202000000_AddSpontaneousDemandFields', '8.0.0') ON CONFLICT DO NOTHING;

@@ -20,7 +20,7 @@ echo.
 echo   * Balanca      - detecta peso automaticamente
 echo   * Omron        - detecta pressao automaticamente  
 echo   * Termometro   - detecta temperatura automaticamente
-echo   * Estetoscopio - detecta uso e captura sozinho!
+echo   * Estetoscopio - captura sob demanda (clique no botao)
 echo.
 echo   NAO PRECISA APERTAR NADA!
 echo.
@@ -30,19 +30,14 @@ echo.
 cd /d "%~dp0"
 set PYTHONIOENCODING=utf-8
 
-:: Ativa o ambiente virtual
-call ..\.venv\Scripts\activate.bat
+:: Inicia BLE (balanca, pressao, termometro) em janela separada
+start "TeleCuidar BLE" cmd /k "cd /d C:\telecuidar\maleta && chcp 65001 > nul && color 2F && title Maleta BLE && python maleta_itinerante.py"
 
-:: Inicia BLE (balanca, pressao, termometro) em janela separada minimizada
-start /min "TeleCuidar BLE" cmd /c "cd /d %~dp0.. && call .venv\Scripts\activate.bat && color 2F && python maleta\maleta_itinerante.py"
-
-:loop
-python maleta_automatica.py
+:: Inicia Ausculta ON-DEMAND em janela separada (nao gera arquivos ate ser solicitado)
+start "TeleCuidar Ausculta" cmd /k "cd /d C:\telecuidar\maleta && chcp 65001 > nul && color 3F && title Maleta Ausculta && python ausculta_ondemand.py"
 
 echo.
-echo Sistema reiniciando em 5 segundos...
-timeout /t 5 /nobreak > nul
-goto loop
-echo Sistema encerrou. Reiniciando em 5 segundos...
-timeout /t 5 /nobreak > nul
-goto loop
+echo   Janelas BLE e Ausculta abertas em segundo plano.
+echo   Esta janela pode ser fechada.
+echo.
+pause

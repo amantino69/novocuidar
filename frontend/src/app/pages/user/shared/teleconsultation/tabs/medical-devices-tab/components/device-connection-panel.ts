@@ -65,6 +65,18 @@ import { environment } from '@env/environment';
             <span>📡 Capturar Sinais</span>
           }
         </button>
+        <button type="button" class="btn-ausculta" 
+                [disabled]="isCapturingAusculta" 
+                (click)="solicitarAusculta()"
+                title="Solicita captura de áudio do estetoscópio (10 segundos)">
+          @if (isCapturingAusculta) {
+            <app-icon name="loader" [size]="16" class="spin" />
+            <span>Gravando...</span>
+          } @else {
+            <app-icon name="headphones" [size]="16" />
+            <span>🩺 Ausculta</span>
+          }
+        </button>
         @if (captureMessage) {
           <span class="capture-message" [class.success]="captureSuccess" [class.error]="!captureSuccess">
             {{ captureMessage }}
@@ -288,6 +300,34 @@ import { environment } from '@env/environment';
         background: linear-gradient(135deg, #2563eb, #1d4ed8);
         transform: translateY(-1px);
         box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+    }
+
+    .btn-ausculta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
       }
 
       &:disabled {
@@ -549,6 +589,7 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy, OnChan
   isCapturing = false;
   captureMessage = '';
   captureSuccess = false;
+  isCapturingAusculta = false;
 
   // Dados do paciente (carregados do perfil)
   patientGender: string | null = null;
@@ -1039,6 +1080,63 @@ export class DeviceConnectionPanelComponent implements OnInit, OnDestroy, OnChan
           this.isCapturing = false;
         }
       });
+  }
+
+  /**
+   * Solicita captura de ausculta (fonocardiograma) on-demand.
+   * A maleta vai capturar 10 segundos de áudio do estetoscópio.
+   */
+  solicitarAusculta(): void {
+    if (!this.appointmentId) {
+      this.captureMessage = 'Erro: sem consulta ativa';
+      this.captureSuccess = false;
+      return;
+    }
+
+    console.log('[Ausculta] 🩺 Solicitando captura de ausculta...');
+    this.isCapturingAusculta = true;
+    this.captureMessage = '🎤 Preparando captura...';
+
+    const apiUrl = `${environment.apiUrl}/biometrics/ausculta-request/${this.appointmentId}`;
+    
+    this.http.post<any>(apiUrl, { 
+      durationSeconds: 10,
+      position: 'cardiac'
+    }).subscribe({
+      next: (response) => {
+        console.log('[Ausculta] ✅ Solicitação enviada:', response);
+        this.captureSuccess = true;
+        this.captureMessage = '🩺 Ausculta solicitada! Aguarde 10s...';
+        
+        // Muda para "gravando" após 1 segundo (tempo para o script iniciar)
+        setTimeout(() => {
+          if (this.isCapturingAusculta) {
+            this.captureMessage = '🔴 Gravando ausculta...';
+          }
+        }, 1000);
+        
+        // Libera o botão após 15 segundos (10s gravação + 5s margem)
+        setTimeout(() => {
+          this.isCapturingAusculta = false;
+          this.captureMessage = '✅ Ausculta capturada!';
+          
+          // Limpa mensagem após 5 segundos
+          setTimeout(() => {
+            this.captureMessage = '';
+          }, 5000);
+        }, 15000);
+      },
+      error: (err) => {
+        console.error('[Ausculta] ❌ Erro:', err);
+        this.captureSuccess = false;
+        this.captureMessage = 'Erro ao solicitar ausculta';
+        this.isCapturingAusculta = false;
+        
+        setTimeout(() => {
+          this.captureMessage = '';
+        }, 5000);
+      }
+    });
   }
 
   ngOnDestroy(): void {

@@ -1,0 +1,241 @@
+# ========================================
+# TeleCuidar - Docker Compose HOMOLOGAÇÃO
+# Com PostgreSQL, Backend, Frontend e Jitsi
+# ========================================
+
+services:
+  # ----------------------------------------
+  # PostgreSQL - Banco de Dados
+  # ----------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: telecuidar-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: telecuidar
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      TZ: ${TZ:-America/Sao_Paulo}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - telecuidar-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d telecuidar"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------
+  # BACKEND - .NET API
+  # ----------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: telecuidar-backend
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5000
+      - DB_CONNECTION_STRING=Host=postgres;Port=5432;Database=telecuidar;Username=${DB_USER:-postgres};Password=${DB_PASSWORD:-postgres}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-TelecuidarSecretKey2024SuperSecureKey!@#$%}
+      - JWT_ISSUER=TelecuidarAPI
+      - JWT_AUDIENCE=TelecuidarClient
+      - JWT_EXPIRATION_MINUTES=60
+      - CORS_ALLOWED_ORIGINS=http://localhost:4000,http://localhost:4200,https://localhost
+      - FILE_UPLOAD_PATH=/app/uploads
+      - EMAIL_ENABLED=false
+      - FRONTEND_URL=http://localhost:4000
+      - SWAGGER_ENABLED=true
+      - ENABLE_HTTPS_REDIRECT=false
+      - JITSI_ENABLED=true
+      - JITSI_DOMAIN=localhost:8443
+      - JITSI_APP_ID=telecuidar
+      - JITSI_APP_SECRET=${JITSI_APP_SECRET:-TelecuidarJitsiSecretKey2024LocalDevelopment!@#$%^&*()}
+      - JITSI_REQUIRES_AUTH=false
+      - SEED_DATA_ENABLED=true
+      - POC_SEED_ENABLED=true
+      - TZ=${TZ:-America/Sao_Paulo}
+    volumes:
+      - ./backend/WebAPI:/app/src
+      - backend-uploads:/app/uploads
+      - backend-logs:/app/logs
+    expose:
+      - "5000"
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - telecuidar-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  # ----------------------------------------
+  # FRONTEND - Angular
+  # ----------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: telecuidar-frontend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - API_URL=http://localhost:5000
+      - JITSI_ENABLED=true
+      - JITSI_APP_ID=telecuidar
+      - TZ=${TZ:-America/Sao_Paulo}
+    ports:
+      - "4000:4000"
+    depends_on:
+      - backend
+    networks:
+      - telecuidar-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+  # ========================================
+  # JITSI MEET - VIDEOCHAMADAS (STAGING)
+  # ========================================
+
+  jitsi-web:
+    image: jitsi/web:stable-9753
+    container_name: telecuidar-jitsi-web
+    restart: unless-stopped
+    ports:
+      - "8443:443"
+    environment:
+      - ENABLE_AUTH=0
+      - ENABLE_GUESTS=1
+      - ENABLE_XMPP_WEBSOCKET=1
+      - ENABLE_COLIBRI_WEBSOCKET=1
+      - DISABLE_HTTPS=0
+      - JICOFO_AUTH_USER=focus
+      - PUBLIC_URL=https://localhost:8443
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_BOSH_URL_BASE=http://prosody:5280
+      - XMPP_DOMAIN=meet.jitsi
+      - XMPP_GUEST_DOMAIN=guest.meet.jitsi
+      - XMPP_MUC_DOMAIN=muc.meet.jitsi
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
+      - TZ=${TZ:-America/Sao_Paulo}
+    volumes:
+      - jitsi-web-config:/config
+    networks:
+      - jitsi-network
+
+  prosody:
+    image: jitsi/prosody:stable-9753
+    container_name: telecuidar-prosody
+    restart: unless-stopped
+    expose:
+      - "5222"
+      - "5347"
+      - "5280"
+    environment:
+      - AUTH_TYPE=jwt
+      - ENABLE_AUTH=0
+      - ENABLE_GUESTS=1
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_DOMAIN=meet.jitsi
+      - XMPP_GUEST_DOMAIN=guest.meet.jitsi
+      - XMPP_MUC_DOMAIN=muc.meet.jitsi
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
+      - JICOFO_AUTH_USER=focus
+      - JICOFO_AUTH_PASSWORD=jicofo_password
+      - JICOFO_COMPONENT_SECRET=jicofo_secret
+      - JVB_AUTH_USER=jvb
+      - JVB_AUTH_PASSWORD=jvb_password
+      - JWT_APP_ID=telecuidar
+      - JWT_APP_SECRET=${JITSI_APP_SECRET:-TelecuidarJitsiSecretKey2024LocalDevelopment!@#$%^&*()}
+      - JWT_ACCEPTED_ISSUERS=telecuidar
+      - JWT_ACCEPTED_AUDIENCES=telecuidar
+      - TZ=${TZ:-America/Sao_Paulo}
+    volumes:
+      - jitsi-prosody-config:/config
+    networks:
+      - jitsi-network
+
+  jicofo:
+    image: jitsi/jicofo:stable-9753
+    container_name: telecuidar-jicofo
+    restart: unless-stopped
+    environment:
+      - AUTH_TYPE=jwt
+      - ENABLE_AUTH=0
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_DOMAIN=meet.jitsi
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
+      - XMPP_MUC_DOMAIN=muc.meet.jitsi
+      - XMPP_SERVER=prosody
+      - JICOFO_AUTH_USER=focus
+      - JICOFO_AUTH_PASSWORD=jicofo_password
+      - JICOFO_COMPONENT_SECRET=jicofo_secret
+      - TZ=${TZ:-America/Sao_Paulo}
+    depends_on:
+      - prosody
+    volumes:
+      - jitsi-jicofo-config:/config
+    networks:
+      - jitsi-network
+
+  jvb:
+    image: jitsi/jvb:stable-9753
+    container_name: telecuidar-jvb
+    restart: unless-stopped
+    ports:
+      - "10000:10000/udp"
+      - "8080:8080"
+    environment:
+      - XMPP_AUTH_DOMAIN=auth.meet.jitsi
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.meet.jitsi
+      - XMPP_SERVER=prosody
+      - JVB_AUTH_USER=jvb
+      - JVB_AUTH_PASSWORD=jvb_password
+      - JVB_BREWERY_MUC=jvbbrewery
+      - JVB_PORT=10000
+      - JVB_TCP_HARVESTER_DISABLED=true
+      - JVB_STUN_SERVERS=stun.l.google.com:19302,stun1.l.google.com:19302
+      - COLIBRI_REST_ENABLED=true
+      - TZ=${TZ:-America/Sao_Paulo}
+    depends_on:
+      - prosody
+    volumes:
+      - jitsi-jvb-config:/config
+    networks:
+      - jitsi-network
+
+# ----------------------------------------
+# VOLUMES
+# ----------------------------------------
+volumes:
+  postgres-data:
+  backend-uploads:
+  backend-logs:
+  jitsi-web-config:
+  jitsi-prosody-config:
+  jitsi-jicofo-config:
+  jitsi-jvb-config:
+
+# ----------------------------------------
+# REDES
+# ----------------------------------------
+networks:
+  telecuidar-network:
+    driver: bridge
+  jitsi-network:
+    driver: bridge

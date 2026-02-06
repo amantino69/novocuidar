@@ -1,0 +1,230 @@
+╔═══════════════════════════════════════════════════════════════════════╗
+║         🆘 TROUBLESHOOTING - O que fazer quando algo quebra          ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+Cenário 1: Frontend não aparece em localhost:4200
+──────────────────────────────────────────────────
+
+❌ Sintoma: Navegador diz "Conexão recusada"
+🔧 Solução:
+
+   netstat -ano | findstr ":4200" | findstr "LISTENING"
+   
+   Se aparecer: Firefox/Chrome pode estar bloqueando
+   → Limpar cache: Ctrl+Shift+Delete
+   → Abrir nova aba anônima
+   
+   Se NÃO aparecer: Frontend não iniciou
+   → Matar processo: Get-Process ng -ErrorAction SilentlyContinue | Stop-Process -Force
+   → Rodar: .\start.ps1
+
+
+Cenário 2: Backend responde mas diz "unauthorized"
+────────────────────────────────────────────
+
+❌ Sintoma: Tenta login, retorna 401
+🔧 Solução:
+
+   1. Verificar banco de dados:
+      docker exec telecuidar-postgres psql -U postgres -d telecuidar -c "SELECT COUNT(*) FROM \"Users\";"
+   
+   2. Se for 0, banco está vazio:
+      .\checkpoint-restore.ps1 -CheckpointDate [data]
+   
+   3. Se tiver usuários mas não funciona:
+      • Verificar .env (JWT_SECRET correto?)
+      • Ver logs: docker logs telecuidar-backend --tail=20
+
+
+Cenário 3: Backend na porta 5239 não responde
+─────────────────────────────────────────
+
+❌ Sintoma: Porta 5239 ocupada ou não responde
+🔧 Solução:
+
+   1. Matar processos .NET:
+      Get-Process dotnet -ErrorAction SilentlyContinue | Stop-Process -Force
+   
+   2. Verificar porta:
+      netstat -ano | findstr ":5239"
+   
+   3. Se ocupada por outro PID:
+      Stop-Process -Id [PID] -Force
+   
+   4. Reiniciar backend:
+      .\start.ps1
+
+
+Cenário 4: Docker PostgreSQL não inicia
+────────────────────────────────────
+
+❌ Sintoma: "Cannot connect to Docker daemon"
+🔧 Solução:
+
+   1. Verificar Docker Desktop:
+      docker ps
+   
+   2. Se not running:
+      • Abrir Docker Desktop manualmente
+      • Aguardar "Docker is running"
+   
+   3. Se container morreu:
+      docker start telecuidar-postgres
+      docker ps  (verificar status)
+   
+   4. Se volume corrompido:
+      PERIGO! Usar backup do checkpoint
+      .\checkpoint-restore.ps1 -CheckpointDate [data]
+
+
+Cenário 5: Migração do banco falhou
+───────────────────────────────
+
+❌ Sintoma: "Migration table corrupted" ou similar
+🔧 Solução RÁPIDA:
+
+   NÃO TENTE CONSERTAR!
+   
+   Use restore:
+   .\checkpoint-restore.ps1 -CheckpointDate [data]
+
+
+Cenário 6: .gitignore tem arquivos que não deveriam
+──────────────────────────────────────────────
+
+❌ Sintoma: Backend fica dizendo "Controller not found"
+🔧 Solução:
+
+   1. Verificar qual arquivo falta:
+      git status --ignored --porcelain | findstr "backend/" | head -10
+   
+   2. Se aparecer algo em backend/:
+      git add -f backend/WebAPI/[arquivo].cs
+   
+   3. Commit:
+      git commit -m "fix: Force add ignored file"
+   
+   4. Se isso não resolver:
+      .\checkpoint-restore.ps1 -CheckpointDate [data]
+
+
+Cenário 7: Porta está em uso e não quer fechar
+───────────────────────────────────────────
+
+❌ Sintoma: "Address already in use" mesmo após Stop-Process
+🔧 Solução NUCLEAR:
+
+   1. Forçar kill de TODOS:
+      Get-Process | Where-Object { $_.ProcessName -match "dotnet|ng|node|cmd" } | Stop-Process -Force
+   
+   2. Aguardar 5 segundos:
+      Start-Sleep -Seconds 5
+   
+   3. Verificar liberação:
+      netstat -ano | findstr ":4200 :5239"
+   
+   4. Se ainda ocupada:
+      Reiniciar Windows (last resort)
+
+
+Cenário 8: System ficou lento depois de mudanças
+──────────────────────────────────────────────
+
+❌ Sintoma: Frontend/Backend carrega muito lento
+🔧 Solução:
+
+   1. Limpar cache:
+      Remove-Item -Path "c:\telecuidar\frontend\.angular" -Recurse -Force
+      Remove-Item -Path "c:\telecuidar\backend\WebAPI\bin" -Recurse -Force
+      Remove-Item -Path "c:\telecuidar\backend\WebAPI\obj" -Recurse -Force
+   
+   2. Rebuild:
+      .\start.ps1
+   
+   3. Se não melhorar:
+      .\checkpoint-restore.ps1 -CheckpointDate [data]
+
+
+Cenário 9: Arquivo corrompido no Git
+─────────────────────────────────
+
+❌ Sintoma: "fatal: object ... is corrupted"
+🔧 Solução:
+
+   1. Restaurar do checkpoint:
+      .\checkpoint-restore.ps1 -CheckpointDate [data]
+   
+   2. Se checkpoint também tiver problema:
+      git gc --aggressive (arriscado)
+      OU
+      Clonar repositório do zero
+
+
+Cenário 10: Não lembra qual checkpoint usar
+──────────────────────────────────────────
+
+❌ Sintoma: Vários checkpoints disponíveis
+🔧 Solução:
+
+   1. Listar checkpoints:
+      Get-ChildItem "c:\telecuidar\.checkpoints" -Directory | Sort-Object CreationTime -Descending
+   
+   2. Usar o MAIS RECENTE:
+      .\checkpoint-restore.ps1 -CheckpointDate [nome mais novo]
+   
+   3. Se não funcionar, tentar anterior
+
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║                   🆘 ÚLTIMA OPÇÃO - MANUAL RECOVERY                 ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+Se NADA funciona, fazer isso:
+
+1. Matar TUDO:
+   Get-Process | Where-Object { $_.ProcessName -match "dotnet|ng|node|cmd|powershell" } | Where-Object { $_.Id -ne $PID } | Stop-Process -Force
+
+2. Aguardar:
+   Start-Sleep -Seconds 10
+
+3. Voltar código:
+   cd c:\telecuidar
+   git reset --hard HEAD~1
+
+4. Restaurar banco:
+   docker exec telecuidar-postgres psql -U postgres -d postgres -c "DROP DATABASE IF EXISTS telecuidar;"
+   docker exec telecuidar-postgres psql -U postgres -d postgres -c "CREATE DATABASE telecuidar;"
+   docker cp "c:\telecuidar\.checkpoints\checkpoint_20260205_075621\banco.sql" telecuidar-postgres:/tmp/banco.sql
+   docker exec telecuidar-postgres psql -U postgres -d telecuidar -f /tmp/banco.sql
+
+5. Limpar cache:
+   Remove-Item -Path "c:\telecuidar\frontend\.angular" -Recurse -Force -ErrorAction SilentlyContinue
+   Remove-Item -Path "c:\telecuidar\backend\WebAPI\bin" -Recurse -Force -ErrorAction SilentlyContinue
+   Remove-Item -Path "c:\telecuidar\backend\WebAPI\obj" -Recurse -Force -ErrorAction SilentlyContinue
+
+6. Restart:
+   .\start.ps1
+
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║                       ☎️  AINDA NÃO FUNCIONA?                        ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+Coletar informações:
+
+1. Salvar output de erros:
+   .\start.ps1 2>&1 | Out-File "c:\telecuidar\error-log.txt"
+
+2. Ver logs do backend:
+   docker logs telecuidar-backend 2>&1 | Out-File "c:\telecuidar\backend-log.txt"
+
+3. Ver logs do frontend:
+   docker logs telecuidar-frontend 2>&1 | Out-File "c:\telecuidar\frontend-log.txt"
+
+4. Compartilhar estes arquivos para debug
+
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║              Lembre-se: Quando em dúvida, RESTORE!                  ║
+║        checkpoint-restore.ps1 resolve 95% dos problemas             ║
+╚═══════════════════════════════════════════════════════════════════════╝

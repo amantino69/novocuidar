@@ -1,0 +1,96 @@
+╔════════════════════════════════════════════════════════════════════╗
+║  GUIA RÁPIDO - Como se proteger de novo incidente de 2 dias     ║
+╚════════════════════════════════════════════════════════════════════╝
+
+PROBLEMA:
+─────────
+Seu sistema funciona 100%, mas de repente quebra.
+Tenta restart → Erros de arquivo, migração, .gitignore
+Passa 2+ dias rebootando.
+
+SOLUÇÃO (3 comandos simples):
+──────────────────────────────
+
+1️⃣  TODA MANHÃ - Inicie o sistema assim:
+    
+    .\start.ps1
+    
+    (Faz tudo sozinho: mata portas, inicia Frontend+Backend, valida)
+
+
+2️⃣  ANTES DE RISCOS - Salve o estado assim:
+    
+    .\checkpoint-create-simple.ps1
+    
+    (Salva: código, banco de dados, configurações)
+
+
+3️⃣  SE QUEBROU - Restaure assim:
+    
+    .\checkpoint-restore.ps1 -CheckpointDate 20260205_075621
+    
+    (Volta tudo em <2 minutos - código inteiro + banco)
+
+
+╔════════════════════════════════════════════════════════════════════╗
+║                    ✅ CHECKPOINT SALVO                           ║
+╚════════════════════════════════════════════════════════════════════╝
+
+ID:     checkpoint_20260205_075621
+Local:  c:\telecuidar\.checkpoints\checkpoint_20260205_075621
+Contem: banco.sql (banco completo), .env, docker-status
+
+PARA USAR ESTE CHECKPOINT:
+
+    .\checkpoint-restore.ps1 -CheckpointDate 20260205_075621
+
+
+╔════════════════════════════════════════════════════════════════════╗
+║                      ⏰ FLUXO DIÁRIO                              ║
+╚════════════════════════════════════════════════════════════════════╝
+
+SEGUNDA-FEIRA (início do dia):
+
+  1. .\start.ps1
+     ↓
+  2. [Trabalhar normalmente]
+     ↓
+  3. .\checkpoint-create-simple.ps1
+     ↓ Agora está seguro!
+
+
+SEGUNDA-FEIRA (se quebrou):
+
+  1. .\checkpoint-restore.ps1 -CheckpointDate 20260205_075621
+     ↓ (aguarda restauração <2 min)
+     ↓
+  2. .\start.ps1
+     ↓
+  3. [Continuar trabalhando]
+
+
+╔════════════════════════════════════════════════════════════════════╗
+║                         ⚠️  IMPORTANTE                            ║
+╚════════════════════════════════════════════════════════════════════╝
+
+✅ SEMPRE use .\start.ps1 (não rode ng serve ou dotnet direto)
+✅ CRIE checkpoint toda manhã
+✅ COMMIT seu código antes de tudo
+✅ SE QUEBROU, não tente consertar - USE RESTORE
+
+❌ NÃO ignore aviso de .gitignore
+❌ NÃO apague pasta .checkpoints
+❌ NÃO faça git reset --hard
+
+
+╔════════════════════════════════════════════════════════════════════╗
+║                       📊 ECONOMIA REAL                            ║
+╚════════════════════════════════════════════════════════════════════╝
+
+Antes:  Sistema quebra → 2-4 horas tentando restaurar
+Depois: Sistema quebra → 2 minutos com checkpoint
+
+5 min/dia criando checkpoint = 1 dia inteiro economizado ao ano!
+
+
+Boa sorte! 🎉

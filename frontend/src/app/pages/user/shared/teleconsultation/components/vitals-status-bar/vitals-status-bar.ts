@@ -155,6 +155,31 @@ import { environment } from '@env/environment';
                 <app-icon [name]="isPlayingPhono ? 'pause' : 'play'" [size]="16" />
               </button>
               <audio #phonoAudio [src]="phonocardiogramAudioUrl" (ended)="isPlayingPhono = false" style="display:none;"></audio>
+              <!-- Botão Nova Captura para paciente/enfermagem -->
+              @if (!isProfessional) {
+                <button class="btn-nova-captura" (click)="solicitarNovaAusculta()" [disabled]="isCapturingAusculta" title="Nova captura (10s)">
+                  @if (isCapturingAusculta) {
+                    <span class="spinner-small"></span>
+                  } @else {
+                    🔄
+                  }
+                </button>
+              }
+            } @else if (!isProfessional) {
+              <!-- Selector de duração + Botão Capturar -->
+              <select class="duration-select" [(ngModel)]="auscultaDuration" title="Duração da captura">
+                <option value="10">10s</option>
+                <option value="15">15s</option>
+                <option value="20">20s</option>
+                <option value="30">30s</option>
+              </select>
+              <button class="btn-ausculta" (click)="solicitarAusculta()" [disabled]="isCapturingAusculta" [title]="'Captura ' + auscultaDuration + 's de áudio'">
+                @if (isCapturingAusculta) {
+                  <span class="spinner-small"></span> Gravando...
+                } @else {
+                  🩺 Capturar
+                }
+              </button>
             } @else {
               <span class="phono-bpm waiting">Aguardando...</span>
             }
@@ -523,6 +548,83 @@ import { environment } from '@env/environment';
             background: #b91c1c;
           }
         }
+        
+        .btn-ausculta {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          background: linear-gradient(135deg, #dc2626, #b91c1c);
+          color: white;
+          border: none;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+          
+          &:hover:not(:disabled) {
+            transform: scale(1.05);
+            background: linear-gradient(135deg, #b91c1c, #991b1b);
+          }
+          
+          &:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+          }
+        }
+        
+        .spinner-small {
+          width: 12px;
+          height: 12px;
+          border: 2px solid rgba(255,255,255,0.3);
+          border-top-color: white;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+          display: inline-block;
+        }
+        
+        .duration-select {
+          padding: 4px 6px;
+          border: 1px solid #475569;
+          border-radius: 4px;
+          background: #1e293b;
+          color: white;
+          font-size: 11px;
+          cursor: pointer;
+          outline: none;
+          
+          &:focus {
+            border-color: #3b82f6;
+          }
+        }
+        
+        .btn-nova-captura {
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: none;
+          border-radius: 50%;
+          background: #475569;
+          color: white;
+          font-size: 12px;
+          cursor: pointer;
+          transition: all 0.2s;
+          margin-left: 4px;
+          
+          &:hover:not(:disabled) {
+            background: #64748b;
+            transform: scale(1.1);
+          }
+          
+          &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+        }
       }
     }
     
@@ -746,6 +848,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
   // Estados
   isCapturing = false;
+  isCapturingAusculta = false;
   isAnalyzing = false;
   captureMessage = '';
   captureSuccess = false;
@@ -753,6 +856,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   isAcontecendo = false;  // Controle interno (marcar automaticamente)
   isConnected = false;    // Indicador de conexão SignalR
   showDeviceGuide = true; // Guia de uso dos dispositivos (visível inicialmente)
+  auscultaDuration = 10;  // Duração da captura de ausculta em segundos
 
   // Toast de notificação para feedback visual de dispositivos
   deviceToast: { icon: string; title: string; message: string; type: 'success' | 'info' | 'warning' } | null = null;
@@ -1290,6 +1394,55 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       // Pergunta se quer abrir em nova aba
       if (confirm('O áudio não pôde ser reproduzido diretamente.\n\nDeseja abrir em uma nova aba?')) {
         window.open(this.phonocardiogramAudioUrl, '_blank');
+      }
+    });
+  }
+
+  /**
+   * Solicita captura de ausculta on-demand.
+   * Envia requisição para o backend, que fica aguardando o script Python buscar.
+   */
+  solicitarAusculta(): void {
+    const duration = parseInt(String(this.auscultaDuration), 10) || 10;
+    this.executarSolicitacaoAusculta(duration);
+  }
+
+  /**
+   * Solicita nova captura com duração fixa de 10s
+   */
+  solicitarNovaAusculta(): void {
+    this.executarSolicitacaoAusculta(10);
+  }
+
+  /**
+   * Executa a solicitação de ausculta
+   */
+  private executarSolicitacaoAusculta(duration: number): void {
+    if (!this.appointmentId) {
+      console.error('[VitalsBar] appointmentId não definido');
+      return;
+    }
+
+    this.isCapturingAusculta = true;
+    console.log(`[VitalsBar] 🩺 Solicitando captura de ausculta (${duration}s)...`);
+
+    this.http.post(`${environment.apiUrl}/biometrics/ausculta-request/${this.appointmentId}`, {
+      durationSeconds: duration,
+      position: 'cardiac'
+    }).subscribe({
+      next: (response: any) => {
+        console.log('[VitalsBar] ✅ Solicitação enviada:', response);
+        this.showDeviceToast('🩺', 'Ausculta Solicitada', `Gravando ${duration}s...`, 'info');
+        
+        // Aguarda duração + 2s buffer antes de liberar botão
+        setTimeout(() => {
+          this.isCapturingAusculta = false;
+        }, (duration + 2) * 1000);
+      },
+      error: (err) => {
+        console.error('[VitalsBar] ❌ Erro ao solicitar ausculta:', err);
+        this.isCapturingAusculta = false;
+        this.showDeviceToast('❌', 'Erro', 'Não foi possível solicitar ausculta', 'warning');
       }
     });
   }

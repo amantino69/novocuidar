@@ -464,6 +464,73 @@ public class BleBridgeController : ControllerBase
         return Ok(new { message = "Cache recuperado", devices = result });
     }
     
+    // ============================================
+    // AUSCULTA SOB DEMANDA
+    // ============================================
+    
+    private static readonly Dictionary<Guid, AuscultaRequest> _auscultaRequests = new();
+    private static readonly object _auscultaLock = new();
+    
+    /// <summary>
+    /// Solicita captura de ausculta para a maleta (operador clica no botão)
+    /// O script Python faz polling neste endpoint
+    /// </summary>
+    [HttpPost("ausculta-request/{appointmentId}")]
+    public ActionResult RequestAusculta(Guid appointmentId, [FromBody] AuscultaRequestDto? dto)
+    {
+        lock (_auscultaLock)
+        {
+            _auscultaRequests[appointmentId] = new AuscultaRequest
+            {
+                AppointmentId = appointmentId,
+                RequestedAt = DateTime.UtcNow,
+                DurationSeconds = dto?.DurationSeconds ?? 10,
+                Position = dto?.Position ?? "cardiac"
+            };
+        }
+        
+        _logger.LogInformation("[Ausculta] Solicitação de captura para appointment {Id}", appointmentId);
+        return Ok(new { message = "Captura solicitada", appointmentId });
+    }
+    
+    /// <summary>
+    /// Verifica se há solicitação de ausculta pendente (polled pelo script Python)
+    /// Retorna a solicitação e a remove da fila
+    /// </summary>
+    [HttpGet("ausculta-request")]
+    public ActionResult GetPendingAuscultaRequest()
+    {
+        lock (_auscultaLock)
+        {
+            // Limpa solicitações antigas (mais de 60 segundos)
+            var cutoff = DateTime.UtcNow.AddSeconds(-60);
+            var oldKeys = _auscultaRequests.Where(kvp => kvp.Value.RequestedAt < cutoff)
+                .Select(kvp => kvp.Key).ToList();
+            foreach (var key in oldKeys)
+            {
+                _auscultaRequests.Remove(key);
+            }
+            
+            // Retorna primeira solicitação pendente
+            if (_auscultaRequests.Count > 0)
+            {
+                var first = _auscultaRequests.First();
+                _auscultaRequests.Remove(first.Key);
+                
+                _logger.LogInformation("[Ausculta] Retornando solicitação pendente: {Id}", first.Key);
+                return Ok(new 
+                { 
+                    pending = true, 
+                    appointmentId = first.Value.AppointmentId,
+                    durationSeconds = first.Value.DurationSeconds,
+                    position = first.Value.Position
+                });
+            }
+        }
+        
+        return Ok(new { pending = false });
+    }
+    
     /// <summary>
     /// Converte JsonElement ou objeto para decimal
     /// </summary>
@@ -624,4 +691,18 @@ public class PhonocardiogramDto
     public string? Format { get; set; }  // "pcm_s16le"
     public double? DurationSeconds { get; set; }
     public List<double>? Waveform { get; set; }  // 500 pontos para visualização
+}
+
+public class AuscultaRequest
+{
+    public Guid AppointmentId { get; set; }
+    public DateTime RequestedAt { get; set; }
+    public int DurationSeconds { get; set; } = 10;
+    public string Position { get; set; } = "cardiac";  // cardiac, pulmonary, etc.
+}
+
+public class AuscultaRequestDto
+{
+    public int? DurationSeconds { get; set; }
+    public string? Position { get; set; }
 }
