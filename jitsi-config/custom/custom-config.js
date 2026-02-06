@@ -97,6 +97,25 @@ var config = {
     enableNoAudioDetection: true,
     
     // ========================================
+    // PROCESSAMENTO DE ÁUDIO - IMPORTANTE!
+    // ========================================
+    // Desabilitar TODOS os processamentos de áudio do WebRTC
+    // Isso evita interferência na captura do estetoscópio USB pelo script Python
+    // O WebRTC aplica AGC/NS/AEC a nível de sistema, corrompendo a captura do sounddevice
+    disableAP: true,       // Desabilita Audio Processing
+    disableAEC: true,      // Desabilita Acoustic Echo Cancellation
+    disableNS: true,       // Desabilita Noise Suppression
+    disableAGC: true,      // Desabilita Auto Gain Control
+    disableHPF: true,      // Desabilita High Pass Filter
+    stereo: false,
+    
+    // Qualidade de áudio (sem processamento)
+    audioQuality: {
+        stereo: false,
+        opusMaxAverageBitrate: 20000
+    },
+
+    // ========================================
     // SEGURANÇA E PRIVACIDADE
     // ========================================
     // Desabilitar requisições a terceiros

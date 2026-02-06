@@ -269,7 +269,22 @@ export class JitsiService {
         startWithAudioMuted: false,
         startWithVideoMuted: false,
         disableDeepLinking: true,
-        defaultLanguage: 'ptBR'
+        defaultLanguage: 'ptBR',
+        
+        // IMPORTANTE: Desabilitar TODOS os processamentos de áudio do WebRTC
+        // Isso evita interferência na captura do estetoscópio USB
+        disableAP: true,       // Desabilita Audio Processing
+        disableAEC: true,      // Desabilita Acoustic Echo Cancellation
+        disableNS: true,       // Desabilita Noise Suppression
+        disableAGC: true,      // Desabilita Auto Gain Control
+        disableHPF: true,      // Desabilita High Pass Filter
+        stereo: false,
+        
+        // Configurar constraints de áudio para desabilitar processamento
+        audioQuality: {
+          stereo: false,
+          opusMaxAverageBitrate: 20000
+        }
       };
 
       const interfaceConfigOverwrite = {
