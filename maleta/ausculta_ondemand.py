@@ -100,7 +100,7 @@ def capture_audio(device_id: int, duration: int = 10, sample_rate: int = None):
         sample_rate = int(dev_info['default_samplerate'])
     
     print(f"\n[REC] Capturando {duration}s de audio...")
-    print(f"   🔴 GRAVANDO...")
+    print(f"   [GRAVANDO...]")
     
     try:
         recording = sd.rec(
@@ -115,7 +115,7 @@ def capture_audio(device_id: int, duration: int = 10, sample_rate: int = None):
         while time.time() - start_time < duration:
             elapsed = time.time() - start_time
             progress = elapsed / duration
-            bar = '█' * int(progress * 30) + '░' * (30 - int(progress * 30))
+            bar = '#' * int(progress * 30) + '-' * (30 - int(progress * 30))
             print(f"   [{bar}] {int(elapsed)}/{duration}s", end='\r')
             time.sleep(0.2)
         
@@ -292,10 +292,10 @@ async def process_request(device_id: int, request: dict):
     position = request.get('position', 'cardiac')
     
     print(f"\n" + "=" * 50)
-    print(f"📥 SOLICITAÇÃO RECEBIDA!")
+    print(f"[CAPTURA] SOLICITACAO RECEBIDA!")
     print(f"   Consulta: {appointment_id[:8]}...")
-    print(f"   Duração: {duration}s")
-    print(f"   Posição: {position}")
+    print(f"   Duracao: {duration}s")
+    print(f"   Posicao: {position}")
     print("=" * 50)
     
     # Captura
@@ -309,7 +309,7 @@ async def process_request(device_id: int, request: dict):
     
     # Analisa
     analysis = analyze_audio(samples, sr)
-    print(f"\n📊 Análise:")
+    print(f"\n[ANALISE]:")
     print(f"   • BPM: {analysis['bpm'] or 'N/A'}")
     print(f"   • Qualidade: {analysis['quality']}%")
     
@@ -317,7 +317,7 @@ async def process_request(device_id: int, request: dict):
     waveform = generate_waveform(samples)
     
     # Envia
-    print("\n📤 Enviando para servidor...")
+    print("\n[ENVIANDO] Para servidor...")
     success = await send_phonocardiogram(appointment_id, samples, sr, analysis, waveform)
     
     return success
@@ -325,7 +325,7 @@ async def process_request(device_id: int, request: dict):
 
 async def polling_loop(device_id: int):
     """Loop principal de polling"""
-    print(f"\n🔄 Aguardando solicitações de captura...")
+    print(f"\n[AGUARDANDO] Solicitacoes de captura...")
     print(f"   Polling a cada {POLL_INTERVAL}s")
     print(f"   Pressione Ctrl+C para encerrar\n")
     
@@ -339,7 +339,7 @@ async def polling_loop(device_id: int):
             if request:
                 # Processa a solicitação
                 await process_request(device_id, request)
-                print(f"\n🔄 Aguardando próxima solicitação...")
+                print(f"\n[AGUARDANDO] Proxima solicitacao...")
             else:
                 # Status periódico (a cada 30s)
                 if time.time() - last_status_time > 30:
@@ -352,7 +352,7 @@ async def polling_loop(device_id: int):
         except asyncio.CancelledError:
             break
         except Exception as e:
-            print(f"   ⚠️ Erro: {e}")
+            print(f"   [ERRO] {e}")
             await asyncio.sleep(POLL_INTERVAL)
 
 
