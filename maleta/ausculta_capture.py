@@ -297,7 +297,8 @@ async def send_to_server(wav_file: str, sample_rate: int, analysis: dict, wavefo
         "durationSeconds": duration,
         "waveform": waveform,
         "values": {
-            "heartRate": analysis.get('bpm'),
+            # SEGURANÇA: heartRate REMOVIDO - cálculo por áudio não é confiável!
+            # FC deve vir APENAS de dispositivos médicos certificados (Omron, oxímetro)
             "quality": analysis.get('quality', 0)
         }
     }

@@ -156,42 +156,95 @@ state = ServiceState()
 
 def sfloat_to_float(raw: int) -> float:
     """Converte IEEE 11073 SFLOAT para float"""
+    # Valores especiais
+    if raw == 0x07FF:  # NaN
+        return float('nan')
+    if raw == 0x0800:  # NRes (not at this resolution)
+        return float('nan')
+    if raw == 0x07FE:  # +INFINITY
+        return float('inf')
+    if raw == 0x0802:  # -INFINITY
+        return float('-inf')
+    
     mantissa = raw & 0x0FFF
     if mantissa >= 0x0800:
-        mantissa -= 0x1000
+        mantissa -= 0x1000  # Complemento de 2 para 12 bits
     exponent = (raw >> 12) & 0x0F
     if exponent >= 0x08:
-        exponent -= 0x10
+        exponent -= 0x10  # Complemento de 2 para 4 bits
     return mantissa * (10 ** exponent)
 
 
 def processar_pressao(data: bytes) -> dict:
-    """Processa dados do Blood Pressure Measurement"""
+    """Processa dados do Blood Pressure Measurement (BLE spec)"""
     if len(data) < 7:
         return None
     
     flags = data[0]
     offset = 1
     
-    sistolica = sfloat_to_float(struct.unpack_from('<H', data, offset)[0])
+    # Lê os valores raw (SFLOAT - 2 bytes cada)
+    sys_raw = struct.unpack_from('<H', data, offset)[0]
     offset += 2
-    diastolica = sfloat_to_float(struct.unpack_from('<H', data, offset)[0])
+    dia_raw = struct.unpack_from('<H', data, offset)[0]
     offset += 2
-    map_value = sfloat_to_float(struct.unpack_from('<H', data, offset)[0])
+    map_raw = struct.unpack_from('<H', data, offset)[0]
     offset += 2
+    
+    # Converte de SFLOAT para float
+    sistolica = sfloat_to_float(sys_raw)
+    diastolica = sfloat_to_float(dia_raw)
+    map_value = sfloat_to_float(map_raw)
     
     resultado = {
         "systolic": round(sistolica),
         "diastolic": round(diastolica),
-        "map": round(map_value)
+        "map": round(map_value),
+        "timestamp": None  # Para comparação
     }
     
+    # ORDEM DOS CAMPOS segundo BLE Blood Pressure Measurement spec:
+    # 1. Timestamp (se flag bit 1 = 0x02)
+    # 2. Pulse Rate (se flag bit 2 = 0x04)
+    # 3. User ID (se flag bit 3 = 0x08)
+    # 4. Measurement Status (se flag bit 4 = 0x10)
+    
+    # 1. Extrai timestamp se presente (flag bit 1 = 0x02)
+    if flags & 0x02 and len(data) >= offset + 7:
+        year = struct.unpack_from('<H', data, offset)[0]
+        month = data[offset + 2]
+        day = data[offset + 3]
+        hour = data[offset + 4]
+        minute = data[offset + 5]
+        second = data[offset + 6]
+        offset += 7
+        
+        try:
+            from datetime import datetime as dt
+            resultado["timestamp"] = dt(year, month, day, hour, minute, second)
+            logger.debug(f"   Timestamp: {year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}")
+        except Exception as e:
+            logger.debug(f"   Timestamp inválido: {e}")
+    
+    # 2. Pulse Rate (flag bit 2 = 0x04) - VEM LOGO APÓS TIMESTAMP!
     if flags & 0x04 and len(data) >= offset + 2:
-        if flags & 0x02:
-            offset += 7
-        if len(data) >= offset + 2:
-            pulse = sfloat_to_float(struct.unpack_from('<H', data, offset)[0])
-            resultado["pulse"] = round(pulse)
+        pulse_raw = struct.unpack_from('<H', data, offset)[0]
+        pulse = sfloat_to_float(pulse_raw)
+        resultado["pulse"] = round(pulse)
+        offset += 2
+    
+    # 3. User ID (flag bit 3 = 0x08) - ignoramos
+    if flags & 0x08 and len(data) >= offset + 1:
+        offset += 1
+    
+    # 4. Measurement Status (flag bit 4 = 0x10) - ignoramos
+    if flags & 0x10 and len(data) >= offset + 2:
+        offset += 2
+    
+    # Log resumido
+    ts_str = resultado["timestamp"].strftime("%d/%m %H:%M") if resultado.get("timestamp") else "sem data"
+    pulse_str = f", Pulso: {resultado['pulse']}" if resultado.get('pulse') else ""
+    logger.info(f"📊 Medição: {resultado['systolic']}/{resultado['diastolic']} mmHg{pulse_str} | {ts_str}")
     
     return resultado
 
@@ -424,14 +477,18 @@ async def conectar_omron():
             logger.warning(f"⚠️ Erro ao pausar scanner: {e}")
     
     dados_pressao = None
+    todas_medicoes = []  # Coleta TODAS as medições
     pressao_recebida = asyncio.Event()
+    ultima_notificacao = [None]  # Mutable para closure
     
     def notification_handler(sender, data):
         nonlocal dados_pressao
         logger.info(f"📩 Dados recebidos: {len(data)} bytes - {data.hex()}")
         resultado = processar_pressao(data)
         if resultado:
+            todas_medicoes.append(resultado)
             dados_pressao = resultado
+            ultima_notificacao[0] = asyncio.get_event_loop().time()
             pressao_recebida.set()
     
     try:
@@ -454,22 +511,46 @@ async def conectar_omron():
                 await client.start_notify(char_uuid, notification_handler)
                 logger.info("📊 Aguardando medição... (3 minutos)")
                 logger.info("   → Faça a medição normalmente no aparelho")
+                logger.info("   → Após medir, APERTE O BOTÃO BLUETOOTH no Omron para sincronizar")
                 
                 # Loop de 3 minutos - tempo suficiente para medição completa (~50s)
                 for i in range(180):  # 3 minutos
                     if not client.is_connected:
                         logger.warning("❌ Conexão perdida!")
                         break
+                    
+                    # Se recebeu alguma medição, aguarda mais 3 segundos para coletar todas
                     if pressao_recebida.is_set():
-                        break
+                        if ultima_notificacao[0]:
+                            tempo_desde_ultima = asyncio.get_event_loop().time() - ultima_notificacao[0]
+                            if tempo_desde_ultima >= 3.0:  # 3s sem novas notificações
+                                logger.info(f"📦 Recebidas {len(todas_medicoes)} medição(ões) da memória")
+                                break
                     await asyncio.sleep(1)
                 
-                if dados_pressao:
+                # Seleciona a medição MAIS RECENTE pelo timestamp
+                if todas_medicoes:
+                    # Filtra medições com timestamp válido
+                    com_timestamp = [m for m in todas_medicoes if m.get('timestamp')]
+                    
+                    if com_timestamp:
+                        # Ordena por timestamp (mais recente primeiro)
+                        com_timestamp.sort(key=lambda x: x['timestamp'], reverse=True)
+                        dados_pressao = com_timestamp[0]
+                        logger.info(f"✅ Selecionada medição mais recente: {dados_pressao['timestamp']}")
+                    else:
+                        # Sem timestamp, pega a última recebida
+                        dados_pressao = todas_medicoes[-1]
+                        logger.info(f"⚠️ Sem timestamps, usando última medição recebida")
+                    
                     pulse_info = f", Pulso: {dados_pressao['pulse']} bpm" if 'pulse' in dados_pressao else ""
-                    logger.info(f"💓 PRESSÃO: {dados_pressao['systolic']}/{dados_pressao['diastolic']} mmHg{pulse_info}")
-                    await enviar_leitura("blood_pressure", dados_pressao)
+                    logger.info(f"💓 PRESSÃO FINAL: {dados_pressao['systolic']}/{dados_pressao['diastolic']} mmHg{pulse_info}")
+                    
+                    # Remove timestamp antes de enviar (não é necessário no backend)
+                    envio = {k: v for k, v in dados_pressao.items() if k != 'timestamp'}
+                    await enviar_leitura("blood_pressure", envio)
                     state.omron_last_attempt = None  # Reseta cooldown após sucesso
-                    return dados_pressao
+                    return envio
                 else:
                     logger.warning("⏱️ Timeout - nenhuma medição recebida")
                     logger.info(f"⏳ Aguardando {state.omron_cooldown}s antes de tentar novamente...")

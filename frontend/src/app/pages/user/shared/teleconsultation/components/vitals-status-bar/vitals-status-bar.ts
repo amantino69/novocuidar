@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges, Inject, PLATFORM_ID, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, OnChanges, SimpleChanges, Inject, PLATFORM_ID, ViewChild, ElementRef, AfterViewChecked, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -934,6 +934,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     private aiService: AIService,
     private modalService: ModalService,
     private http: HttpClient,
+    private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object
   ) {}
 
@@ -945,9 +946,19 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       connected => {
         this.isConnected = connected;
         console.log('[VitalsBar] SignalR conectado:', connected);
+        
+        // Ao reconectar (ex: após refresh), recarrega biometrics do backend
+        if (connected && this.appointmentId) {
+          this.loadBiometricsFromBackend();
+        }
       }
     );
     this.subscriptions.add(connectionSub);
+    
+    // Carrega biometrics salvos do backend (para refresh da página)
+    if (this.appointmentId) {
+      this.loadBiometricsFromBackend();
+    }
     
     // AUTO-MARCAR como "acontecendo" quando entrar (não-profissional)
     if (!this.isProfessional && this.appointmentId) {
@@ -1063,11 +1074,17 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
           // NOTA: NÃO atualiza FC com heartRate da ausculta - cálculo impreciso
           // O médico avalia o som diretamente
           
-          // Marcar para redesenhar waveform
+          // Marcar para redesenhar waveform após Angular criar o canvas (próximo ciclo)
           if (data.waveform && data.waveform.length > 0) {
-            this.needsWaveformRedraw = true;
+            // Timeout para aguardar o @if criar o canvas no DOM
+            setTimeout(() => {
+              this.needsWaveformRedraw = true;
+              this.cdr.detectChanges();
+            }, 100);
           }
           this.lastSync = new Date();
+          this.isCapturingAusculta = false; // Parar spinner do botão
+          this.cdr.detectChanges();
         }
       })
     );
@@ -1202,6 +1219,39 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
     this.medicalDevicesSync.sendVitalSigns(vitalsData);
     this.lastSync = new Date();
+  }
+
+  /**
+   * Carrega os biometrics salvos do backend (para restaurar após refresh)
+   */
+  private loadBiometricsFromBackend(): void {
+    if (!this.appointmentId) return;
+    
+    const url = `${environment.apiUrl}/biometrics?appointmentId=${this.appointmentId}`;
+    console.log('[VitalsBar] 📥 Carregando biometrics do backend...');
+    
+    this.http.get<any>(url).subscribe({
+      next: (biometrics) => {
+        if (biometrics) {
+          console.log('[VitalsBar] ✅ Biometrics carregados:', biometrics);
+          
+          // Aplica os valores carregados
+          if (biometrics.weight) this.weight = biometrics.weight;
+          if (biometrics.height) this.height = biometrics.height;
+          if (biometrics.bloodPressureSystolic) this.systolic = biometrics.bloodPressureSystolic;
+          if (biometrics.bloodPressureDiastolic) this.diastolic = biometrics.bloodPressureDiastolic;
+          if (biometrics.heartRate) this.heartRate = biometrics.heartRate;
+          if (biometrics.oxygenSaturation) this.spo2 = biometrics.oxygenSaturation;
+          if (biometrics.temperature) this.temperature = biometrics.temperature;
+          
+          this.calculateIMC();
+          this.cdr.detectChanges();
+        }
+      },
+      error: (err) => {
+        console.warn('[VitalsBar] Erro ao carregar biometrics:', err);
+      }
+    });
   }
 
   /**

@@ -222,20 +222,28 @@ public class BleBridgeController : ControllerBase
             return Ok(new { activeAppointment.Id, activeAppointment.PatientId, activeAppointment.ProfessionalId, activeAppointment.Date, activeAppointment.Time });
         }
 
-        // Nenhuma consulta com atividade recente - informar o motivo
-        var inProgressCount = await _context.Appointments
-            .CountAsync(a => a.Status == Domain.Enums.AppointmentStatus.InProgress);
+        // AUTO-LIMPEZA: Marcar consultas InProgress sem atividade como Abandoned
+        var staleAppointments = await _context.Appointments
+            .Where(a => a.Status == Domain.Enums.AppointmentStatus.InProgress &&
+                       (a.LastActivityAt == null || a.LastActivityAt <= cutoffTime))
+            .ToListAsync();
         
-        if (inProgressCount > 0)
+        if (staleAppointments.Any())
         {
-            _logger.LogWarning("[Maleta] {Count} consulta(s) InProgress, mas nenhuma com atividade nos ultimos 5 min", inProgressCount);
-            return NotFound(new { 
-                message = $"Ha {inProgressCount} consulta(s) InProgress, mas nenhuma com atividade recente. Paciente pode ter saido.",
-                hint = "Aguarde o paciente entrar na teleconsulta ou finalize as consultas abandonadas."
-            });
+            var now = DateTime.UtcNow;
+            foreach (var stale in staleAppointments)
+            {
+                stale.Status = Domain.Enums.AppointmentStatus.Abandoned;
+                stale.UpdatedAt = now;
+                _logger.LogInformation("[Maleta] Consulta {Id} marcada como Abandoned (sem atividade desde {LastActivity})", 
+                    stale.Id, stale.LastActivityAt?.ToString("HH:mm:ss") ?? "nunca");
+            }
+            await _context.SaveChangesAsync();
+            
+            _logger.LogWarning("[Maleta] {Count} consulta(s) marcadas como Abandoned por inatividade", staleAppointments.Count);
         }
         
-        _logger.LogWarning("[Maleta] Nenhuma consulta InProgress encontrada");
+        _logger.LogWarning("[Maleta] Nenhuma consulta ativa encontrada");
         return NotFound(new { message = "Nenhuma consulta em andamento no momento" });
     }
 
@@ -338,8 +346,8 @@ public class BleBridgeController : ControllerBase
     [HttpPost("phonocardiogram")]
     public async Task<ActionResult> ReceivePhonocardiogram([FromBody] PhonocardiogramDto dto)
     {
-        _logger.LogInformation("[Fonocardiograma] Recebido: {Duration}s, HeartRate={HeartRate}", 
-            dto.DurationSeconds, dto.Values?.GetValueOrDefault("heartRate"));
+        _logger.LogInformation("[Fonocardiograma] Recebido: {Duration}s, Quality={Quality}", 
+            dto.DurationSeconds, dto.Values?.GetValueOrDefault("quality"));
 
         // Valida appointmentId
         if (!Guid.TryParse(dto.AppointmentId, out var appointmentId))
@@ -349,17 +357,13 @@ public class BleBridgeController : ControllerBase
         if (appointment == null)
             return NotFound(new { message = "Consulta não encontrada" });
 
-        // Atualiza frequência cardíaca nos biometrics se detectada
-        if (dto.Values != null && dto.Values.TryGetValue("heartRate", out var hrObj) && hrObj != null)
+        // ⚠️ SEGURANÇA CRÍTICA: NÃO gravar heartRate do fonocardiograma!
+        // O cálculo de BPM por análise de áudio NÃO é confiável.
+        // FC deve vir APENAS de dispositivos médicos certificados (Omron, oxímetro).
+        // Gravar FC imprecisa pode causar diagnóstico errado → risco de morte.
+        if (dto.Values != null && dto.Values.TryGetValue("heartRate", out _))
         {
-            var biometrics = string.IsNullOrEmpty(appointment.BiometricsJson)
-                ? new BiometricsDto()
-                : JsonSerializer.Deserialize<BiometricsDto>(appointment.BiometricsJson) ?? new BiometricsDto();
-
-            biometrics.HeartRate = ConvertToInt(hrObj);
-            biometrics.LastUpdated = DateTime.UtcNow.ToString("o");
-            appointment.BiometricsJson = JsonSerializer.Serialize(biometrics);
-            await _context.SaveChangesAsync();
+            _logger.LogWarning("[SEGURANÇA] HeartRate do fonocardiograma IGNORADO - não é confiável para diagnóstico");
         }
 
         // Salva áudio em arquivo WAV
