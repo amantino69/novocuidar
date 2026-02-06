@@ -44,7 +44,7 @@ if (-not $SkipLocalTest) {
 # PASSO 2: EXPORTAR BANCO LOCAL
 # ============================================================================
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-$backupFile = "C:\telecuidar\deploy_backup.sql"
+$backupFile = "C:\telecuidar\backups\deploy_backup.sql"
 
 if (-not $SkipBanco) {
     Write-Host ""
