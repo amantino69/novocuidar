@@ -59,6 +59,38 @@ docker exec telecuidar-postgres pg_dump -U telecuidar -d telecuidar > backup_YYY
 
 ---
 
+## 🔧 LIÇÕES APRENDIDAS - DEPLOY 06/02/2026
+
+### Problemas e Soluções
+
+| Problema | Causa | Solução |
+|----------|-------|--------|
+| Script deploy parava por "mudanças pendentes" | `deploy_backup.sql` criado na raiz do projeto | Mover backup para `backups/` (já ignorada pelo git) |
+| Erro `invalid byte sequence for encoding "UTF8": 0xff` | Windows salva arquivos com encoding UTF16/BOM | Converter com `[System.IO.File]::WriteAllText(..., UTF8Encoding($false))` |
+| Backend unhealthy - `column AssistantId does not exist` | Restore do banco falhou, schema incompleto | Re-exportar e restaurar com encoding correto |
+| Frontend não aparece após `docker compose build` | Build não inicia container automaticamente | Sempre executar `docker compose up -d frontend` após build |
+| Ausculta captura chiado em produção, perfeita em localhost | WebRTC/Jitsi aplica AGC/NS/AEC no áudio | Desabilitar processamento: `disableAP`, `disableAEC`, `disableNS`, `disableAGC`, `disableHPF` |
+
+### Correções Implementadas
+
+1. **deploy-vps.ps1**: Backup agora vai para `backups/deploy_backup.sql`
+2. **jitsi.service.ts**: Adicionado `disableAP/AEC/NS/AGC/HPF: true`
+3. **custom-config.js**: Mesmas configurações server-side no Jitsi
+
+### Checklist Pós-Deploy (OBRIGATÓRIO)
+```powershell
+# 1. Verificar todos containers UP e HEALTHY
+ssh root@telecuidar.com.br "docker compose ps"
+
+# 2. Se frontend não aparece:
+ssh root@telecuidar.com.br "docker compose up -d frontend"
+
+# 3. Testar endpoint
+Invoke-WebRequest -Uri "https://www.telecuidar.com.br" -UseBasicParsing | Select-Object StatusCode
+```
+
+---
+
 ## ⚠️ PROCEDIMENTO OBRIGATÓRIO ANTES DE QUALQUER DEPLOY
 
 ### 1. Verificar arquivos ignorados
@@ -1069,7 +1101,6 @@ Destino: "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk https:/
 ---
 
 ## 📅 Última Atualização
-- **Data**: 04/02/2026
+- **Data**: 06/02/2026
 - **Autor**: IA Assistant
-- **Motivo**: Lições aprendidas do incidente de deploy - migração para PostgreSQL e procedimentos atualizados
-
+- **Motivo**: Lições aprendidas deploy 06/02 - encoding UTF8, frontend não subindo, WebRTC corrompendo áudio do estetoscópio
