@@ -7,7 +7,8 @@ echo ============================================================
 echo    TELECUIDAR - ESTETOSCOPIO DIGITAL (FONOCARDIOGRAMA)
 echo ============================================================
 echo.
-echo Capturando audio do estetoscopio conectado via P2...
+echo Capturando audio do estetoscopio conectado no MICROFONE (P2)...
+echo O estetoscopio deve estar plugado na entrada de microfone.
 echo Enviando para o servidor de producao...
 echo.
 echo Pressione Ctrl+C para parar.

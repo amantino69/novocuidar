@@ -33,7 +33,7 @@ except ImportError:
     print("❌ Execute: pip install sounddevice")
 
 # Configuração
-DEVICE_NAME = "Ausculta"  # Nome do dispositivo no Windows
+# O estetoscópio é conectado na entrada de microfone padrão do computador (P2/3.5mm)
 SAMPLE_RATE = 44100       # Hz - qualidade CD
 CHANNELS = 1              # Mono
 
@@ -51,32 +51,46 @@ def get_api_url():
     return API_URL_PROD if USE_PRODUCTION else API_URL_LOCAL
 
 
-def find_ausculta_device():
-    """Encontra o dispositivo Ausculta na lista de áudio (prioriza 44100Hz)"""
+def find_default_microphone():
+    """Encontra o microfone padrão do sistema (para estetoscópio conectado via P2)"""
     if not SOUNDDEVICE_AVAILABLE:
         return None, None
     
     devices = sd.query_devices()
-    ausculta_devices = []
+    mic_candidates = []
     
-    # Coleta todos os dispositivos Ausculta
+    # Prioridade de busca: Realtek > Microfone > Qualquer entrada
+    search_terms = ['realtek', 'microfone', 'microphone', 'grupo de microfones', 'mic array']
+    
+    # Coleta todos os dispositivos de entrada
     for i, dev in enumerate(devices):
         if dev['max_input_channels'] > 0:
             name = dev['name'].lower()
-            if 'ausculta' in name:
-                sr = int(dev['default_samplerate'])
-                ausculta_devices.append((i, dev, sr))
+            sr = int(dev['default_samplerate'])
+            
+            # Ignora dispositivos de mixagem/estéreo (são saídas virtuais)
+            if 'mixagem' in name or 'stereo mix' in name or 'loopback' in name:
+                continue
+            
+            # Prioriza 44100Hz para qualidade
+            priority = 0
+            for idx, term in enumerate(search_terms):
+                if term in name:
+                    priority = len(search_terms) - idx  # Maior prioridade para primeiros termos
+                    break
+            
+            if sr == 44100:
+                priority += 10  # Bônus para 44100Hz
+            
+            mic_candidates.append((i, dev, sr, priority))
     
-    if not ausculta_devices:
+    if not mic_candidates:
         return None, None
     
-    # Prioriza 44100Hz (mais comum e compatível)
-    for i, dev, sr in ausculta_devices:
-        if sr == 44100:
-            return i, dev
+    # Ordena por prioridade (maior primeiro)
+    mic_candidates.sort(key=lambda x: x[3], reverse=True)
     
-    # Se não tem 44100, pega o primeiro
-    return ausculta_devices[0][0], ausculta_devices[0][1]
+    return mic_candidates[0][0], mic_candidates[0][1]
 
 
 def list_devices():
@@ -85,20 +99,18 @@ def list_devices():
     print("-" * 50)
     
     devices = sd.query_devices()
-    ausculta_id = None
+    recommended_id, _ = find_default_microphone()
     
     for i, dev in enumerate(devices):
         if dev['max_input_channels'] > 0:
             name = dev['name']
             sr = int(dev['default_samplerate'])
-            is_ausculta = 'ausculta' in name.lower()
-            marker = " ✅ AUSCULTA" if is_ausculta else ""
-            if is_ausculta:
-                ausculta_id = i
+            is_recommended = (i == recommended_id)
+            marker = " ✅ RECOMENDADO" if is_recommended else ""
             print(f"  [{i:2d}] {name[:40]:40s} {sr}Hz{marker}")
     
     print("-" * 50)
-    return ausculta_id
+    return recommended_id
 
 
 def capture_audio(device_id: int, duration: int = 10, sample_rate: int = None):
@@ -346,7 +358,7 @@ async def capture_and_send(device_id: int, duration: int, process: bool = True):
 async def main():
     global USE_PRODUCTION
     
-    parser = argparse.ArgumentParser(description='Captura fonocardiograma do Ausculta')
+    parser = argparse.ArgumentParser(description='Captura fonocardiograma do estetoscópio via microfone P2')
     parser.add_argument('--prod', action='store_true', help='Servidor de produção')
     parser.add_argument('--duration', '-d', type=int, default=10, help='Duração (s)')
     parser.add_argument('--device', type=int, help='ID do dispositivo')
@@ -358,7 +370,7 @@ async def main():
     USE_PRODUCTION = args.prod
     
     print("\n" + "=" * 55)
-    print("   🩺 FONOCARDIOGRAMA - ESTETOSCÓPIO AUSCULTA (P2)")
+    print("   🩺 FONOCARDIOGRAMA - ESTETOSCÓPIO (MICROFONE P2)")
     print("=" * 55)
     
     if not SOUNDDEVICE_AVAILABLE:
@@ -375,7 +387,7 @@ async def main():
     device_id = args.device if args.device is not None else ausculta_id
     
     if device_id is None:
-        print("\n❌ Ausculta não encontrado! Use --device <id>")
+        print("\n❌ Nenhum microfone encontrado! Use --device <id>")
         return
     
     print(f"\n🎯 Usando dispositivo [{device_id}]")
