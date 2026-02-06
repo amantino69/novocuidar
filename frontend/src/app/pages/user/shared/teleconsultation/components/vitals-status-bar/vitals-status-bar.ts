@@ -1527,13 +1527,26 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       // Encontra o microfone padrão (geralmente o primeiro ou o marcado como default)
       const defaultMic = audioInputs.find(d => d.deviceId === 'default') || audioInputs[0];
       
-      // Formata o nome para exibição (remove prefixos longos)
+      // Formata o nome para exibição
       let micName = defaultMic.label || 'Microfone ' + (audioInputs.indexOf(defaultMic) + 1);
       
-      // Limita tamanho e remove "Default - " se houver
-      micName = micName.replace(/^Default\s*-\s*/i, '').replace(/\s*\(.*?\)\s*$/, '');
-      if (micName.length > 25) {
-        micName = micName.substring(0, 22) + '...';
+      // Remove prefixo "Default - " mas mantém o resto
+      micName = micName.replace(/^Default\s*-\s*/i, '');
+      
+      // Se o nome é genérico como "Microfone" mas tem info entre parênteses, usa ela
+      // Ex: "Microfone (KT USB Audio)" -> "KT USB Audio"
+      const parenthesesMatch = micName.match(/\(([^)]+)\)/);
+      if (parenthesesMatch && parenthesesMatch[1]) {
+        const inParentheses = parenthesesMatch[1].trim();
+        // Se tem conteúdo útil entre parênteses, usa como nome principal
+        if (inParentheses.length > 3 && !inParentheses.match(/^\d+$/)) {
+          micName = inParentheses;
+        }
+      }
+      
+      // Limita tamanho
+      if (micName.length > 30) {
+        micName = micName.substring(0, 27) + '...';
       }
       
       this.currentBrowserMicrophone = micName;
