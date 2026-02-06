@@ -261,7 +261,8 @@ async def send_phonocardiogram(appointment_id: str, samples: np.ndarray,
         "durationSeconds": duration,
         "waveform": waveform,
         "values": {
-            "heartRate": analysis.get('bpm'),
+            # BPM removido - deteccao por audio nao e confiavel
+            # O medico avalia o som diretamente
             "quality": analysis.get('quality', 0)
         }
     }
@@ -310,8 +311,8 @@ async def process_request(device_id: int, request: dict):
     # Analisa
     analysis = analyze_audio(samples, sr)
     print(f"\n[ANALISE]:")
-    print(f"   • BPM: {analysis['bpm'] or 'N/A'}")
-    print(f"   • Qualidade: {analysis['quality']}%")
+    print(f"   Qualidade do sinal: {analysis['quality']}%")
+    # Nota: BPM removido - deteccao por audio nao e precisa
     
     # Waveform
     waveform = generate_waveform(samples)

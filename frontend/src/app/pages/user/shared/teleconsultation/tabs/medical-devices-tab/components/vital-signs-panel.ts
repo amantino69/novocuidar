@@ -160,10 +160,8 @@ interface VitalDisplay {
           <div class="phonocardiogram-section">
             <div class="phonocardiogram-header">
               <app-icon name="activity" [size]="16" />
-              <span class="phonocardiogram-title">🩺 Fonocardiograma - Estetoscópio Eko</span>
-              @if (phonocardiogram.heartRate) {
-                <span class="phonocardiogram-bpm">{{ phonocardiogram.heartRate }} BPM</span>
-              }
+              <span class="phonocardiogram-title">Fonocardiograma - Estetoscopio</span>
+              <!-- BPM removido - deteccao por audio nao e confiavel -->
             </div>
             <div class="phonocardiogram-player">
               <audio controls [src]="phonocardiogramAudioUrl" class="audio-player">
