@@ -408,7 +408,7 @@ public class BleBridgeController : ControllerBase
             {
                 appointmentId = dto.AppointmentId,
                 deviceType = "stethoscope",
-                heartRate = dto.Values?.GetValueOrDefault("heartRate"),
+                // NOTA: heartRate removido - cálculo por áudio não é confiável
                 quality = dto.Values?.GetValueOrDefault("quality"),
                 audioUrl = audioFilePath,
                 sampleRate = dto.SampleRate ?? 8000,
@@ -421,8 +421,8 @@ public class BleBridgeController : ControllerBase
 
         return Ok(new { 
             message = "Fonocardiograma recebido", 
-            audioUrl = audioFilePath,
-            heartRate = dto.Values?.GetValueOrDefault("heartRate")
+            audioUrl = audioFilePath
+            // NOTA: heartRate removido da resposta - cálculo não é confiável
         });
     }
     

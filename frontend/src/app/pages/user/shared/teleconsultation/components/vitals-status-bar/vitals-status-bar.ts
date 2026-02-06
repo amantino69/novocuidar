@@ -144,30 +144,31 @@ import { environment } from '@env/environment';
         
         <!-- Fonocardiograma - Esteto. Digital -->
         <div class="vital phono" [class.has-value]="phonocardiogram">
-          <label><app-icon name="heart" [size]="18" /> Fono</label>
+          <label>
+            <app-icon name="heart" [size]="18" /> Fono
+            <span class="mic-label" *ngIf="!isProfessional">{{ currentBrowserMicrophone }}</span>
+          </label>
           <div class="phono-box">
             @if (phonocardiogram) {
               <div class="phono-waveform">
                 <canvas #waveformCanvas width="200" height="40"></canvas>
               </div>
-              <span class="phono-mic" title="Microfone atual do navegador">{{ currentBrowserMicrophone }}</span>
               <button class="btn-play" (click)="playPhonocardiogram()" [title]="'Ouvir fonocardiograma'">
                 <app-icon [name]="isPlayingPhono ? 'pause' : 'play'" [size]="16" />
               </button>
               <audio #phonoAudio [src]="phonocardiogramAudioUrl" (ended)="isPlayingPhono = false" style="display:none;"></audio>
-              <!-- Botão Nova Captura para paciente/enfermagem -->
+              <!-- Botao Nova Captura para paciente/enfermagem -->
               @if (!isProfessional) {
                 <button class="btn-nova-captura" (click)="solicitarNovaAusculta()" [disabled]="isCapturingAusculta" title="Nova captura (10s)">
                   @if (isCapturingAusculta) {
                     <span class="spinner-small"></span>
                   } @else {
-                    🔄
+                    +
                   }
                 </button>
               }
             } @else if (!isProfessional) {
-              <!-- Selector de duração + Botão Capturar -->
-              <span class="phono-mic" title="Microfone atual do navegador">{{ currentBrowserMicrophone }}</span>
+              <!-- Selector de duracao + Botao Capturar -->
               <select class="duration-select" [(ngModel)]="auscultaDuration" title="Duracao da captura">
                 <option value="10">10s</option>
                 <option value="15">15s</option>
@@ -704,8 +705,24 @@ import { environment } from '@env/environment';
         color: #64748b;
         text-transform: uppercase;
         letter-spacing: 0.3px;
+        flex-wrap: wrap;
         
         app-icon { color: #64748b; }
+        
+        .mic-label {
+          display: block;
+          width: 100%;
+          font-size: 9px;
+          font-weight: 500;
+          color: #10b981;
+          text-transform: none;
+          letter-spacing: 0;
+          margin-top: 2px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 120px;
+        }
       }
       
       &.has-value {
