@@ -218,7 +218,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
     label: 'CADSUS',
     icon: 'user',
     roles: ['PROFESSIONAL', 'ADMIN'],
-    showInTeleconsultation: false, // REMOVIDO conforme solicitação
+    showInTeleconsultation: false, // Desnecessário para médico - CADSUS usado apenas no cadastro pelo Regulador
     showInDetails: false,
     order: 91,
     group: 'standalone'
