@@ -147,36 +147,28 @@ Write-Host ""
 Write-Host "  IMPORTANTE: Aguarde a conclusao (pode demorar 5-10 minutos)..." -ForegroundColor Cyan
 Write-Host ""
 
-# Executa comandos diretamente (mais confiável que depender de script na VPS)
-ssh root@telecuidar.com.br @"
-cd /opt/telecuidar
+# Executa comandos um por um (evita problema de CRLF do Windows)
+ssh root@telecuidar.com.br "cd /opt/telecuidar && git pull origin main"
+ssh root@telecuidar.com.br "cd /opt/telecuidar && docker compose stop backend"
+ssh root@telecuidar.com.br "docker exec telecuidar-postgres psql -U telecuidar -d postgres -c 'DROP DATABASE IF EXISTS telecuidar;'"
+ssh root@telecuidar.com.br "docker exec telecuidar-postgres psql -U telecuidar -d postgres -c 'CREATE DATABASE telecuidar;'"
+ssh root@telecuidar.com.br "docker cp /opt/telecuidar/deploy_backup.sql telecuidar-postgres:/tmp/backup.sql"
+ssh root@telecuidar.com.br "docker exec telecuidar-postgres psql -U telecuidar -d telecuidar -f /tmp/backup.sql"
+Write-Host "  Banco restaurado" -ForegroundColor Green
 
-echo '[1/5] Puxando código do GitHub...'
-git pull origin main
+ssh root@telecuidar.com.br "cd /opt/telecuidar && docker compose build backend"
+Write-Host "  Backend reconstruido" -ForegroundColor Green
 
-echo '[2/5] Restaurando banco de dados...'
-docker compose stop backend
-docker exec telecuidar-postgres psql -U telecuidar -d postgres -c 'DROP DATABASE IF EXISTS telecuidar;'
-docker exec telecuidar-postgres psql -U telecuidar -d postgres -c 'CREATE DATABASE telecuidar;'
-docker cp /opt/telecuidar/deploy_backup.sql telecuidar-postgres:/tmp/backup.sql
-docker exec telecuidar-postgres psql -U telecuidar -d telecuidar -f /tmp/backup.sql
+ssh root@telecuidar.com.br "cd /opt/telecuidar && docker compose build frontend"
+Write-Host "  Frontend reconstruido" -ForegroundColor Green
 
-echo '[3/5] Reconstruindo Backend...'
-docker compose build backend --no-cache
-echo ' Image telecuidar-backend Built '
+ssh root@telecuidar.com.br "cd /opt/telecuidar && docker compose up -d"
+Write-Host "  Containers iniciados" -ForegroundColor Green
 
-echo '[4/5] Reconstruindo Frontend...'
-docker compose build frontend --no-cache
-echo ' Image telecuidar-frontend Built '
+Write-Host "  Aguardando 30s para healthcheck..." -ForegroundColor Yellow
+Start-Sleep -Seconds 30
 
-echo '[5/5] Iniciando sistema...'
-docker compose up -d
-
-echo '[6/6] Aguardando inicializacao (30s)...'
-sleep 30
-
-docker compose ps
-"@
+ssh root@telecuidar.com.br "cd /opt/telecuidar && docker compose ps"
 
 # ============================================================================
 # RESULTADO
