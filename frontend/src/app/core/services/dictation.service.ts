@@ -262,8 +262,16 @@ export class DictationService {
       }
     }
 
-    // Aplica pontuação automática nos textos finais
+    // PRIMEIRO: Verifica comandos de edição (apagar, etc)
     if (newFinals) {
+      const editResult = this.processEditCommands(newFinals);
+      if (editResult.commandExecuted) {
+        // Comando de edição foi executado, não adiciona texto
+        this.lastInterim = '';
+        this.lastTranscript$.next(editResult.commandName || '');
+        return;
+      }
+      // Se não foi comando, aplica pontuação normal
       newFinals = this.applyPunctuation(newFinals);
     }
 
@@ -325,10 +333,106 @@ export class DictationService {
   }
 
   /**
+   * Processa comandos de edição por voz (apagar, desfazer, etc)
+   * 
+   * Comandos suportados:
+   * - "apagar" ou "apaga" → apaga a última palavra
+   * - "apagar palavra" → apaga a última palavra
+   * - "apagar tudo" ou "limpar tudo" ou "limpar" → limpa o campo inteiro
+   * - "apagar frase" ou "apaga frase" → apaga até o último ponto/início
+   * - "apagar linha" ou "apaga linha" → apaga a última linha
+   * - "desfazer" → desfaz última ação (Ctrl+Z)
+   * 
+   * @returns { commandExecuted: boolean, commandName?: string }
+   */
+  private processEditCommands(text: string): { commandExecuted: boolean; commandName?: string } {
+    if (!this.activeElement) {
+      return { commandExecuted: false };
+    }
+
+    const normalizedText = text.toLowerCase().trim();
+    let currentValue = this.activeElement.value;
+    let commandName = '';
+
+    // APAGAR TUDO / LIMPAR TUDO / LIMPAR
+    if (/^(apagar?\s+tudo|limpar?\s+tudo|limpar)$/i.test(normalizedText)) {
+      console.log('[Dictation] Comando: APAGAR TUDO');
+      this.activeElement.value = '';
+      commandName = '🗑️ Tudo apagado';
+    }
+    // APAGAR FRASE (até o último ponto ou início)
+    else if (/^(apagar?|apaga)\s+frase$/i.test(normalizedText)) {
+      console.log('[Dictation] Comando: APAGAR FRASE');
+      // Encontra o último ponto final, interrogação ou exclamação
+      const lastSentenceEnd = Math.max(
+        currentValue.lastIndexOf('. '),
+        currentValue.lastIndexOf('? '),
+        currentValue.lastIndexOf('! '),
+        currentValue.lastIndexOf('.\n'),
+        currentValue.lastIndexOf('?\n'),
+        currentValue.lastIndexOf('!\n')
+      );
+      
+      if (lastSentenceEnd > 0) {
+        // Mantém até o ponto (inclusive)
+        this.activeElement.value = currentValue.substring(0, lastSentenceEnd + 2).trimEnd() + ' ';
+      } else {
+        // Não encontrou ponto, apaga tudo
+        this.activeElement.value = '';
+      }
+      commandName = '🗑️ Frase apagada';
+    }
+    // APAGAR LINHA (até a última quebra de linha ou início)
+    else if (/^(apagar?|apaga)\s+linha$/i.test(normalizedText)) {
+      console.log('[Dictation] Comando: APAGAR LINHA');
+      const lastNewline = currentValue.lastIndexOf('\n');
+      
+      if (lastNewline > 0) {
+        this.activeElement.value = currentValue.substring(0, lastNewline + 1);
+      } else {
+        this.activeElement.value = '';
+      }
+      commandName = '🗑️ Linha apagada';
+    }
+    // APAGAR (última palavra)
+    else if (/^(apagar?|apaga)(\s+palavra)?$/i.test(normalizedText)) {
+      console.log('[Dictation] Comando: APAGAR PALAVRA');
+      // Remove espaços finais e encontra a última palavra
+      currentValue = currentValue.trimEnd();
+      const lastSpaceIndex = currentValue.lastIndexOf(' ');
+      
+      if (lastSpaceIndex > 0) {
+        this.activeElement.value = currentValue.substring(0, lastSpaceIndex + 1);
+      } else if (currentValue.length > 0) {
+        // Só tinha uma palavra
+        this.activeElement.value = '';
+      }
+      commandName = '🗑️ Palavra apagada';
+    }
+    // DESFAZER
+    else if (/^desfazer$/i.test(normalizedText)) {
+      console.log('[Dictation] Comando: DESFAZER');
+      document.execCommand('undo');
+      commandName = '↩️ Desfeito';
+    }
+    // Não é um comando de edição
+    else {
+      return { commandExecuted: false };
+    }
+
+    // Dispara eventos para atualizar o Angular
+    this.activeElement.dispatchEvent(new Event('input', { bubbles: true }));
+    this.activeElement.dispatchEvent(new Event('change', { bubbles: true }));
+    this.scrollToEnd(this.activeElement);
+
+    return { commandExecuted: true, commandName };
+  }
+
+  /**
    * Aplica pontuação automática ao texto transcrito.
    * Converte comandos de voz em sinais de pontuação.
    * 
-   * Comandos suportados:
+   * COMANDOS DE PONTUAÇÃO:
    * - "ponto" ou "ponto final" → "."
    * - "vírgula" → ","
    * - "dois pontos" → ":"
@@ -340,6 +444,15 @@ export class DictationService {
    * - "travessão" ou "traço" → "—"
    * - "nova linha" ou "próxima linha" ou "enter" → "\n"
    * - "novo parágrafo" ou "parágrafo" → "\n\n"
+   * - "abre aspas" → """
+   * - "fecha aspas" → """
+   * 
+   * COMANDOS DE EDIÇÃO (processados em processEditCommands):
+   * - "apagar" ou "apaga" → apaga última palavra
+   * - "apagar tudo" ou "limpar" → limpa o campo
+   * - "apagar frase" → apaga até o último ponto
+   * - "apagar linha" → apaga até a última quebra de linha
+   * - "desfazer" → Ctrl+Z
    */
   private applyPunctuation(text: string): string {
     if (!text) return text;
