@@ -483,26 +483,26 @@
   justify-content: center;
   align-content: center;
 
-  // Tablet e acima: layout fixo 5 colunas com max-width
+  // Tablet e acima: layout fixo 6 colunas para 12 botões (2 linhas perfeitas)
   @media (min-width: 768px) {
-    grid-template-columns: repeat(5, minmax(120px, 180px));
+    grid-template-columns: repeat(6, minmax(100px, 160px));
     grid-template-rows: repeat(2, auto);
     justify-content: center;
   }
 
   @media (min-width: 768px) and (max-width: 1365px) {
     gap: 1vw;
-    grid-template-columns: repeat(5, minmax(100px, 150px));
+    grid-template-columns: repeat(6, minmax(90px, 130px));
   }
 
   @media (min-width: 1366px) and (max-width: 1919px) {
     gap: 1vw;
-    grid-template-columns: repeat(5, minmax(120px, 170px));
+    grid-template-columns: repeat(6, minmax(100px, 150px));
   }
 
   @media (min-width: 1920px) {
-    gap: 24px;
-    grid-template-columns: repeat(5, minmax(160px, 210px));
+    gap: 20px;
+    grid-template-columns: repeat(6, minmax(140px, 180px));
   }
 }
 
