@@ -350,19 +350,29 @@ export class DictationService {
       return { commandExecuted: false };
     }
 
-    const normalizedText = text.toLowerCase().trim();
+    // Normaliza: minúsculas, remove espaços extras, remove pontuação final
+    const normalizedText = text.toLowerCase().trim()
+      .replace(/[.,!?;:]+$/, '')  // Remove pontuação final
+      .replace(/\s+/g, ' ');       // Normaliza espaços múltiplos
+    
     let currentValue = this.activeElement.value;
     let commandName = '';
 
+    // Log para diagnóstico
+    console.log('[Dictation] Verificando comando:', `"${normalizedText}"`);
+
     // APAGAR TUDO / LIMPAR TUDO / LIMPAR
-    if (/^(apagar?\s+tudo|limpar?\s+tudo|limpar)$/i.test(normalizedText)) {
-      console.log('[Dictation] Comando: APAGAR TUDO');
+    // Variações: "apagar tudo", "apaga tudo", "limpar tudo", "limpa tudo", "limpar", "limpa"
+    if (/^(apagar?|apaga|limpar?|limpa)\s*(tudo)?$/i.test(normalizedText) && 
+        (normalizedText.includes('tudo') || /^(limpar?|limpa)$/i.test(normalizedText))) {
+      console.log('[Dictation] ✅ Comando: APAGAR TUDO');
       this.activeElement.value = '';
       commandName = '🗑️ Tudo apagado';
     }
     // APAGAR FRASE (até o último ponto ou início)
-    else if (/^(apagar?|apaga)\s+frase$/i.test(normalizedText)) {
-      console.log('[Dictation] Comando: APAGAR FRASE');
+    // Variações: "apagar frase", "apaga frase", "apaga a frase", "apagar a frase"
+    else if (/^(apagar?|apaga)\s*(a\s+)?frase$/i.test(normalizedText)) {
+      console.log('[Dictation] ✅ Comando: APAGAR FRASE');
       // Encontra o último ponto final, interrogação ou exclamação
       const lastSentenceEnd = Math.max(
         currentValue.lastIndexOf('. '),
@@ -383,8 +393,9 @@ export class DictationService {
       commandName = '🗑️ Frase apagada';
     }
     // APAGAR LINHA (até a última quebra de linha ou início)
-    else if (/^(apagar?|apaga)\s+linha$/i.test(normalizedText)) {
-      console.log('[Dictation] Comando: APAGAR LINHA');
+    // Variações: "apagar linha", "apaga linha", "apaga a linha", "apagar a linha"
+    else if (/^(apagar?|apaga)\s*(a\s+)?linha$/i.test(normalizedText)) {
+      console.log('[Dictation] ✅ Comando: APAGAR LINHA');
       const lastNewline = currentValue.lastIndexOf('\n');
       
       if (lastNewline > 0) {
@@ -394,9 +405,10 @@ export class DictationService {
       }
       commandName = '🗑️ Linha apagada';
     }
-    // APAGAR (última palavra)
-    else if (/^(apagar?|apaga)(\s+palavra)?$/i.test(normalizedText)) {
-      console.log('[Dictation] Comando: APAGAR PALAVRA');
+    // APAGAR / APAGA (última palavra)
+    // Variações: "apagar", "apaga", "apagar palavra", "apaga palavra", "apaga a palavra", "a pagar" (erro comum)
+    else if (/^(apagar?|apaga|a\s*pagar?)\s*(a\s+)?(palavra)?$/i.test(normalizedText)) {
+      console.log('[Dictation] ✅ Comando: APAGAR PALAVRA');
       // Remove espaços finais e encontra a última palavra
       currentValue = currentValue.trimEnd();
       const lastSpaceIndex = currentValue.lastIndexOf(' ');
@@ -410,13 +422,15 @@ export class DictationService {
       commandName = '🗑️ Palavra apagada';
     }
     // DESFAZER
-    else if (/^desfazer$/i.test(normalizedText)) {
-      console.log('[Dictation] Comando: DESFAZER');
+    // Variações: "desfazer", "desfaz", "voltar", "volta", "ctrl z"
+    else if (/^(desfazer?|desfaz|voltar?|volta|ctrl\s*z)$/i.test(normalizedText)) {
+      console.log('[Dictation] ✅ Comando: DESFAZER');
       document.execCommand('undo');
       commandName = '↩️ Desfeito';
     }
     // Não é um comando de edição
     else {
+      console.log('[Dictation] ❌ Não é comando, será tratado como texto');
       return { commandExecuted: false };
     }
 
