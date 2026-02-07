@@ -16,7 +16,7 @@ interface PanelButton {
   description: string;
   icon: IconName;
   route: string;
-  color: 'green' | 'blue' | 'red' | 'purple' | 'orange';
+  color: 'green' | 'blue' | 'red' | 'purple' | 'orange' | 'teal';
   stats?: string | number;
   isLogout?: boolean;
 }
@@ -91,6 +91,14 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
       icon: 'globe',
       route: '/reguladores',
       color: 'blue'
+    },
+    {
+      id: 'facilities',
+      title: 'Estabelecimentos',
+      description: 'Unidades de saúde (UBS, Hospitais)',
+      icon: 'building',
+      route: '/estabelecimentos',
+      color: 'teal'
     },
     {
       id: 'notifications',

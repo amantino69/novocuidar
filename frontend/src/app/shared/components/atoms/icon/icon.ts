@@ -99,7 +99,12 @@ export type IconName =
   | 'loader'
   | 'folder'
   | 'sparkles'
-  | 'palette';
+  | 'palette'
+  | 'building'
+  | 'map-pin'
+  | 'monitor-off'
+  | 'chevron-left'
+  | 'chevron-right';
 
 export type IconSize = 'sm' | 'md' | 'lg' | 'xl' | number;
 

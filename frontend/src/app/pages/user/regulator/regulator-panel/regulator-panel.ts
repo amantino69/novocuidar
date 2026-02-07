@@ -72,6 +72,14 @@ export class RegulatorPanelComponent implements OnInit, OnDestroy {
       color: 'orange'
     },
     {
+      id: 'estabelecimentos',
+      title: 'Estabelecimentos',
+      description: 'Unidades de saúde do município',
+      icon: 'building',
+      route: '/estabelecimentos',
+      color: 'teal'
+    },
+    {
       id: 'notificacoes',
       title: 'Notificações',
       description: 'Central de notificações',

@@ -7,23 +7,39 @@ import { IconComponent } from '@app/shared/components/atoms/icon/icon';
 import { AvatarComponent } from '@app/shared/components/atoms/avatar/avatar';
 import { AuthService } from '@app/core/services/auth.service';
 import { RegulatorService, RegulatorPatient } from '@app/core/services/regulator.service';
+import { PatientFormModalComponent } from './patient-form-modal/patient-form-modal';
+import { PatientImportModalComponent } from './patient-import-modal/patient-import-modal';
 
 @Component({
   selector: 'app-regulator-patients',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, IconComponent, AvatarComponent],
+  imports: [CommonModule, RouterModule, FormsModule, IconComponent, AvatarComponent, PatientFormModalComponent, PatientImportModalComponent],
   template: `
     <div class="page-container">
       <header class="page-header">
-        <button class="back-btn" routerLink="/painel">
-          <app-icon name="arrow-left" [size]="20" />
-          Voltar
-        </button>
-        <h1>
-          <app-icon name="users" [size]="28" />
-          Pacientes do Município
-        </h1>
-        <p class="subtitle">{{ municipioNome }} • {{ totalPatients }} paciente(s)</p>
+        <div class="header-left">
+          <button class="back-btn" routerLink="/painel">
+            <app-icon name="arrow-left" [size]="20" />
+            Voltar
+          </button>
+          <div>
+            <h1>
+              <app-icon name="users" [size]="28" />
+              Pacientes do Município
+            </h1>
+            <p class="subtitle">{{ municipioNome }} • {{ totalPatients }} paciente(s)</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn-secondary" (click)="openImportModal()">
+            <app-icon name="upload-cloud" [size]="18" />
+            Importar CSV
+          </button>
+          <button class="btn-primary" (click)="openCreateModal()">
+            <app-icon name="plus" [size]="18" />
+            Cadastrar Paciente
+          </button>
+        </div>
       </header>
 
       <!-- Search -->
@@ -164,19 +180,51 @@ import { RegulatorService, RegulatorPatient } from '@app/core/services/regulator
                   }
                 </div>
               }
+              <div class="modal__footer">
+                <button class="btn-secondary" (click)="closeModal()">Fechar</button>
+                <button class="btn-primary" (click)="openEditModal(patientDetails.patient.id)">
+                  <app-icon name="edit" [size]="16" /> Editar Paciente
+                </button>
+              </div>
             </div>
           </div>
         </div>
+      }
+
+      <!-- Modal de Cadastro/Edição -->
+      @if (showFormModal) {
+        <app-patient-form-modal
+          [patientId]="editingPatientId"
+          (saved)="onFormSaved()"
+          (cancel)="closeFormModal()"
+        />
+      }
+
+      <!-- Modal de Importação CSV -->
+      @if (showImportModal) {
+        <app-patient-import-modal
+          (imported)="onImportComplete($event)"
+          (cancel)="closeImportModal()"
+        />
       }
     </div>
   `,
   styles: [`
     .page-container { padding: 24px; max-width: 1400px; margin: 0 auto; }
-    .page-header { margin-bottom: 24px; }
-    .page-header h1 { display: flex; align-items: center; gap: 12px; font-size: 28px; font-weight: 700; color: #0f172a; margin: 16px 0 8px; }
+    .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+    .header-left { display: flex; align-items: flex-start; gap: 16px; }
+    .header-actions { display: flex; gap: 12px; }
+    .page-header h1 { display: flex; align-items: center; gap: 12px; font-size: 28px; font-weight: 700; color: #0f172a; margin: 8px 0 4px; }
     .page-header .subtitle { color: #64748b; margin: 0; }
     .back-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border: none; background: #f1f5f9; border-radius: 8px; color: #64748b; font-size: 14px; cursor: pointer; transition: all 0.2s; }
     .back-btn:hover { background: #e2e8f0; color: #0d9488; }
+    .btn-primary { display: flex; align-items: center; gap: 8px; padding: 12px 20px; background: #0d9488; border: none; border-radius: 8px; color: white; font-size: 14px; font-weight: 500; cursor: pointer; }
+    .btn-primary:hover { background: #0f766e; }
+    .btn-secondary { display: flex; align-items: center; gap: 8px; padding: 12px 20px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; color: #0f172a; font-size: 14px; font-weight: 500; cursor: pointer; }
+    .btn-secondary:hover { background: #f8fafc; border-color: #cbd5e1; }
+    .btn-secondary { padding: 10px 20px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; cursor: pointer; }
+    .btn-secondary:hover { background: #f8fafc; }
+    .modal__footer { display: flex; justify-content: flex-end; gap: 12px; padding-top: 20px; border-top: 1px solid #f1f5f9; margin-top: 20px; }
     .filters { margin-bottom: 24px; }
     .search-box { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; max-width: 400px; }
     .search-box input { flex: 1; border: none; outline: none; font-size: 15px; color: #0f172a; }
@@ -233,6 +281,7 @@ import { RegulatorService, RegulatorPatient } from '@app/core/services/regulator
     :host-context([data-theme="dark"]) .search-box input { color: #f1f5f9; background: transparent; }
     :host-context([data-theme="dark"]) .loading-state, :host-context([data-theme="dark"]) .error-state, :host-context([data-theme="dark"]) .empty-state, :host-context([data-theme="dark"]) .patient-card, :host-context([data-theme="dark"]) .modal { background: #1e293b; }
     :host-context([data-theme="dark"]) .patient-card__header .patient-info h3 { color: #f1f5f9; }
+    :host-context([data-theme="dark"]) .btn-secondary { background: #334155; border-color: #475569; color: #f1f5f9; }
   `]
 })
 export class RegulatorPatientsComponent implements OnInit, OnDestroy {
@@ -251,6 +300,13 @@ export class RegulatorPatientsComponent implements OnInit, OnDestroy {
 
   selectedPatient: RegulatorPatient | null = null;
   patientDetails: any = null;
+
+  // Modal de formulário
+  showFormModal = false;
+  editingPatientId: string | null = null;
+
+  // Modal de importação
+  showImportModal = false;
 
   constructor(
     private authService: AuthService,
@@ -351,5 +407,43 @@ export class RegulatorPatientsComponent implements OnInit, OnDestroy {
       'InProgress': 'Em Andamento', 'Completed': 'Realizada', 'Cancelled': 'Cancelada', 'NoShow': 'Não compareceu'
     };
     return map[status] || status;
+  }
+
+  // === Modal de Cadastro/Edição ===
+  openCreateModal() {
+    this.editingPatientId = null;
+    this.showFormModal = true;
+  }
+
+  openEditModal(patientId: string) {
+    this.closeModal(); // Fechar modal de detalhes
+    this.editingPatientId = patientId;
+    this.showFormModal = true;
+  }
+
+  closeFormModal() {
+    this.showFormModal = false;
+    this.editingPatientId = null;
+  }
+
+  onFormSaved() {
+    this.closeFormModal();
+    this.loadPatients(); // Recarregar lista
+  }
+
+  // === Modal de Importação CSV ===
+  openImportModal() {
+    this.showImportModal = true;
+  }
+
+  closeImportModal() {
+    this.showImportModal = false;
+  }
+
+  onImportComplete(count: number) {
+    this.closeImportModal();
+    if (count > 0) {
+      this.loadPatients(); // Recarregar lista se importou pacientes
+    }
   }
 }

@@ -34,6 +34,7 @@ import { SchedulesComponent } from '@pages/user/admin/schedules';
 import { ReportsComponent } from '@pages/user/admin/reports/reports';
 import { AuditLogsComponent } from '@pages/user/admin/audit-logs/audit-logs';
 import { AdminRegulatorsComponent } from '@pages/user/admin/regulators/admin-regulators';
+import { HealthFacilitiesComponent } from '@pages/user/admin/health-facilities/health-facilities';
 
 // Patient-specific components
 import { SchedulingComponent } from '@pages/user/patient/scheduling/scheduling';
@@ -115,6 +116,7 @@ export const routes: Routes = [
       { path: 'relatorios', component: ReportsComponent, canActivate: [roleGuard(['ADMIN'])] },
       { path: 'logs-auditoria', component: AuditLogsComponent, canActivate: [roleGuard(['ADMIN'])] },
       { path: 'reguladores', component: AdminRegulatorsComponent, canActivate: [roleGuard(['ADMIN'])] },
+      { path: 'estabelecimentos', component: HealthFacilitiesComponent, canActivate: [roleGuard(['ADMIN', 'REGULATOR'])] },
       
       // Professional only
       { path: 'bloqueios-agenda', component: ScheduleBlocksComponent, canActivate: [roleGuard(['PROFESSIONAL'])] },

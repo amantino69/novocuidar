@@ -52,4 +52,31 @@ public class PatientProfile : BaseEntity
     public User User { get; set; } = null!;
     public Municipality? Municipio { get; set; }
     public HealthFacility? UnidadeAdscrita { get; set; }
+    
+    // ===== RESPONSÁVEL LEGAL (para menores ou incapazes) =====
+    
+    /// <summary>
+    /// Nome completo do responsável legal
+    /// </summary>
+    public string? ResponsavelNome { get; set; }
+    
+    /// <summary>
+    /// CPF do responsável
+    /// </summary>
+    public string? ResponsavelCpf { get; set; }
+    
+    /// <summary>
+    /// Telefone do responsável
+    /// </summary>
+    public string? ResponsavelTelefone { get; set; }
+    
+    /// <summary>
+    /// Email do responsável
+    /// </summary>
+    public string? ResponsavelEmail { get; set; }
+    
+    /// <summary>
+    /// Grau de parentesco: Mãe, Pai, Avó, Avô, Tio(a), Tutor, Curador, Outro
+    /// </summary>
+    public string? ResponsavelGrauParentesco { get; set; }
 }

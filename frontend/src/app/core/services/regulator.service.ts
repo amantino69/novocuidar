@@ -214,4 +214,153 @@ export class RegulatorService {
   getSpecialties(): Observable<Specialty[]> {
     return this.http.get<Specialty[]>(`${this.apiUrl}/specialties`);
   }
+
+  /**
+   * Importa pacientes a partir de arquivo CSV
+   */
+  importPatientsFromCsv(file: File): Observable<ImportCsvResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<ImportCsvResult>(`${this.apiUrl}/patients/import-csv`, formData);
+  }
+
+  /**
+   * Baixa o modelo CSV para importação
+   */
+  downloadCsvTemplate(): void {
+    window.open(`${this.apiUrl}/patients/csv-template`, '_blank');
+  }
+
+  /**
+   * Cria um novo paciente
+   */
+  createPatient(data: CreatePatientData): Observable<{ id: string; fullName: string; cpf: string; cns: string }> {
+    return this.http.post<{ id: string; fullName: string; cpf: string; cns: string }>(`${this.apiUrl}/patients`, data);
+  }
+
+  /**
+   * Atualiza um paciente existente
+   */
+  updatePatient(patientId: string, data: Partial<CreatePatientData>): Observable<{ message: string }> {
+    return this.http.put<{ message: string }>(`${this.apiUrl}/patients/${patientId}`, data);
+  }
+
+  /**
+   * Lista unidades de saúde do município
+   */
+  getHealthFacilities(): Observable<HealthFacility[]> {
+    return this.http.get<HealthFacility[]>(`${this.apiUrl}/health-facilities`);
+  }
+
+  /**
+   * Busca cidadão no CADSUS por CPF ou CNS
+   */
+  searchCadsus(params: { cpf?: string; cns?: string }): Observable<CadsusResult> {
+    let httpParams = new HttpParams();
+    if (params.cpf) {
+      httpParams = httpParams.set('cpf', params.cpf);
+    }
+    if (params.cns) {
+      httpParams = httpParams.set('cns', params.cns);
+    }
+    return this.http.get<CadsusResult>(`${this.apiUrl}/cadsus/search`, { params: httpParams });
+  }
+}
+
+// === Interface para resultado CADSUS ===
+export interface CadsusResult {
+  found: boolean;
+  source: 'CADSUS' | 'LOCAL';
+  message?: string;
+  
+  // Dados do cidadão
+  cpf?: string;
+  cns?: string;
+  nome?: string;
+  nomeSocial?: string;
+  sobrenome?: string;
+  dataNascimento?: string;
+  sexo?: string;
+  nomeMae?: string;
+  nomePai?: string;
+  nacionalidade?: string;
+  racaCor?: string;
+  telefone?: string;
+  email?: string;
+  
+  // Endereço
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  municipio?: string;
+  uf?: string;
+  
+  // Se já está cadastrado localmente
+  alreadyRegistered: boolean;
+  localPatientId?: string;
+}
+
+// === Interfaces para importação e CRUD ===
+export interface ImportCsvResult {
+  imported: ImportSuccess[];
+  skipped: ImportSkipped[];
+  errors: ImportError[];
+  totalProcessed: number;
+}
+
+export interface ImportSuccess {
+  line: number;
+  name: string;
+  cpf?: string;
+  cns?: string;
+}
+
+export interface ImportSkipped {
+  line: number;
+  reason: string;
+  data?: string;
+}
+
+export interface ImportError {
+  line: number;
+  message: string;
+  data?: string;
+}
+
+export interface CreatePatientData {
+  name: string;
+  lastName: string;
+  cpf: string;
+  email?: string;
+  phone?: string;
+  cns?: string;
+  socialName?: string;
+  gender?: string;
+  birthDate?: Date;
+  motherName?: string;
+  fatherName?: string;
+  nationality?: string;
+  racaCor?: string;
+  zipCode?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  city?: string;
+  state?: string;
+  unidadeAdscritaId?: string;
+  responsavelNome?: string;
+  responsavelCpf?: string;
+  responsavelTelefone?: string;
+  responsavelEmail?: string;
+  responsavelGrauParentesco?: string;
+}
+
+export interface HealthFacility {
+  id: string;
+  codigoCnes: string;
+  nome: string;
+  tipo: string;
 }

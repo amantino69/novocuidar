@@ -201,6 +201,7 @@ public class RegulatorController : ControllerBase
 
         var patient = await _context.Users
             .Include(u => u.PatientProfile)
+                .ThenInclude(pp => pp!.UnidadeAdscrita)
             .Where(u => u.Id == patientId && 
                        u.Role == UserRole.PATIENT && 
                        u.PatientProfile != null && 
@@ -222,7 +223,8 @@ public class RegulatorController : ControllerBase
                     birthDate = u.PatientProfile.BirthDate,
                     gender = u.PatientProfile.Gender,
                     motherName = u.PatientProfile.MotherName,
-                    nationalidade = u.PatientProfile.Nationality,
+                    fatherName = u.PatientProfile.FatherName,
+                    nationality = u.PatientProfile.Nationality,
                     racaCor = u.PatientProfile.RacaCor,
                     zipCode = u.PatientProfile.ZipCode,
                     logradouro = u.PatientProfile.Logradouro,
@@ -230,7 +232,15 @@ public class RegulatorController : ControllerBase
                     complemento = u.PatientProfile.Complemento,
                     bairro = u.PatientProfile.Bairro,
                     city = u.PatientProfile.City,
-                    state = u.PatientProfile.State
+                    state = u.PatientProfile.State,
+                    unidadeAdscritaId = u.PatientProfile.UnidadeAdscritaId,
+                    unidadeAdscritaNome = u.PatientProfile.UnidadeAdscrita != null ? u.PatientProfile.UnidadeAdscrita.NomeFantasia : null,
+                    // Campos do responsável legal
+                    responsavelNome = u.PatientProfile.ResponsavelNome,
+                    responsavelCpf = u.PatientProfile.ResponsavelCpf,
+                    responsavelTelefone = u.PatientProfile.ResponsavelTelefone,
+                    responsavelEmail = u.PatientProfile.ResponsavelEmail,
+                    responsavelGrauParentesco = u.PatientProfile.ResponsavelGrauParentesco
                 },
                 createdAt = u.CreatedAt
             })
@@ -392,4 +402,830 @@ public class RegulatorController : ControllerBase
 
         return Ok(specialties);
     }
+
+    /// <summary>
+    /// Cadastra um novo paciente no município
+    /// </summary>
+    [HttpPost("patients")]
+    public async Task<IActionResult> CreatePatient([FromBody] CreatePatientDto dto)
+    {
+        var municipioId = await GetRegulatorMunicipioIdAsync();
+        if (municipioId == null)
+            return BadRequest(new { message = "Regulador não está vinculado a nenhum município" });
+
+        // Validar CPF único
+        var existingUser = await _context.Users
+            .FirstOrDefaultAsync(u => u.Cpf == dto.Cpf);
+        if (existingUser != null)
+            return BadRequest(new { message = "Já existe um usuário cadastrado com este CPF" });
+
+        // Validar CNS único se informado
+        if (!string.IsNullOrWhiteSpace(dto.Cns))
+        {
+            var existingCns = await _context.PatientProfiles
+                .AnyAsync(pp => pp.Cns == dto.Cns);
+            if (existingCns)
+                return BadRequest(new { message = "Já existe um paciente cadastrado com este CNS" });
+        }
+
+        // Criar usuário
+        var user = new User
+        {
+            Name = dto.Name,
+            LastName = dto.LastName,
+            Email = dto.Email ?? $"{dto.Cpf.Replace(".", "").Replace("-", "")}@paciente.telecuidar.local",
+            Cpf = dto.Cpf,
+            Phone = dto.Phone,
+            Role = UserRole.PATIENT,
+            Status = UserStatus.Active,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("mudar123"), // Senha padrão
+            MunicipioId = municipioId,
+            CreatedAt = DateTime.UtcNow,
+            EmailVerified = true // Pacientes cadastrados pelo regulador já estão verificados
+        };
+
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+
+        // Criar perfil do paciente
+        var profile = new PatientProfile
+        {
+            UserId = user.Id,
+            Cns = dto.Cns,
+            SocialName = dto.SocialName,
+            Gender = dto.Gender,
+            BirthDate = dto.BirthDate,
+            MotherName = dto.MotherName,
+            FatherName = dto.FatherName,
+            Nationality = dto.Nationality,
+            RacaCor = dto.RacaCor,
+            ZipCode = dto.ZipCode,
+            Logradouro = dto.Logradouro,
+            Numero = dto.Numero,
+            Complemento = dto.Complemento,
+            Bairro = dto.Bairro,
+            City = dto.City,
+            State = dto.State,
+            MunicipioId = municipioId,
+            UnidadeAdscritaId = dto.UnidadeAdscritaId,
+            ResponsavelNome = dto.ResponsavelNome,
+            ResponsavelCpf = dto.ResponsavelCpf,
+            ResponsavelTelefone = dto.ResponsavelTelefone,
+            ResponsavelEmail = dto.ResponsavelEmail,
+            ResponsavelGrauParentesco = dto.ResponsavelGrauParentesco,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.PatientProfiles.Add(profile);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Paciente {Nome} cadastrado pelo regulador no município {MunicipioId}", 
+            user.Name + " " + user.LastName, municipioId);
+
+        return CreatedAtAction(nameof(GetPatientDetails), new { patientId = user.Id }, new
+        {
+            id = user.Id,
+            fullName = user.Name + " " + user.LastName,
+            cpf = user.Cpf,
+            cns = profile.Cns
+        });
+    }
+
+    /// <summary>
+    /// Atualiza dados de um paciente
+    /// </summary>
+    [HttpPut("patients/{patientId}")]
+    public async Task<IActionResult> UpdatePatient(Guid patientId, [FromBody] UpdatePatientDto dto)
+    {
+        var municipioId = await GetRegulatorMunicipioIdAsync();
+        if (municipioId == null)
+            return BadRequest(new { message = "Regulador não está vinculado a nenhum município" });
+
+        // Buscar usuário e perfil
+        var user = await _context.Users
+            .Include(u => u.PatientProfile)
+            .FirstOrDefaultAsync(u => u.Id == patientId && u.Role == UserRole.PATIENT);
+
+        if (user == null)
+            return NotFound(new { message = "Paciente não encontrado" });
+
+        // Verificar se pertence ao município
+        if (user.PatientProfile?.MunicipioId != municipioId)
+            return Forbid("Paciente não pertence ao seu município");
+
+        // Validar CNS único se alterado
+        if (!string.IsNullOrWhiteSpace(dto.Cns) && dto.Cns != user.PatientProfile?.Cns)
+        {
+            var existingCns = await _context.PatientProfiles
+                .AnyAsync(pp => pp.Cns == dto.Cns && pp.UserId != patientId);
+            if (existingCns)
+                return BadRequest(new { message = "Já existe outro paciente cadastrado com este CNS" });
+        }
+
+        // Atualizar dados do usuário
+        if (!string.IsNullOrWhiteSpace(dto.Name)) user.Name = dto.Name;
+        if (!string.IsNullOrWhiteSpace(dto.LastName)) user.LastName = dto.LastName;
+        if (!string.IsNullOrWhiteSpace(dto.Phone)) user.Phone = dto.Phone;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        // Atualizar perfil
+        var profile = user.PatientProfile!;
+        if (dto.Cns != null) profile.Cns = dto.Cns;
+        if (dto.SocialName != null) profile.SocialName = dto.SocialName;
+        if (dto.Gender != null) profile.Gender = dto.Gender;
+        if (dto.BirthDate.HasValue) profile.BirthDate = dto.BirthDate;
+        if (dto.MotherName != null) profile.MotherName = dto.MotherName;
+        if (dto.FatherName != null) profile.FatherName = dto.FatherName;
+        if (dto.Nationality != null) profile.Nationality = dto.Nationality;
+        if (dto.RacaCor != null) profile.RacaCor = dto.RacaCor;
+        if (dto.ZipCode != null) profile.ZipCode = dto.ZipCode;
+        if (dto.Logradouro != null) profile.Logradouro = dto.Logradouro;
+        if (dto.Numero != null) profile.Numero = dto.Numero;
+        if (dto.Complemento != null) profile.Complemento = dto.Complemento;
+        if (dto.Bairro != null) profile.Bairro = dto.Bairro;
+        if (dto.City != null) profile.City = dto.City;
+        if (dto.State != null) profile.State = dto.State;
+        if (dto.UnidadeAdscritaId.HasValue) profile.UnidadeAdscritaId = dto.UnidadeAdscritaId;
+        if (dto.ResponsavelNome != null) profile.ResponsavelNome = dto.ResponsavelNome;
+        if (dto.ResponsavelCpf != null) profile.ResponsavelCpf = dto.ResponsavelCpf;
+        if (dto.ResponsavelTelefone != null) profile.ResponsavelTelefone = dto.ResponsavelTelefone;
+        if (dto.ResponsavelEmail != null) profile.ResponsavelEmail = dto.ResponsavelEmail;
+        if (dto.ResponsavelGrauParentesco != null) profile.ResponsavelGrauParentesco = dto.ResponsavelGrauParentesco;
+        profile.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Paciente {PatientId} atualizado pelo regulador", patientId);
+
+        return Ok(new { message = "Paciente atualizado com sucesso" });
+    }
+
+    /// <summary>
+    /// Lista unidades de saúde do município para dropdown
+    /// </summary>
+    [HttpGet("health-facilities")]
+    public async Task<IActionResult> GetHealthFacilities()
+    {
+        var municipioId = await GetRegulatorMunicipioIdAsync();
+        if (municipioId == null)
+            return BadRequest(new { message = "Regulador não está vinculado a nenhum município" });
+
+        var facilities = await _context.HealthFacilities
+            .AsNoTracking()
+            .Where(h => h.MunicipioId == municipioId && h.Ativo)
+            .OrderBy(h => h.NomeFantasia)
+            .Select(h => new
+            {
+                id = h.Id,
+                codigoCnes = h.CodigoCNES,
+                nome = h.NomeFantasia,
+                tipo = h.TipoEstabelecimentoDescricao
+            })
+            .ToListAsync();
+
+        return Ok(facilities);
+    }
+
+    /// <summary>
+    /// Importa pacientes a partir de CSV (formato e-SUS/APS)
+    /// Colunas esperadas: CPF, CNS, NOME, SOBRENOME, DATA_NASCIMENTO, SEXO, NOME_MAE, 
+    /// NOME_PAI, TELEFONE, CEP, LOGRADOURO, NUMERO, COMPLEMENTO, BAIRRO, EMAIL
+    /// </summary>
+    [HttpPost("patients/import-csv")]
+    [RequestSizeLimit(10_000_000)] // 10MB
+    public async Task<IActionResult> ImportPatientsFromCsv([FromForm] IFormFile file)
+    {
+        var municipioId = await GetRegulatorMunicipioIdAsync();
+        if (municipioId == null)
+            return BadRequest(new { message = "Regulador não está vinculado a nenhum município" });
+
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "Arquivo não enviado" });
+
+        var extension = Path.GetExtension(file.FileName).ToLower();
+        if (extension != ".csv")
+            return BadRequest(new { message = "Apenas arquivos .csv são aceitos" });
+
+        var results = new ImportCsvResult();
+        var lineNumber = 0;
+
+        try
+        {
+            using var reader = new StreamReader(file.OpenReadStream(), System.Text.Encoding.UTF8);
+            var headerLine = await reader.ReadLineAsync();
+            if (string.IsNullOrWhiteSpace(headerLine))
+                return BadRequest(new { message = "Arquivo vazio ou sem cabeçalho" });
+
+            // Detectar separador (vírgula ou ponto-e-vírgula)
+            var separator = headerLine.Contains(';') ? ';' : ',';
+            var headers = headerLine.Split(separator).Select(h => h.Trim().ToUpper().Replace("\"", "")).ToArray();
+
+            // Mapear colunas (flexível para diferentes formatos)
+            var columnMap = new Dictionary<string, int>();
+            for (int i = 0; i < headers.Length; i++)
+            {
+                var col = headers[i];
+                if (col.Contains("CPF") || col == "NUMERO_CADASTRO") columnMap["CPF"] = i;
+                else if (col.Contains("CNS") || col == "NUMERO_CNS" || col == "CARTAO_SUS") columnMap["CNS"] = i;
+                else if (col == "NOME" || col == "NOME_CIDADAO" || col == "PRIMEIRO_NOME") columnMap["NOME"] = i;
+                else if (col.Contains("SOBRENOME") || col == "ULTIMO_NOME" || col == "NOME_FAMILIA") columnMap["SOBRENOME"] = i;
+                else if (col.Contains("NASCIMENTO") || col == "DT_NASCIMENTO" || col == "DATA_NASC") columnMap["DATA_NASCIMENTO"] = i;
+                else if (col == "SEXO" || col == "GENERO") columnMap["SEXO"] = i;
+                else if (col.Contains("MAE") || col == "NOME_MAE") columnMap["NOME_MAE"] = i;
+                else if (col.Contains("PAI") || col == "NOME_PAI") columnMap["NOME_PAI"] = i;
+                else if (col.Contains("TELEFONE") || col.Contains("CELULAR") || col == "FONE") columnMap["TELEFONE"] = i;
+                else if (col == "CEP" || col.Contains("CODIGO_POSTAL")) columnMap["CEP"] = i;
+                else if (col.Contains("LOGRADOURO") || col == "ENDERECO" || col == "RUA") columnMap["LOGRADOURO"] = i;
+                else if (col == "NUMERO" || col == "NUM" || col == "NRO") columnMap["NUMERO"] = i;
+                else if (col.Contains("COMPLEMENTO")) columnMap["COMPLEMENTO"] = i;
+                else if (col.Contains("BAIRRO")) columnMap["BAIRRO"] = i;
+                else if (col.Contains("EMAIL") || col == "E-MAIL") columnMap["EMAIL"] = i;
+                else if (col.Contains("NOME_SOCIAL")) columnMap["NOME_SOCIAL"] = i;
+                else if (col.Contains("RACA") || col.Contains("COR")) columnMap["RACA_COR"] = i;
+                else if (col.Contains("NACIONALIDADE")) columnMap["NACIONALIDADE"] = i;
+            }
+
+            // Validar colunas obrigatórias
+            if (!columnMap.ContainsKey("CPF") && !columnMap.ContainsKey("CNS"))
+                return BadRequest(new { message = "O arquivo deve conter coluna CPF ou CNS" });
+
+            if (!columnMap.ContainsKey("NOME"))
+                return BadRequest(new { message = "O arquivo deve conter coluna NOME" });
+
+            // Buscar CPFs e CNS existentes para validação rápida
+            var existingCpfs = await _context.Users
+                .AsNoTracking()
+                .Select(u => u.Cpf)
+                .ToListAsync();
+            var existingCpfsSet = new HashSet<string>(existingCpfs.Where(c => c != null)!);
+
+            var existingCns = await _context.PatientProfiles
+                .AsNoTracking()
+                .Where(p => p.Cns != null)
+                .Select(p => p.Cns!)
+                .ToListAsync();
+            var existingCnsSet = new HashSet<string>(existingCns);
+
+            // Processar linhas
+            while (!reader.EndOfStream)
+            {
+                lineNumber++;
+                var line = await reader.ReadLineAsync();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+
+                var values = ParseCsvLine(line, separator);
+                
+                string GetValue(string key) => 
+                    columnMap.TryGetValue(key, out var idx) && idx < values.Length 
+                        ? values[idx].Trim().Replace("\"", "") 
+                        : "";
+
+                try
+                {
+                    var cpf = CleanCpf(GetValue("CPF"));
+                    var cns = CleanCns(GetValue("CNS"));
+                    var nome = GetValue("NOME");
+                    var sobrenome = GetValue("SOBRENOME");
+
+                    // Validações
+                    if (string.IsNullOrWhiteSpace(cpf) && string.IsNullOrWhiteSpace(cns))
+                    {
+                        results.Errors.Add(new ImportError { Line = lineNumber, Message = "CPF ou CNS é obrigatório" });
+                        continue;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(nome))
+                    {
+                        results.Errors.Add(new ImportError { Line = lineNumber, Message = "Nome é obrigatório" });
+                        continue;
+                    }
+
+                    // Se CPF vazio mas CNS preenchido, aceita
+                    if (string.IsNullOrWhiteSpace(cpf) && !string.IsNullOrWhiteSpace(cns))
+                    {
+                        // Gerar CPF fictício baseado no CNS para garantir uniqueness
+                        cpf = "00000000000"; // Será tratado como paciente sem CPF
+                    }
+
+                    // Validar CPF
+                    if (!string.IsNullOrWhiteSpace(cpf) && cpf != "00000000000" && !IsValidCpf(cpf))
+                    {
+                        results.Errors.Add(new ImportError { Line = lineNumber, Message = $"CPF inválido: {cpf}", Data = nome });
+                        continue;
+                    }
+
+                    // Verificar duplicidade CPF
+                    if (!string.IsNullOrWhiteSpace(cpf) && cpf != "00000000000" && existingCpfsSet.Contains(cpf))
+                    {
+                        results.Skipped.Add(new ImportSkipped { Line = lineNumber, Reason = "CPF já cadastrado", Data = $"{nome} - CPF: {cpf}" });
+                        continue;
+                    }
+
+                    // Verificar duplicidade CNS
+                    if (!string.IsNullOrWhiteSpace(cns) && existingCnsSet.Contains(cns))
+                    {
+                        results.Skipped.Add(new ImportSkipped { Line = lineNumber, Reason = "CNS já cadastrado", Data = $"{nome} - CNS: {cns}" });
+                        continue;
+                    }
+
+                    // Parse data nascimento
+                    DateTime? birthDate = null;
+                    var dtNasc = GetValue("DATA_NASCIMENTO");
+                    if (!string.IsNullOrWhiteSpace(dtNasc))
+                    {
+                        if (DateTime.TryParse(dtNasc, out var dt))
+                            birthDate = dt;
+                        else if (DateTime.TryParseExact(dtNasc, new[] { "dd/MM/yyyy", "ddMMyyyy", "yyyy-MM-dd" }, 
+                            System.Globalization.CultureInfo.InvariantCulture, 
+                            System.Globalization.DateTimeStyles.None, out dt))
+                            birthDate = dt;
+                    }
+
+                    // Parse sexo
+                    var sexo = GetValue("SEXO").ToUpper();
+                    var gender = sexo switch
+                    {
+                        "M" or "MASCULINO" => "M",
+                        "F" or "FEMININO" => "F",
+                        _ => null
+                    };
+
+                    // Se sobrenome vazio, tentar extrair do nome completo
+                    if (string.IsNullOrWhiteSpace(sobrenome) && nome.Contains(' '))
+                    {
+                        var parts = nome.Split(' ', 2);
+                        nome = parts[0];
+                        sobrenome = parts.Length > 1 ? parts[1] : "";
+                    }
+
+                    if (string.IsNullOrWhiteSpace(sobrenome))
+                        sobrenome = "-"; // Default para sobrenome
+
+                    // Criar usuário
+                    var email = GetValue("EMAIL");
+                    if (string.IsNullOrWhiteSpace(email))
+                        email = $"{cpf.Replace(".", "").Replace("-", "")}@paciente.telecuidar.local";
+
+                    var user = new User
+                    {
+                        Name = CapitalizeName(nome),
+                        LastName = CapitalizeName(sobrenome),
+                        Email = email,
+                        Cpf = cpf,
+                        Phone = CleanPhone(GetValue("TELEFONE")),
+                        Role = UserRole.PATIENT,
+                        Status = UserStatus.Active,
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("mudar123"),
+                        MunicipioId = municipioId,
+                        CreatedAt = DateTime.UtcNow,
+                        EmailVerified = true
+                    };
+
+                    _context.Users.Add(user);
+                    await _context.SaveChangesAsync();
+
+                    // Criar perfil
+                    var profile = new PatientProfile
+                    {
+                        UserId = user.Id,
+                        Cns = string.IsNullOrWhiteSpace(cns) ? null : cns,
+                        SocialName = GetValue("NOME_SOCIAL"),
+                        Gender = gender,
+                        BirthDate = birthDate,
+                        MotherName = CapitalizeName(GetValue("NOME_MAE")),
+                        FatherName = CapitalizeName(GetValue("NOME_PAI")),
+                        Nationality = GetValue("NACIONALIDADE") ?? "Brasileira",
+                        RacaCor = GetValue("RACA_COR"),
+                        ZipCode = CleanCep(GetValue("CEP")),
+                        Logradouro = GetValue("LOGRADOURO"),
+                        Numero = GetValue("NUMERO"),
+                        Complemento = GetValue("COMPLEMENTO"),
+                        Bairro = GetValue("BAIRRO"),
+                        MunicipioId = municipioId,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _context.PatientProfiles.Add(profile);
+                    await _context.SaveChangesAsync();
+
+                    // Adicionar aos sets para evitar duplicatas no mesmo arquivo
+                    if (!string.IsNullOrWhiteSpace(cpf) && cpf != "00000000000")
+                        existingCpfsSet.Add(cpf);
+                    if (!string.IsNullOrWhiteSpace(cns))
+                        existingCnsSet.Add(cns);
+
+                    results.Imported.Add(new ImportSuccess { Line = lineNumber, Name = $"{user.Name} {user.LastName}", Cpf = cpf, Cns = cns });
+                }
+                catch (Exception ex)
+                {
+                    results.Errors.Add(new ImportError { Line = lineNumber, Message = $"Erro ao processar: {ex.Message}" });
+                }
+            }
+
+            _logger.LogInformation("Importação CSV: {Imported} importados, {Skipped} ignorados, {Errors} erros", 
+                results.Imported.Count, results.Skipped.Count, results.Errors.Count);
+
+            return Ok(results);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro na importação CSV na linha {Line}", lineNumber);
+            return StatusCode(500, new { message = $"Erro ao processar arquivo: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// Retorna modelo de CSV para download
+    /// </summary>
+    [HttpGet("patients/csv-template")]
+    public IActionResult GetCsvTemplate()
+    {
+        var csv = "CPF;CNS;NOME;SOBRENOME;DATA_NASCIMENTO;SEXO;NOME_MAE;NOME_PAI;TELEFONE;CEP;LOGRADOURO;NUMERO;COMPLEMENTO;BAIRRO;EMAIL\n";
+        csv += "12345678901;123456789012345;MARIA;SILVA;01/01/1990;F;ANA SILVA;;11999999999;01310100;Av Paulista;1000;Apto 10;Bela Vista;maria@email.com\n";
+        csv += "98765432100;;JOSE;SANTOS;15/05/1985;M;ROSA SANTOS;PEDRO SANTOS;11988888888;01310200;Rua Augusta;500;;Consolacao;\n";
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
+        return File(bytes, "text/csv", "modelo_importacao_pacientes.csv");
+    }
+
+    // === Helpers para importação ===
+    private static string[] ParseCsvLine(string line, char separator)
+    {
+        var result = new List<string>();
+        var current = new System.Text.StringBuilder();
+        var inQuotes = false;
+
+        foreach (var c in line)
+        {
+            if (c == '"')
+                inQuotes = !inQuotes;
+            else if (c == separator && !inQuotes)
+            {
+                result.Add(current.ToString());
+                current.Clear();
+            }
+            else
+                current.Append(c);
+        }
+        result.Add(current.ToString());
+        return result.ToArray();
+    }
+
+    private static string CleanCpf(string cpf)
+    {
+        if (string.IsNullOrWhiteSpace(cpf)) return "";
+        return new string(cpf.Where(char.IsDigit).ToArray()).PadLeft(11, '0');
+    }
+
+    private static string CleanCns(string cns)
+    {
+        if (string.IsNullOrWhiteSpace(cns)) return "";
+        return new string(cns.Where(char.IsDigit).ToArray());
+    }
+
+    private static string CleanCep(string cep)
+    {
+        if (string.IsNullOrWhiteSpace(cep)) return "";
+        return new string(cep.Where(char.IsDigit).ToArray());
+    }
+
+    private static string CleanPhone(string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return "";
+        return new string(phone.Where(char.IsDigit).ToArray());
+    }
+
+    private static bool IsValidCpf(string cpf)
+    {
+        if (string.IsNullOrWhiteSpace(cpf) || cpf.Length != 11) return false;
+        if (cpf.Distinct().Count() == 1) return false; // Todos dígitos iguais
+
+        int[] mult1 = { 10, 9, 8, 7, 6, 5, 4, 3, 2 };
+        int[] mult2 = { 11, 10, 9, 8, 7, 6, 5, 4, 3, 2 };
+
+        var tempCpf = cpf.Substring(0, 9);
+        var sum = tempCpf.Select((c, i) => (c - '0') * mult1[i]).Sum();
+        var rest = sum % 11;
+        var digit1 = rest < 2 ? 0 : 11 - rest;
+
+        tempCpf += digit1;
+        sum = tempCpf.Select((c, i) => (c - '0') * mult2[i]).Sum();
+        rest = sum % 11;
+        var digit2 = rest < 2 ? 0 : 11 - rest;
+
+        return cpf.EndsWith($"{digit1}{digit2}");
+    }
+
+    private static string CapitalizeName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "";
+        var words = name.ToLower().Split(' ');
+        var prepositions = new HashSet<string> { "de", "da", "do", "das", "dos", "e" };
+        return string.Join(" ", words.Select((w, i) => 
+            i > 0 && prepositions.Contains(w) ? w : char.ToUpper(w[0]) + w[1..]));
+    }
+
+    /// <summary>
+    /// Busca cidadão no CADSUS por CPF ou CNS
+    /// NOTA: Versão simulada para POC - substituir por integração real com webservice CADSUS
+    /// </summary>
+    [HttpGet("cadsus/search")]
+    public async Task<IActionResult> SearchCadsus([FromQuery] string? cpf, [FromQuery] string? cns)
+    {
+        // Validar que pelo menos um parâmetro foi fornecido
+        if (string.IsNullOrWhiteSpace(cpf) && string.IsNullOrWhiteSpace(cns))
+            return BadRequest(new { message = "Informe CPF ou CNS para busca" });
+
+        // Limpar formatação
+        var cleanCpf = !string.IsNullOrWhiteSpace(cpf) ? new string(cpf.Where(char.IsDigit).ToArray()) : null;
+        var cleanCns = !string.IsNullOrWhiteSpace(cns) ? new string(cns.Where(char.IsDigit).ToArray()) : null;
+
+        // Validar CPF se fornecido
+        if (!string.IsNullOrWhiteSpace(cleanCpf) && !IsValidCpf(cleanCpf))
+            return BadRequest(new { message = "CPF inválido" });
+
+        // Validar CNS se fornecido (deve ter 15 dígitos)
+        if (!string.IsNullOrWhiteSpace(cleanCns) && cleanCns.Length != 15)
+            return BadRequest(new { message = "CNS deve ter 15 dígitos" });
+
+        _logger.LogInformation("Buscando CADSUS - CPF: {Cpf}, CNS: {Cns}", 
+            !string.IsNullOrWhiteSpace(cleanCpf) ? $"***{cleanCpf[^4..]}" : "N/A",
+            !string.IsNullOrWhiteSpace(cleanCns) ? $"***{cleanCns[^4..]}" : "N/A");
+
+        // === SIMULAÇÃO CADSUS para POC ===
+        // Em produção, substituir por chamada ao webservice real do CADSUS
+        // Documentação: https://datasus.saude.gov.br/cadsus-web/
+        
+        // Primeiro verificar se já existe no banco local
+        var existingPatient = await _context.Users
+            .AsNoTracking()
+            .Include(u => u.PatientProfile)
+            .Where(u => u.Role == UserRole.PATIENT &&
+                       ((!string.IsNullOrWhiteSpace(cleanCpf) && u.Cpf == cleanCpf) ||
+                        (!string.IsNullOrWhiteSpace(cleanCns) && u.PatientProfile != null && u.PatientProfile.Cns == cleanCns)))
+            .Select(u => new CadsusResult
+            {
+                Found = true,
+                Source = "LOCAL",
+                Cpf = u.Cpf,
+                Cns = u.PatientProfile != null ? u.PatientProfile.Cns : null,
+                Nome = u.Name,
+                NomeSocial = u.PatientProfile != null ? u.PatientProfile.SocialName : null,
+                Sobrenome = u.LastName,
+                DataNascimento = u.PatientProfile != null ? u.PatientProfile.BirthDate : null,
+                Sexo = u.PatientProfile != null ? u.PatientProfile.Gender : null,
+                NomeMae = u.PatientProfile != null ? u.PatientProfile.MotherName : null,
+                NomePai = u.PatientProfile != null ? u.PatientProfile.FatherName : null,
+                Nacionalidade = u.PatientProfile != null ? u.PatientProfile.Nationality : null,
+                RacaCor = u.PatientProfile != null ? u.PatientProfile.RacaCor : null,
+                Telefone = u.Phone,
+                Email = u.Email,
+                Cep = u.PatientProfile != null ? u.PatientProfile.ZipCode : null,
+                Logradouro = u.PatientProfile != null ? u.PatientProfile.Logradouro : null,
+                Numero = u.PatientProfile != null ? u.PatientProfile.Numero : null,
+                Complemento = u.PatientProfile != null ? u.PatientProfile.Complemento : null,
+                Bairro = u.PatientProfile != null ? u.PatientProfile.Bairro : null,
+                Municipio = u.PatientProfile != null ? u.PatientProfile.City : null,
+                Uf = u.PatientProfile != null ? u.PatientProfile.State : null,
+                AlreadyRegistered = true,
+                LocalPatientId = u.Id.ToString()
+            })
+            .FirstOrDefaultAsync();
+
+        if (existingPatient != null)
+            return Ok(existingPatient);
+
+        // Simular busca no CADSUS com dados fictícios para demonstração
+        // Apenas para CPFs específicos de teste - em produção remover esta simulação
+        var simulatedResult = SimulateCadsusLookup(cleanCpf, cleanCns);
+        if (simulatedResult != null)
+            return Ok(simulatedResult);
+
+        // Não encontrado
+        return Ok(new CadsusResult
+        {
+            Found = false,
+            Source = "CADSUS",
+            Message = "Cidadão não encontrado no CADSUS"
+        });
+    }
+
+    /// <summary>
+    /// Simula resposta do CADSUS para demonstração - REMOVER EM PRODUÇÃO
+    /// </summary>
+    private static CadsusResult? SimulateCadsusLookup(string? cpf, string? cns)
+    {
+        // Dados fictícios para demonstração do fluxo
+        // Estes CPFs de teste retornam dados simulados
+        var testData = new Dictionary<string, CadsusResult>
+        {
+            ["11122233344"] = new CadsusResult
+            {
+                Found = true,
+                Source = "CADSUS",
+                Cpf = "11122233344",
+                Cns = "123456789012345",
+                Nome = "João",
+                Sobrenome = "da Silva Santos",
+                DataNascimento = new DateTime(1985, 5, 15),
+                Sexo = "M",
+                NomeMae = "Maria da Silva",
+                NomePai = "José Santos",
+                Nacionalidade = "Brasileira",
+                RacaCor = "Parda",
+                Cep = "01310100",
+                Logradouro = "Avenida Paulista",
+                Numero = "1000",
+                Bairro = "Bela Vista",
+                Municipio = "São Paulo",
+                Uf = "SP",
+                AlreadyRegistered = false
+            },
+            ["22233344455"] = new CadsusResult
+            {
+                Found = true,
+                Source = "CADSUS",
+                Cpf = "22233344455",
+                Cns = "234567890123456",
+                Nome = "Maria",
+                Sobrenome = "Oliveira Costa",
+                DataNascimento = new DateTime(1990, 8, 22),
+                Sexo = "F",
+                NomeMae = "Ana Oliveira",
+                Nacionalidade = "Brasileira",
+                RacaCor = "Branca",
+                Cep = "22041080",
+                Logradouro = "Rua Barata Ribeiro",
+                Numero = "500",
+                Complemento = "Apto 201",
+                Bairro = "Copacabana",
+                Municipio = "Rio de Janeiro",
+                Uf = "RJ",
+                AlreadyRegistered = false
+            },
+            ["33344455566"] = new CadsusResult
+            {
+                Found = true,
+                Source = "CADSUS",
+                Cpf = "33344455566",
+                Cns = "345678901234567",
+                Nome = "Pedro",
+                Sobrenome = "Ferreira Lima",
+                DataNascimento = new DateTime(1975, 12, 3),
+                Sexo = "M",
+                NomeMae = "Rosa Ferreira",
+                NomePai = "Antônio Lima",
+                Nacionalidade = "Brasileira",
+                RacaCor = "Preta",
+                Cep = "30130000",
+                Logradouro = "Praça Sete de Setembro",
+                Numero = "100",
+                Bairro = "Centro",
+                Municipio = "Belo Horizonte",
+                Uf = "MG",
+                AlreadyRegistered = false
+            }
+        };
+
+        // Buscar por CPF
+        if (!string.IsNullOrWhiteSpace(cpf) && testData.TryGetValue(cpf, out var resultByCpf))
+            return resultByCpf;
+
+        // Buscar por CNS
+        if (!string.IsNullOrWhiteSpace(cns))
+        {
+            var resultByCns = testData.Values.FirstOrDefault(r => r.Cns == cns);
+            if (resultByCns != null)
+                return resultByCns;
+        }
+
+        return null;
+    }
+}
+
+// DTO para resultado da busca CADSUS
+public class CadsusResult
+{
+    public bool Found { get; set; }
+    public string Source { get; set; } = "CADSUS"; // "CADSUS" ou "LOCAL"
+    public string? Message { get; set; }
+    
+    // Dados do cidadão
+    public string? Cpf { get; set; }
+    public string? Cns { get; set; }
+    public string? Nome { get; set; }
+    public string? NomeSocial { get; set; }
+    public string? Sobrenome { get; set; }
+    public DateTime? DataNascimento { get; set; }
+    public string? Sexo { get; set; }
+    public string? NomeMae { get; set; }
+    public string? NomePai { get; set; }
+    public string? Nacionalidade { get; set; }
+    public string? RacaCor { get; set; }
+    public string? Telefone { get; set; }
+    public string? Email { get; set; }
+    
+    // Endereço
+    public string? Cep { get; set; }
+    public string? Logradouro { get; set; }
+    public string? Numero { get; set; }
+    public string? Complemento { get; set; }
+    public string? Bairro { get; set; }
+    public string? Municipio { get; set; }
+    public string? Uf { get; set; }
+    
+    // Se já está cadastrado localmente
+    public bool AlreadyRegistered { get; set; }
+    public string? LocalPatientId { get; set; }
+}
+
+// DTOs para resultado da importação
+public class ImportCsvResult
+{
+    public List<ImportSuccess> Imported { get; set; } = new();
+    public List<ImportSkipped> Skipped { get; set; } = new();
+    public List<ImportError> Errors { get; set; } = new();
+    public int TotalProcessed => Imported.Count + Skipped.Count + Errors.Count;
+}
+
+public class ImportSuccess
+{
+    public int Line { get; set; }
+    public string Name { get; set; } = "";
+    public string? Cpf { get; set; }
+    public string? Cns { get; set; }
+}
+
+public class ImportSkipped
+{
+    public int Line { get; set; }
+    public string Reason { get; set; } = "";
+    public string? Data { get; set; }
+}
+
+public class ImportError
+{
+    public int Line { get; set; }
+    public string Message { get; set; } = "";
+    public string? Data { get; set; }
+}
+
+// DTO para criação de paciente
+public class CreatePatientDto
+{
+    public required string Name { get; set; }
+    public required string LastName { get; set; }
+    public required string Cpf { get; set; }
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string? Cns { get; set; }
+    public string? SocialName { get; set; }
+    public string? Gender { get; set; }
+    public DateTime? BirthDate { get; set; }
+    public string? MotherName { get; set; }
+    public string? FatherName { get; set; }
+    public string? Nationality { get; set; }
+    public string? RacaCor { get; set; }
+    public string? ZipCode { get; set; }
+    public string? Logradouro { get; set; }
+    public string? Numero { get; set; }
+    public string? Complemento { get; set; }
+    public string? Bairro { get; set; }
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public Guid? UnidadeAdscritaId { get; set; }
+    public string? ResponsavelNome { get; set; }
+    public string? ResponsavelCpf { get; set; }
+    public string? ResponsavelTelefone { get; set; }
+    public string? ResponsavelEmail { get; set; }
+    public string? ResponsavelGrauParentesco { get; set; }
+}
+
+// DTO para atualização de paciente
+public class UpdatePatientDto
+{
+    public string? Name { get; set; }
+    public string? LastName { get; set; }
+    public string? Phone { get; set; }
+    public string? Cns { get; set; }
+    public string? SocialName { get; set; }
+    public string? Gender { get; set; }
+    public DateTime? BirthDate { get; set; }
+    public string? MotherName { get; set; }
+    public string? FatherName { get; set; }
+    public string? Nationality { get; set; }
+    public string? RacaCor { get; set; }
+    public string? ZipCode { get; set; }
+    public string? Logradouro { get; set; }
+    public string? Numero { get; set; }
+    public string? Complemento { get; set; }
+    public string? Bairro { get; set; }
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public Guid? UnidadeAdscritaId { get; set; }
+    public string? ResponsavelNome { get; set; }
+    public string? ResponsavelCpf { get; set; }
+    public string? ResponsavelTelefone { get; set; }
+    public string? ResponsavelEmail { get; set; }
+    public string? ResponsavelGrauParentesco { get; set; }
 }
