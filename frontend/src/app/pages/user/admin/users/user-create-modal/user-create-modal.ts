@@ -223,13 +223,13 @@ export class UserCreateModalComponent {
     }
   }
 
-  getRoleIcon(role: UserRole): 'user' | 'users' | 'shield' | 'phone' {
-    const iconMap: Record<UserRole, 'user' | 'users' | 'shield' | 'phone'> = {
+  getRoleIcon(role: UserRole): 'user' | 'users' | 'shield' | 'phone' | 'book' {
+    const iconMap: Record<UserRole, 'user' | 'users' | 'shield' | 'phone' | 'book'> = {
       PATIENT: 'user',
       PROFESSIONAL: 'users',
       ADMIN: 'shield',
       ASSISTANT: 'phone',
-      RECEPTIONIST: 'phone'
+      RECEPTIONIST: 'book'
     };
     return iconMap[role];
   }

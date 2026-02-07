@@ -5,7 +5,7 @@ import { environment } from '@env/environment';
 
 const API_BASE_URL = environment.apiUrl;
 
-export type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'InProgress' | 'Completed' | 'Cancelled';
+export type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'InProgress' | 'Completed' | 'Cancelled' | 'Abandoned';
 export type AppointmentType = 'FirstVisit' | 'Return' | 'Routine' | 'Emergency' | 'Common' | 'Referral';
 
 export interface PreConsultationForm {
@@ -118,6 +118,8 @@ export interface AppointmentsFilter {
   patientId?: string;
   professionalId?: string;
   specialtyId?: string;
+  professionalName?: string;
+  patientName?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -165,6 +167,12 @@ export class AppointmentsService {
     }
     if (filter?.specialtyId) {
       params = params.set('specialtyId', filter.specialtyId);
+    }
+    if (filter?.professionalName) {
+      params = params.set('professionalName', filter.professionalName);
+    }
+    if (filter?.patientName) {
+      params = params.set('patientName', filter.patientName);
     }
 
     return this.http.get<PaginatedResponse<Appointment>>(this.apiUrl, { params });

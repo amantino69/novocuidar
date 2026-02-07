@@ -28,7 +28,7 @@ public class AppointmentService : IAppointmentService
         _logger = logger;
     }
 
-    public async Task<PaginatedAppointmentsDto> GetAppointmentsAsync(int page, int pageSize, string? search, string? status, DateTime? startDate, DateTime? endDate, Guid? patientId = null, Guid? professionalId = null)
+    public async Task<PaginatedAppointmentsDto> GetAppointmentsAsync(int page, int pageSize, string? search, string? status, DateTime? startDate, DateTime? endDate, Guid? patientId = null, Guid? professionalId = null, string? professionalName = null, string? patientName = null)
     {
         var query = _context.Appointments
             .Include(a => a.Patient)
@@ -46,6 +46,26 @@ public class AppointmentService : IAppointmentService
         if (professionalId.HasValue)
         {
             query = query.Where(a => a.ProfessionalId == professionalId.Value);
+        }
+
+        // Filtrar por nome do profissional (busca parcial)
+        if (!string.IsNullOrEmpty(professionalName))
+        {
+            var searchTerm = professionalName.ToLower();
+            query = query.Where(a => 
+                (a.Professional.Name + " " + a.Professional.LastName).ToLower().Contains(searchTerm) ||
+                a.Professional.Name.ToLower().Contains(searchTerm) ||
+                a.Professional.LastName.ToLower().Contains(searchTerm));
+        }
+
+        // Filtrar por nome do paciente (busca parcial)
+        if (!string.IsNullOrEmpty(patientName))
+        {
+            var searchTerm = patientName.ToLower();
+            query = query.Where(a => 
+                (a.Patient.Name + " " + a.Patient.LastName).ToLower().Contains(searchTerm) ||
+                a.Patient.Name.ToLower().Contains(searchTerm) ||
+                a.Patient.LastName.ToLower().Contains(searchTerm));
         }
 
         if (!string.IsNullOrEmpty(search))

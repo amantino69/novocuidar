@@ -700,7 +700,8 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
       'Confirmed': 'Confirmada',
       'InProgress': 'Em Andamento',
       'Completed': 'Realizada',
-      'Cancelled': 'Cancelada'
+      'Cancelled': 'Cancelada',
+      'Abandoned': 'Abandonada'
     };
     return labels[status] || status;
   }

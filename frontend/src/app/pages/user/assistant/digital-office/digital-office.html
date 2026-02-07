@@ -154,6 +154,44 @@
         </div>
       }
       
+      <!-- Filtro de Profissional (texto simples) -->
+      <div class="digital-office__filter-field">
+        <label class="digital-office__filter-label">Profissional</label>
+        <div class="digital-office__filter-input-wrapper">
+          <input 
+            type="text" 
+            [(ngModel)]="professionalNameFilter"
+            (input)="onProfessionalFilterChange()"
+            placeholder="Filtrar por nome..."
+            class="digital-office__filter-input"
+          />
+          @if (professionalNameFilter) {
+            <button type="button" class="digital-office__filter-clear" (click)="clearProfessionalFilter()">
+              <app-icon name="x" [size]="14" />
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Filtro de Paciente (texto simples) -->
+      <div class="digital-office__filter-field">
+        <label class="digital-office__filter-label">Paciente</label>
+        <div class="digital-office__filter-input-wrapper">
+          <input 
+            type="text" 
+            [(ngModel)]="patientNameFilter"
+            (input)="onPatientFilterChange()"
+            placeholder="Filtrar por nome..."
+            class="digital-office__filter-input"
+          />
+          @if (patientNameFilter) {
+            <button type="button" class="digital-office__filter-clear" (click)="clearPatientFilter()">
+              <app-icon name="x" [size]="14" />
+            </button>
+          }
+        </div>
+      </div>
+
       <app-filter-select
         [options]="statusOptions"
         [(ngModel)]="statusFilter"

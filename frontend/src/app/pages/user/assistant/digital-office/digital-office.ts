@@ -65,13 +65,18 @@ export class DigitalOfficeComponent implements OnInit, OnDestroy {
   endDate = '';
   statusFilter: AppointmentStatus | 'all' = 'all';
   
+  // Filtros de texto simples (por parte do nome)
+  professionalNameFilter = '';
+  patientNameFilter = '';
+  
   statusOptions: FilterOption[] = [
     { value: 'all', label: 'Todos os status' },
     { value: 'Scheduled', label: 'Agendada' },
     { value: 'Confirmed', label: 'Confirmada' },
     { value: 'InProgress', label: 'Em Andamento' },
     { value: 'Completed', label: 'Concluída' },
-    { value: 'Cancelled', label: 'Cancelada' }
+    { value: 'Cancelled', label: 'Cancelada' },
+    { value: 'Abandoned', label: 'Abandonada' }
   ];
 
   // Modal
@@ -121,6 +126,40 @@ export class DigitalOfficeComponent implements OnInit, OnDestroy {
           this.cdr.detectChanges();
         }, 0);
       });
+  }
+  
+  // Debounce timer para filtros de nome
+  private filterDebounceTimer: any = null;
+  
+  // Métodos de filtro por nome (envia para backend)
+  onProfessionalFilterChange(): void {
+    this.debounceLoadAppointments();
+  }
+
+  onPatientFilterChange(): void {
+    this.debounceLoadAppointments();
+  }
+  
+  private debounceLoadAppointments(): void {
+    if (this.filterDebounceTimer) {
+      clearTimeout(this.filterDebounceTimer);
+    }
+    this.filterDebounceTimer = setTimeout(() => {
+      this.currentPage = 1;
+      this.loadAppointments();
+    }, 400); // 400ms de debounce
+  }
+
+  clearProfessionalFilter(): void {
+    this.professionalNameFilter = '';
+    this.currentPage = 1;
+    this.loadAppointments();
+  }
+
+  clearPatientFilter(): void {
+    this.patientNameFilter = '';
+    this.currentPage = 1;
+    this.loadAppointments();
   }
   
   // Carrega demandas espontâneas aguardando atendimento
@@ -282,6 +321,14 @@ export class DigitalOfficeComponent implements OnInit, OnDestroy {
       filter.status = this.statusFilter;
     }
     
+    // Filtros por nome (enviados para o backend)
+    if (this.professionalNameFilter.trim()) {
+      filter.professionalName = this.professionalNameFilter.trim();
+    }
+    if (this.patientNameFilter.trim()) {
+      filter.patientName = this.patientNameFilter.trim();
+    }
+    
     switch (this.filterMode) {
       case 'today':
         const today = this.formatDate(new Date());
@@ -306,7 +353,8 @@ export class DigitalOfficeComponent implements OnInit, OnDestroy {
   private filterAppointments(): void {
     let filtered = [...this.allAppointments];
     
-    // Apply status filter locally if needed
+    // Filtros de nome (professionalName e patientName) são aplicados no backend
+    // Aqui só aplicamos filtro de status local se necessário
     if (this.statusFilter !== 'all') {
       filtered = filtered.filter(a => a.status === this.statusFilter);
     }
@@ -380,7 +428,8 @@ export class DigitalOfficeComponent implements OnInit, OnDestroy {
       Confirmed: 'primary',
       InProgress: 'warning',
       Completed: 'success',
-      Cancelled: 'error'
+      Cancelled: 'error',
+      Abandoned: 'neutral'
     };
     return variantMap[status] || 'neutral';
   }
@@ -391,7 +440,8 @@ export class DigitalOfficeComponent implements OnInit, OnDestroy {
       Confirmed: 'Confirmada',
       InProgress: 'Em Andamento',
       Completed: 'Concluída',
-      Cancelled: 'Cancelada'
+      Cancelled: 'Cancelada',
+      Abandoned: 'Abandonada'
     };
     return labels[status] || status;
   }

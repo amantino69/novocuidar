@@ -69,6 +69,18 @@
               <h3 class="role-card__title">Assistente</h3>
               <p class="role-card__description">{{ getRoleDescription('ASSISTANT') }}</p>
             </button>
+
+            <button
+              type="button"
+              class="role-card"
+              (click)="selectRole('RECEPTIONIST')"
+            >
+              <div class="role-card__icon role-card__icon--receptionist">
+                <app-icon name="book" [size]="24" />
+              </div>
+              <h3 class="role-card__title">Recepcionista</h3>
+              <p class="role-card__description">{{ getRoleDescription('RECEPTIONIST') }}</p>
+            </button>
           </div>
         </div>
 

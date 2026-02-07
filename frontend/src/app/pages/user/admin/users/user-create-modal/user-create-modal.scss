@@ -86,6 +86,11 @@
       background: var(--purple-50);
       color: var(--purple-600);
     }
+
+    &--RECEPTIONIST {
+      background: var(--green-50);
+      color: var(--green-600);
+    }
   }
 
   &__title {
@@ -232,6 +237,11 @@
     &--assistant {
       background: var(--purple-50);
       color: var(--purple-600);
+    }
+
+    &--receptionist {
+      background: var(--green-50);
+      color: var(--green-600);
     }
   }
 

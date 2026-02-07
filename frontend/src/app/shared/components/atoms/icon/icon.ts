@@ -67,6 +67,7 @@ export type IconName =
   | 'square'
   | 'circle'
   | 'log-out'
+  | 'power'
   | 'user-check'
   | 'award'
   | 'plus-circle'

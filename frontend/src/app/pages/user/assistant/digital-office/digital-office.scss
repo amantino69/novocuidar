@@ -239,6 +239,71 @@
     }
   }
 
+  // Campos de filtro por texto (profissional/paciente)
+  &__filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__filter-label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: var(--text-secondary);
+  }
+
+  &__filter-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  &__filter-input {
+    padding: $spacing-sm $spacing-md;
+    padding-right: $spacing-xl;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: $radius-md;
+    color: var(--text-primary);
+    font-size: $font-size-sm;
+    min-width: 160px;
+    @include transition(all);
+
+    &:hover {
+      border-color: var(--neutral-300);
+    }
+
+    &:focus {
+      outline: none;
+      border-color: var(--primary-500);
+      box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+    }
+
+    &::placeholder {
+      color: var(--text-tertiary);
+    }
+  }
+
+  &__filter-clear {
+    position: absolute;
+    right: $spacing-xs;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: $spacing-xs;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: $radius-sm;
+    @include transition(all);
+
+    &:hover {
+      color: var(--text-primary);
+      background: var(--neutral-100);
+    }
+  }
+
   &__date-range {
     display: flex;
     gap: $spacing-md;

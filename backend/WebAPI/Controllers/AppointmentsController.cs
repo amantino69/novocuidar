@@ -56,7 +56,9 @@ public class AppointmentsController : ControllerBase
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null,
         [FromQuery] Guid? patientId = null,
-        [FromQuery] Guid? professionalId = null)
+        [FromQuery] Guid? professionalId = null,
+        [FromQuery] string? professionalName = null,
+        [FromQuery] string? patientName = null)
     {
         var currentUserId = GetCurrentUserId();
         var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
@@ -73,7 +75,7 @@ public class AppointmentsController : ControllerBase
         }
         // ADMIN e ASSISTANT podem ver todas as consultas (não aplica filtro)
 
-        var result = await _appointmentService.GetAppointmentsAsync(page, pageSize, search, status, startDate, endDate, patientId, professionalId);
+        var result = await _appointmentService.GetAppointmentsAsync(page, pageSize, search, status, startDate, endDate, patientId, professionalId, professionalName, patientName);
         return Ok(result);
     }
 
