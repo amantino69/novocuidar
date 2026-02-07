@@ -351,21 +351,37 @@ public class CnsService : ICnsService
     
     private async Task<string> ExecuteWithCurlAsync()
     {
-        // curl suporta certificado .pfx diretamente com --cert e --pass
-        // Formato: curl --cert certificado.pfx:senha URL
-        var certArg = $"{_certPath}:{_certPassword}";
+        // OpenSSL 3.x não suporta o formato antigo de .pfx
+        // Usar arquivo PEM (fullchain.pem) se disponível
+        var certDir = Path.GetDirectoryName(_certPath) ?? "/app/certs";
+        var pemPath = Path.Combine(certDir, "fullchain.pem");
+        
+        string arguments;
+        if (File.Exists(pemPath))
+        {
+            // PEM já contém cert + key + chain, não precisa de senha
+            arguments = $"-s -k --cert \"{pemPath}\" \"{_authUrl}\"";
+            _logger.LogInformation("Usando certificado PEM: {PemPath}", pemPath);
+        }
+        else
+        {
+            // Fallback para .pfx (pode não funcionar em OpenSSL 3.x)
+            var certArg = $"{_certPath}:{_certPassword}";
+            arguments = $"-s -k --cert-type P12 --cert \"{certArg}\" \"{_authUrl}\"";
+            _logger.LogWarning("Usando certificado PFX (pode falhar em OpenSSL 3.x): {CertPath}", _certPath);
+        }
         
         var startInfo = new ProcessStartInfo
         {
             FileName = "curl",
-            Arguments = $"-s -k --cert-type P12 --cert \"{certArg}\" \"{_authUrl}\"",
+            Arguments = arguments,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true
         };
         
-        _logger.LogDebug("Executando: curl --cert-type P12 --cert [CERT] {Url}", _authUrl);
+        _logger.LogDebug("Executando curl para obter token DATASUS");
         
         using var process = new Process { StartInfo = startInfo };
         process.Start();
