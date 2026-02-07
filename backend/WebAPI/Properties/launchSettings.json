@@ -7,7 +7,10 @@
       "launchBrowser": false,
       "applicationUrl": "http://0.0.0.0:5239",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "CNS_CERT_PATH": "C:\\telecuidar\\certs\\certificado.pfx",
+        "CNS_CERT_PASSWORD": "A3jfa4p2",
+        "CNS_AMBIENTE": "producao"
       }
     },
     "https": {
@@ -16,7 +19,10 @@
       "launchBrowser": false,
       "applicationUrl": "https://localhost:7121;http://0.0.0.0:5239",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "CNS_CERT_PATH": "C:\\telecuidar\\certs\\certificado.pfx",
+        "CNS_CERT_PASSWORD": "A3jfa4p2",
+        "CNS_AMBIENTE": "producao"
       }
     }
   }

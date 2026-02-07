@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using Domain.Entities;
 using Domain.Enums;
+using Application.Interfaces;
 
 namespace WebAPI.Controllers;
 
@@ -20,13 +21,16 @@ public class RegulatorController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<RegulatorController> _logger;
+    private readonly ICnsService _cnsService;
 
     public RegulatorController(
         ApplicationDbContext context,
-        ILogger<RegulatorController> logger)
+        ILogger<RegulatorController> logger,
+        ICnsService cnsService)
     {
         _context = context;
         _logger = logger;
+        _cnsService = cnsService;
     }
 
     private Guid? GetCurrentUserId()
@@ -995,11 +999,93 @@ public class RegulatorController : ControllerBase
         if (existingPatient != null)
             return Ok(existingPatient);
 
-        // Simular busca no CADSUS com dados fictícios para demonstração
-        // Apenas para CPFs específicos de teste - em produção remover esta simulação
-        var simulatedResult = SimulateCadsusLookup(cleanCpf, cleanCns);
-        if (simulatedResult != null)
-            return Ok(simulatedResult);
+        // === INTEGRAÇÃO REAL COM CADSUS ===
+        // Se o serviço CNS está configurado (certificado digital), usar a API real
+        if (_cnsService.IsConfigured() && !string.IsNullOrWhiteSpace(cleanCpf))
+        {
+            try
+            {
+                _logger.LogInformation("CNS Service configurado - consultando CADSUS real para CPF: ***{CpfSuffix}", cleanCpf[^4..]);
+                
+                var cadsusData = await _cnsService.ConsultarCpfAsync(cleanCpf);
+                
+                // Verifica se encontrou (Nome não vazio)
+                if (cadsusData != null && !string.IsNullOrWhiteSpace(cadsusData.Nome))
+                {
+                    _logger.LogInformation("Cidadão encontrado no CADSUS: {Nome}", cadsusData.Nome);
+                    
+                    // Extrai primeiro nome e sobrenome
+                    var textInfo = System.Globalization.CultureInfo.GetCultureInfo("pt-BR").TextInfo;
+                    var nomeCompleto = cadsusData.Nome.Trim();
+                    var partesNome = nomeCompleto.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+                    var primeiroNome = partesNome.Length > 0 ? textInfo.ToTitleCase(partesNome[0].ToLower()) : "";
+                    var sobrenome = partesNome.Length > 1 ? textInfo.ToTitleCase(partesNome[1].ToLower()) : "";
+                    
+                    // Pega primeiro telefone e email se disponíveis
+                    var telefone = cadsusData.Telefones?.FirstOrDefault() ?? "";
+                    var email = cadsusData.Emails?.FirstOrDefault() ?? "";
+                    
+                    // Parse data de nascimento (formato DD/MM/YYYY ou YYYY-MM-DD)
+                    DateTime? dataNasc = null;
+                    if (!string.IsNullOrEmpty(cadsusData.DataNascimento))
+                    {
+                        if (DateTime.TryParseExact(cadsusData.DataNascimento, "dd/MM/yyyy", null, System.Globalization.DateTimeStyles.None, out var dt1))
+                            dataNasc = dt1;
+                        else if (DateTime.TryParse(cadsusData.DataNascimento, out var dt2))
+                            dataNasc = dt2;
+                    }
+                    
+                    // Determina nacionalidade
+                    var nacionalidade = "Brasileira";
+                    if (!string.IsNullOrEmpty(cadsusData.PaisNascimento) && !cadsusData.PaisNascimento.Contains("Brasil", StringComparison.OrdinalIgnoreCase))
+                        nacionalidade = cadsusData.PaisNascimento;
+                    
+                    return Ok(new CadsusResult
+                    {
+                        Found = true,
+                        Source = "CADSUS",
+                        Cpf = cadsusData.Cpf,
+                        Cns = cadsusData.Cns?.Split(',').FirstOrDefault()?.Trim() ?? "",
+                        Nome = primeiroNome,
+                        Sobrenome = sobrenome,
+                        DataNascimento = dataNasc,
+                        Sexo = cadsusData.Sexo,
+                        NomeMae = !string.IsNullOrEmpty(cadsusData.NomeMae) ? textInfo.ToTitleCase(cadsusData.NomeMae.ToLower()) : "",
+                        NomePai = !string.IsNullOrEmpty(cadsusData.NomePai) ? textInfo.ToTitleCase(cadsusData.NomePai.ToLower()) : "",
+                        RacaCor = cadsusData.RacaCor,
+                        Telefone = telefone,
+                        Email = email,
+                        Cep = cadsusData.Cep,
+                        Logradouro = !string.IsNullOrEmpty(cadsusData.Logradouro) ? textInfo.ToTitleCase(cadsusData.Logradouro.ToLower()) : "",
+                        Numero = cadsusData.Numero,
+                        Complemento = cadsusData.Complemento,
+                        Bairro = "", // CADSUS não retorna bairro separado
+                        Municipio = !string.IsNullOrEmpty(cadsusData.Cidade) ? textInfo.ToTitleCase(cadsusData.Cidade.ToLower()) : "",
+                        Uf = cadsusData.Uf,
+                        Nacionalidade = nacionalidade,
+                        AlreadyRegistered = false
+                    });
+                }
+                else
+                {
+                    _logger.LogInformation("Cidadão não encontrado no CADSUS");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao consultar CADSUS real: {Message}", ex.Message);
+                // Em caso de erro, continua para simulação ou retorna não encontrado
+            }
+        }
+        else if (!_cnsService.IsConfigured())
+        {
+            _logger.LogInformation("CNS Service não configurado - usando simulação para POC");
+            
+            // Simulação para POC - remover quando certificado estiver configurado
+            var simulatedResult = SimulateCadsusLookup(cleanCpf, cleanCns);
+            if (simulatedResult != null)
+                return Ok(simulatedResult);
+        }
 
         // Não encontrado
         return Ok(new CadsusResult
