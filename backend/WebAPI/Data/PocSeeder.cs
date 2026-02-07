@@ -365,6 +365,103 @@ public static class PocSeeder
 
         await context.SaveChangesAsync();
 
+        // 5. Criar dados municipais (Municípios e Estabelecimentos de Saúde)
+        Console.WriteLine("\n[POC-SEEDER] Criando dados municipais...");
+        
+        // Criar município de Goiânia se não existir
+        var goiania = await context.Municipalities.FirstOrDefaultAsync(m => m.CodigoIBGE == "5208707");
+        if (goiania == null)
+        {
+            goiania = new Municipality
+            {
+                CodigoIBGE = "5208707",
+                Nome = "Goiânia",
+                UF = "GO",
+                Ativo = true,
+                DataAdesao = DateTime.UtcNow
+            };
+            context.Municipalities.Add(goiania);
+            await context.SaveChangesAsync();
+            Console.WriteLine("  - Município: Goiânia (GO) [5208707] criado");
+        }
+        else
+        {
+            Console.WriteLine("  - Município: Goiânia (GO) [5208707] (já existia)");
+        }
+
+        // Criar alguns estabelecimentos de saúde de exemplo
+        var estabelecimentos = new[]
+        {
+            ("2338610", "UBS Setor Leste Universitário", "UNIDADE BÁSICA DE SAÚDE", "01", "UBS/ESF", "Av. Universitária, 1234", "Setor Leste Universitário", "74605-010"),
+            ("2337096", "UBS Setor Bueno", "CENTRO DE SAÚDE", "02", "Centro de Saúde", "Rua T-36, 567", "Setor Bueno", "74215-130"),
+            ("2338394", "UPA Noroeste", "PRONTO ATENDIMENTO", "03", "UPA 24h", "Av. Anhanguera, 8900", "Setor Noroeste", "74533-020")
+        };
+
+        foreach (var (cnes, nome, razaoSocial, tipo, tipoDesc, logradouro, bairro, cep) in estabelecimentos)
+        {
+            var exists = await context.HealthFacilities.AnyAsync(h => h.CodigoCNES == cnes);
+            if (!exists)
+            {
+                var estabelecimento = new HealthFacility
+                {
+                    CodigoCNES = cnes,
+                    NomeFantasia = nome,
+                    RazaoSocial = razaoSocial,
+                    TipoEstabelecimento = tipo,
+                    TipoEstabelecimentoDescricao = tipoDesc,
+                    Logradouro = logradouro,
+                    Bairro = bairro,
+                    CEP = cep,
+                    MunicipioId = goiania.Id,
+                    TemConsultorioDigital = true,
+                    Ativo = true
+                };
+                context.HealthFacilities.Add(estabelecimento);
+                Console.WriteLine($"  - Estabelecimento: {nome} [{cnes}] criado");
+            }
+            else
+            {
+                Console.WriteLine($"  - Estabelecimento: {nome} [{cnes}] (já existia)");
+            }
+        }
+        await context.SaveChangesAsync();
+
+        // 6. Criar usuário REGULATOR de exemplo
+        var regulatorUser = await context.Users.FirstOrDefaultAsync(u => u.Email == "reg_go@telecuidar.com");
+        if (regulatorUser == null)
+        {
+            regulatorUser = new User
+            {
+                Name = "Regulador",
+                LastName = "Municipal GO",
+                Email = "reg_go@telecuidar.com",
+                Cpf = "99999999999",
+                Phone = "62999990000",
+                PasswordHash = hashedPassword,
+                Role = UserRole.REGULATOR,
+                Status = UserStatus.Active,
+                EmailVerified = true,
+                MunicipioId = goiania.Id // Vincula ao município de Goiânia
+            };
+            context.Users.Add(regulatorUser);
+            await context.SaveChangesAsync();
+            Console.WriteLine($"  - Regulador: reg_go@telecuidar.com criado (vinculado a {goiania.Nome}/{goiania.UF})");
+        }
+        else
+        {
+            // Atualizar vínculo municipal se ainda não existir
+            if (regulatorUser.MunicipioId == null)
+            {
+                regulatorUser.MunicipioId = goiania.Id;
+                await context.SaveChangesAsync();
+                Console.WriteLine($"  - Regulador: reg_go@telecuidar.com atualizado com vínculo municipal ({goiania.Nome}/{goiania.UF})");
+            }
+            else
+            {
+                Console.WriteLine($"  - Regulador: reg_go@telecuidar.com (já existia)");
+            }
+        }
+
         // Resumo final
         Console.WriteLine("\n[POC-SEEDER] ========================================");
         Console.WriteLine("[POC-SEEDER] SEED DE POC CONCLUÍDO COM SUCESSO!");
@@ -387,6 +484,8 @@ public static class PocSeeder
         }
         Console.WriteLine("\n  RECEPCIONISTA:");
         Console.WriteLine($"    - rec_ma@telecuidar.com - Maria Atendimento");
+        Console.WriteLine("\n  REGULADOR MUNICIPAL:");
+        Console.WriteLine($"    - reg_go@telecuidar.com - Regulador Municipal GO (Goiânia)");
         Console.WriteLine("\n  PACIENTES:");
         foreach (var (code, participant) in Participants)
         {

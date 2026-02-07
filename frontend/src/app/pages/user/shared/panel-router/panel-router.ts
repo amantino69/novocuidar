@@ -7,6 +7,7 @@ import { AdminPanelComponent } from '@pages/user/admin/admin-panel/admin-panel';
 import { PatientPanelComponent } from '@pages/user/patient/patient-panel/patient-panel';
 import { ProfessionalPanelComponent } from '@pages/user/professional/professional-panel/professional-panel';
 import { AssistantPanelComponent } from '@pages/user/assistant/assistant-panel/assistant-panel';
+import { RegulatorPanelComponent } from '@pages/user/regulator/regulator-panel/regulator-panel';
 
 @Component({
   selector: 'app-panel-router',
@@ -15,7 +16,8 @@ import { AssistantPanelComponent } from '@pages/user/assistant/assistant-panel/a
     AdminPanelComponent,
     PatientPanelComponent,
     ProfessionalPanelComponent,
-    AssistantPanelComponent
+    AssistantPanelComponent,
+    RegulatorPanelComponent
   ],
   template: `
     @switch (userRole()) {
@@ -30,6 +32,9 @@ import { AssistantPanelComponent } from '@pages/user/assistant/assistant-panel/a
       }
       @case ('ASSISTANT') {
         <app-assistant-panel />
+      }
+      @case ('REGULATOR') {
+        <app-regulator-panel />
       }
       @default {
         <div class="loading">Carregando...</div>

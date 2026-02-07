@@ -30,7 +30,7 @@ import {
 })
 export class ReceitaTabComponent implements OnInit, OnDestroy, OnChanges, AfterViewInit {
   @Input() appointmentId: string | null = null;
-  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PATIENT';
+  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' | 'REGULATOR' = 'PATIENT';
   @Input() readonly = false;
 
   prescriptions: Prescription[] = [];

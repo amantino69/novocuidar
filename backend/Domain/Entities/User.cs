@@ -43,10 +43,24 @@ public class User : BaseEntity
     public DateTime? RefreshTokenExpiry { get; set; }
     
     // ============================================
+    // Vínculo Municipal (para Reguladores)
+    // ============================================
+    /// <summary>
+    /// ID do município ao qual o regulador está vinculado
+    /// Apenas para usuários com Role = REGULATOR
+    /// </summary>
+    public Guid? MunicipioId { get; set; }
+    
+    // ============================================
     // Navigation Properties - Perfis específicos
     // ============================================
     public PatientProfile? PatientProfile { get; set; }
     public ProfessionalProfile? ProfessionalProfile { get; set; }
+    
+    /// <summary>
+    /// Município ao qual o regulador está vinculado
+    /// </summary>
+    public Municipality? Municipio { get; set; }
     
     // Navigation Properties - Relacionamentos existentes
     public ICollection<Appointment> AppointmentsAsPatient { get; set; } = new List<Appointment>();

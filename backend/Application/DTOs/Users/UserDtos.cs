@@ -15,6 +15,10 @@ public class UserDto
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     
+    // Vínculo Municipal (para Reguladores)
+    public Guid? MunicipioId { get; set; }
+    public string? MunicipioNome { get; set; }
+    
     // Perfis específicos por tipo de usuário
     public PatientProfileDto? PatientProfile { get; set; }
     public ProfessionalProfileDto? ProfessionalProfile { get; set; }
@@ -29,6 +33,9 @@ public class CreateUserDto
     public string? Phone { get; set; }
     public string Password { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
+    
+    // Vínculo Municipal (para Reguladores)
+    public Guid? MunicipioId { get; set; }
     
     // Perfis específicos por tipo de usuário
     public CreateUpdatePatientProfileDto? PatientProfile { get; set; }
@@ -45,6 +52,9 @@ public class UpdateUserDto
     public string? Avatar { get; set; }
     public string? Status { get; set; }
     public string? Role { get; set; }
+    
+    // Vínculo Municipal (para Reguladores)
+    public Guid? MunicipioId { get; set; }
     
     // Perfis específicos por tipo de usuário
     public CreateUpdatePatientProfileDto? PatientProfile { get; set; }

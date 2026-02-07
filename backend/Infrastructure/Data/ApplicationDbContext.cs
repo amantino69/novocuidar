@@ -35,11 +35,16 @@ public class ApplicationDbContext : DbContext
     
     // Gerenciamento de fila de espera (NOVO)
     public DbSet<WaitingList> WaitingLists { get; set; }
+    
+    // Gestão Municipal (Regulação)
+    public DbSet<Municipality> Municipalities { get; set; }
+    public DbSet<HealthFacility> HealthFacilities { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
+        // Conversores para compatibilidade com schema legado do SQLite (IDs como TEXT)
         var boolConverter = new BoolToZeroOneConverter<int>();
         var nullableBoolConverter = new ValueConverter<bool?, int?>(
             v => v.HasValue ? (v.Value ? 1 : 0) : (int?)null,
@@ -144,6 +149,14 @@ public class ApplicationDbContext : DbContext
                 .WithOne(p => p.User)
                 .HasForeignKey<ProfessionalProfile>(p => p.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+            
+            // Relacionamento N:1 com Municipality (para Reguladores)
+            entity.HasOne(e => e.Municipio)
+                .WithMany(m => m.Reguladores)
+                .HasForeignKey(e => e.MunicipioId)
+                .OnDelete(DeleteBehavior.SetNull);
+            
+            entity.HasIndex(e => e.MunicipioId);
         });
         
         // PatientProfile Configuration
@@ -152,16 +165,74 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.UserId).IsUnique();
             entity.HasIndex(e => e.Cns);
+            entity.HasIndex(e => e.ESusId);
+            entity.HasIndex(e => e.MunicipioId);
+            entity.HasIndex(e => e.UnidadeAdscritaId);
             entity.Property(e => e.Cns).HasMaxLength(15);
             entity.Property(e => e.SocialName).HasMaxLength(200);
+            entity.Property(e => e.ESusId).HasMaxLength(50);
             entity.Property(e => e.Gender).HasMaxLength(20);
             entity.Property(e => e.MotherName).HasMaxLength(200);
             entity.Property(e => e.FatherName).HasMaxLength(200);
             entity.Property(e => e.Nationality).HasMaxLength(100);
+            entity.Property(e => e.RacaCor).HasMaxLength(50);
             entity.Property(e => e.ZipCode).HasMaxLength(10);
+            entity.Property(e => e.Logradouro).HasMaxLength(300);
+            entity.Property(e => e.Numero).HasMaxLength(20);
+            entity.Property(e => e.Complemento).HasMaxLength(100);
+            entity.Property(e => e.Bairro).HasMaxLength(100);
             entity.Property(e => e.Address).HasMaxLength(500);
             entity.Property(e => e.City).HasMaxLength(100);
             entity.Property(e => e.State).HasMaxLength(2);
+            
+            // Relacionamento com Município
+            entity.HasOne(e => e.Municipio)
+                .WithMany(m => m.Patients)
+                .HasForeignKey(e => e.MunicipioId)
+                .OnDelete(DeleteBehavior.SetNull);
+            
+            // Relacionamento com Unidade de Saúde Adscrita
+            entity.HasOne(e => e.UnidadeAdscrita)
+                .WithMany(u => u.PacientesAdscritos)
+                .HasForeignKey(e => e.UnidadeAdscritaId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+        
+        // Municipality Configuration
+        modelBuilder.Entity<Municipality>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CodigoIBGE).IsUnique();
+            entity.Property(e => e.CodigoIBGE).IsRequired().HasMaxLength(7);
+            entity.Property(e => e.Nome).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.UF).IsRequired().HasMaxLength(2);
+        });
+        
+        // HealthFacility Configuration
+        modelBuilder.Entity<HealthFacility>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.CodigoCNES).IsUnique();
+            entity.HasIndex(e => e.MunicipioId);
+            entity.Property(e => e.CodigoCNES).IsRequired().HasMaxLength(7);
+            entity.Property(e => e.NomeFantasia).IsRequired().HasMaxLength(300);
+            entity.Property(e => e.RazaoSocial).HasMaxLength(300);
+            entity.Property(e => e.TipoEstabelecimento).HasMaxLength(10);
+            entity.Property(e => e.TipoEstabelecimentoDescricao).HasMaxLength(200);
+            entity.Property(e => e.CNPJ).HasMaxLength(18);
+            entity.Property(e => e.CEP).HasMaxLength(10);
+            entity.Property(e => e.Logradouro).HasMaxLength(300);
+            entity.Property(e => e.Numero).HasMaxLength(20);
+            entity.Property(e => e.Complemento).HasMaxLength(100);
+            entity.Property(e => e.Bairro).HasMaxLength(100);
+            entity.Property(e => e.Telefone).HasMaxLength(20);
+            entity.Property(e => e.Email).HasMaxLength(200);
+            
+            // Relacionamento com Município
+            entity.HasOne(e => e.Municipio)
+                .WithMany(m => m.HealthFacilities)
+                .HasForeignKey(e => e.MunicipioId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
         
         // ProfessionalProfile Configuration
@@ -216,6 +287,13 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Observation).HasMaxLength(2000);
             entity.Property(e => e.MeetLink).HasMaxLength(500);
 
+            // ÍNDICES PARA PERFORMANCE
+            entity.HasIndex(e => e.PatientId);
+            entity.HasIndex(e => e.ProfessionalId);
+            entity.HasIndex(e => e.Date);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => new { e.Date, e.Status }); // Índice composto para queries comuns
+
             entity.HasOne(e => e.Specialty)
                 .WithMany(s => s.Appointments)
                 .HasForeignKey(e => e.SpecialtyId)
@@ -247,6 +325,10 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Schedule>(entity =>
         {
             entity.HasKey(e => e.Id);
+            
+            // ÍNDICES PARA PERFORMANCE
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.ProfessionalId);
 
             entity.HasOne(e => e.Professional)
                 .WithMany(u => u.Schedules)

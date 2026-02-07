@@ -18,7 +18,7 @@ import { Appointment } from '@core/services/appointments.service';
 export class AITabComponent implements OnInit {
   @Input() appointmentId: string | null = null;
   @Input() appointment: Appointment | null = null;
-  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PROFESSIONAL';
+  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' | 'REGULATOR' = 'PROFESSIONAL';
   @Input() readonly = false;
   
   // Data from other tabs (to be collected)

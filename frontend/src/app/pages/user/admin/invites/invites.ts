@@ -204,7 +204,8 @@ export class InvitesComponent implements OnInit, OnDestroy {
       PROFESSIONAL: 'primary',
       ADMIN: 'warning',
       ASSISTANT: 'success',
-      RECEPTIONIST: 'info'
+      RECEPTIONIST: 'info',
+      REGULATOR: 'primary',
     };
     return variants[role];
   }
@@ -235,7 +236,8 @@ export class InvitesComponent implements OnInit, OnDestroy {
       PROFESSIONAL: 'Profissional',
       ADMIN: 'Administrador',
       ASSISTANT: 'Assistente',
-      RECEPTIONIST: 'Recepcionista'
+      RECEPTIONIST: 'Recepcionista',
+      REGULATOR: 'Regulador',
     };
     return labels[role];
   }

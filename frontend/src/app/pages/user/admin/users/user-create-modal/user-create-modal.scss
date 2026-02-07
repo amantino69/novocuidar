@@ -243,6 +243,11 @@
       background: var(--green-50);
       color: var(--green-600);
     }
+
+    &--regulator {
+      background: var(--orange-50);
+      color: var(--orange-600);
+    }
   }
 
   &__title {

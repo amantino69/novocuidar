@@ -450,4 +450,253 @@ public class AdminController : ControllerBase
     }
 
     #endregion
+
+    #region Gestão de Reguladores
+
+    /// <summary>
+    /// Lista todos os reguladores com informações de município vinculado
+    /// </summary>
+    [HttpGet("regulators")]
+    public async Task<ActionResult> GetRegulators()
+    {
+        var regulators = await _context.Users
+            .Include(u => u.Municipio)
+            .Where(u => u.Role == Domain.Enums.UserRole.REGULATOR)
+            .OrderBy(u => u.Name)
+            .Select(u => new
+            {
+                id = u.Id,
+                name = u.Name,
+                lastName = u.LastName,
+                fullName = u.Name + " " + u.LastName,
+                email = u.Email,
+                cpf = u.Cpf,
+                phone = u.Phone,
+                status = u.Status.ToString(),
+                municipioId = u.MunicipioId,
+                municipio = u.Municipio != null ? new
+                {
+                    id = u.Municipio.Id,
+                    nome = u.Municipio.Nome,
+                    uf = u.Municipio.UF,
+                    codigoIbge = u.Municipio.CodigoIBGE
+                } : null,
+                createdAt = u.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(regulators);
+    }
+
+    /// <summary>
+    /// Vincula um regulador a um município
+    /// </summary>
+    [HttpPost("regulators/{regulatorId}/vinculate")]
+    public async Task<ActionResult> VinculateRegulatorToMunicipality(
+        Guid regulatorId, 
+        [FromBody] VinculateRegulatorDto dto)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+            return Unauthorized();
+
+        var regulator = await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == regulatorId && u.Role == Domain.Enums.UserRole.REGULATOR);
+
+        if (regulator == null)
+            return NotFound(new { message = "Regulador não encontrado" });
+
+        // Validar município se foi informado
+        if (dto.MunicipioId.HasValue)
+        {
+            var municipio = await _context.Municipalities
+                .FirstOrDefaultAsync(m => m.Id == dto.MunicipioId.Value);
+
+            if (municipio == null)
+                return BadRequest(new { message = "Município não encontrado" });
+
+            // Verificar se outro regulador já está vinculado a este município
+            var existingRegulator = await _context.Users
+                .FirstOrDefaultAsync(u => u.MunicipioId == dto.MunicipioId.Value && 
+                                         u.Role == Domain.Enums.UserRole.REGULATOR &&
+                                         u.Id != regulatorId);
+
+            if (existingRegulator != null)
+                return BadRequest(new { message = $"O município já possui um regulador vinculado: {existingRegulator.Name} {existingRegulator.LastName}" });
+        }
+
+        var oldMunicipioId = regulator.MunicipioId;
+        regulator.MunicipioId = dto.MunicipioId;
+        regulator.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        // Registrar auditoria
+        await _auditLogService.LogAsync(
+            userId.Value,
+            "UPDATE",
+            "User",
+            regulatorId.ToString(),
+            System.Text.Json.JsonSerializer.Serialize(new { oldMunicipioId }),
+            System.Text.Json.JsonSerializer.Serialize(new { newMunicipioId = dto.MunicipioId }),
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            Request.Headers["User-Agent"].ToString(),
+            dataCategory: "ADMINISTRAÇÃO",
+            accessReason: "Vinculação de regulador a município"
+        );
+
+        // Retornar dados atualizados
+        var municipioInfo = dto.MunicipioId.HasValue
+            ? await _context.Municipalities
+                .Where(m => m.Id == dto.MunicipioId.Value)
+                .Select(m => new { id = m.Id, nome = m.Nome, uf = m.UF })
+                .FirstOrDefaultAsync()
+            : null;
+
+        return Ok(new
+        {
+            message = dto.MunicipioId.HasValue 
+                ? "Regulador vinculado ao município com sucesso" 
+                : "Vínculo do regulador removido com sucesso",
+            regulatorId,
+            municipio = municipioInfo
+        });
+    }
+
+    /// <summary>
+    /// Cria um novo usuário regulador
+    /// </summary>
+    [HttpPost("regulators")]
+    public async Task<ActionResult> CreateRegulator([FromBody] CreateRegulatorDto dto)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+            return Unauthorized();
+
+        // Validar email único
+        var existingEmail = await _context.Users
+            .AnyAsync(u => u.Email.ToLower() == dto.Email.ToLower());
+
+        if (existingEmail)
+            return BadRequest(new { message = "Email já cadastrado no sistema" });
+
+        // Validar CPF único
+        var existingCpf = await _context.Users
+            .AnyAsync(u => u.Cpf == dto.Cpf);
+
+        if (existingCpf)
+            return BadRequest(new { message = "CPF já cadastrado no sistema" });
+
+        // Validar município se informado
+        if (dto.MunicipioId.HasValue)
+        {
+            var municipioExists = await _context.Municipalities
+                .AnyAsync(m => m.Id == dto.MunicipioId.Value);
+
+            if (!municipioExists)
+                return BadRequest(new { message = "Município não encontrado" });
+        }
+
+        var regulator = new User
+        {
+            Id = Guid.NewGuid(),
+            Name = dto.Name,
+            LastName = dto.LastName,
+            Email = dto.Email.ToLower(),
+            Cpf = dto.Cpf,
+            Phone = dto.Phone,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+            Role = Domain.Enums.UserRole.REGULATOR,
+            Status = Domain.Enums.UserStatus.Active,
+            EmailVerified = true, // Admin cria já verificado
+            MunicipioId = dto.MunicipioId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.Users.Add(regulator);
+        await _context.SaveChangesAsync();
+
+        // Registrar auditoria
+        await _auditLogService.LogAsync(
+            userId.Value,
+            "CREATE",
+            "User",
+            regulator.Id.ToString(),
+            null,
+            System.Text.Json.JsonSerializer.Serialize(new { email = regulator.Email, role = "REGULATOR", municipioId = regulator.MunicipioId }),
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            Request.Headers["User-Agent"].ToString(),
+            dataCategory: "ADMINISTRAÇÃO",
+            accessReason: "Criação de regulador"
+        );
+
+        return Ok(new
+        {
+            message = "Regulador criado com sucesso",
+            id = regulator.Id,
+            email = regulator.Email
+        });
+    }
+
+    /// <summary>
+    /// Lista municípios disponíveis para vinculação (sem regulador ou todos)
+    /// </summary>
+    [HttpGet("municipalities/available")]
+    public async Task<ActionResult> GetAvailableMunicipalities([FromQuery] bool onlyAvailable = false)
+    {
+        var query = _context.Municipalities.AsQueryable();
+
+        if (onlyAvailable)
+        {
+            // Pegar IDs de municípios que já têm regulador
+            var municipiosComRegulador = await _context.Users
+                .Where(u => u.Role == Domain.Enums.UserRole.REGULATOR && u.MunicipioId.HasValue)
+                .Select(u => u.MunicipioId!.Value)
+                .ToListAsync();
+
+            query = query.Where(m => !municipiosComRegulador.Contains(m.Id));
+        }
+
+        var municipalities = await query
+            .OrderBy(m => m.Nome)
+            .Select(m => new
+            {
+                id = m.Id,
+                nome = m.Nome,
+                uf = m.UF,
+                codigoIbge = m.CodigoIBGE,
+                temRegulador = _context.Users.Any(u => u.MunicipioId == m.Id && u.Role == Domain.Enums.UserRole.REGULATOR)
+            })
+            .ToListAsync();
+
+        return Ok(municipalities);
+    }
+
+    #endregion
+}
+
+/// <summary>
+/// DTO para vincular regulador a município
+/// </summary>
+public class VinculateRegulatorDto
+{
+    /// <summary>
+    /// ID do município. Null para remover vínculo.
+    /// </summary>
+    public Guid? MunicipioId { get; set; }
+}
+
+/// <summary>
+/// DTO para criar novo regulador
+/// </summary>
+public class CreateRegulatorDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Cpf { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string Password { get; set; } = string.Empty;
+    public Guid? MunicipioId { get; set; }
 }

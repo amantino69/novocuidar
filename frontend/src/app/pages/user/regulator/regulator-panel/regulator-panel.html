@@ -1,0 +1,107 @@
+<div class="regulator-panel">
+  <!-- Header Compacto -->
+  <header class="header">
+    <div class="header__left">
+      <app-logo size="md" />
+    </div>
+    <div class="header__center">
+      <div class="clock">
+        <span class="clock__time">{{ currentTime }}</span>
+        <span class="clock__date">{{ currentDate }}</span>
+      </div>
+    </div>
+    <div class="header__right">
+      <app-theme-toggle />
+      <button class="logout-btn" (click)="logout()" title="Sair">
+        <app-icon name="log-out" [size]="22" />
+      </button>
+    </div>
+  </header>
+
+  <!-- Welcome Section -->
+  <section class="welcome">
+    <app-avatar 
+      [name]="(user?.name || '') + ' ' + (user?.lastName || '')" 
+      [imageUrl]="user?.avatar"
+      size="xl"
+      class="welcome__avatar"
+    />
+    <div class="welcome__text">
+      <h1 class="welcome__greeting">{{ getGreeting() }}, {{ user?.name }}!</h1>
+      <p class="welcome__role">Regulação Municipal</p>
+      <p class="welcome__municipio">
+        <app-icon name="globe" [size]="16" />
+        {{ municipioNome }}
+      </p>
+    </div>
+  </section>
+
+  <!-- Stats Quick View -->
+  @if (stats) {
+    <section class="quick-stats">
+      <div class="stat-card stat-card--blue">
+        <app-icon name="users" [size]="28" />
+        <div class="stat-card__content">
+          <span class="stat-card__value">{{ stats.totalPacientes }}</span>
+          <span class="stat-card__label">Pacientes</span>
+        </div>
+      </div>
+      <div class="stat-card stat-card--green">
+        <app-icon name="calendar" [size]="28" />
+        <div class="stat-card__content">
+          <span class="stat-card__value">{{ stats.consultasHoje }}</span>
+          <span class="stat-card__label">Consultas Hoje</span>
+        </div>
+      </div>
+      <div class="stat-card stat-card--orange">
+        <app-icon name="clock" [size]="28" />
+        <div class="stat-card__content">
+          <span class="stat-card__value">{{ stats.consultasPendentes }}</span>
+          <span class="stat-card__label">Pendentes</span>
+        </div>
+      </div>
+      <div class="stat-card stat-card--teal">
+        <app-icon name="check-circle" [size]="28" />
+        <div class="stat-card__content">
+          <span class="stat-card__value">{{ stats.agendasDisponiveis }}</span>
+          <span class="stat-card__label">Agendas Livres</span>
+        </div>
+      </div>
+    </section>
+  }
+
+  <!-- Main Control Panel Grid -->
+  <section class="buttons-grid">
+    @for (button of panelButtons; track button.id) {
+      <button 
+        class="control-btn"
+        [class.control-btn--green]="button.color === 'green'"
+        [class.control-btn--blue]="button.color === 'blue'"
+        [class.control-btn--red]="button.color === 'red'"
+        [class.control-btn--purple]="button.color === 'purple'"
+        [class.control-btn--orange]="button.color === 'orange'"
+        [class.control-btn--teal]="button.color === 'teal'"
+        (click)="button.isLogout ? logout() : navigateTo(button.route)"
+        type="button"
+      >
+        <div class="control-btn__icon">
+          <app-icon [name]="button.icon" [size]="40" />
+        </div>
+        <span class="control-btn__title">{{ button.title }}</span>
+        <span class="control-btn__desc">{{ button.description }}</span>
+        @if (button.stats !== undefined) {
+          <span class="control-btn__badge">{{ button.stats }}</span>
+        }
+      </button>
+    }
+  </section>
+
+  <!-- Info Banner -->
+  <section class="info-banner">
+    <app-icon name="info" [size]="20" />
+    <p>
+      Como regulador municipal, você pode visualizar os pacientes cadastrados no município de <strong>{{ municipioNome }}</strong> 
+      e alocá-los nas agendas de teleconsulta disponibilizadas pelo TeleCuidar.
+    </p>
+  </section>
+</div>

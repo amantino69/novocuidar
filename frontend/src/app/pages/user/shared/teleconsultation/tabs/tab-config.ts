@@ -4,7 +4,7 @@ export interface TabConfig {
   id: string;
   label: string;
   icon: IconName;
-  roles: ('PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST')[];
+  roles: ('PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' | 'REGULATOR')[];
   /** Se a tab deve aparecer na teleconsulta (modo de atendimento) */
   showInTeleconsultation: boolean;
   /** Se a tab deve aparecer nos detalhes da consulta (modo de visualização) */
@@ -248,7 +248,7 @@ export const TELECONSULTATION_TABS: TabConfig[] = [
 /**
  * Retorna as tabs disponíveis para a teleconsulta, filtradas por role
  */
-export function getTeleconsultationTabs(role: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST'): TabConfig[] {
+export function getTeleconsultationTabs(role: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' | 'REGULATOR'): TabConfig[] {
   // ASSISTANT agora tem suas próprias permissões definidas no array roles
   return TELECONSULTATION_TABS
     .filter(tab => tab.showInTeleconsultation && tab.roles.includes(role))
@@ -258,7 +258,7 @@ export function getTeleconsultationTabs(role: 'PATIENT' | 'PROFESSIONAL' | 'ADMI
 /**
  * Retorna os grupos de tabs organizados para a teleconsulta
  */
-export function getTeleconsultationTabGroups(role: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST'): TabGroup[] {
+export function getTeleconsultationTabGroups(role: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' | 'REGULATOR'): TabGroup[] {
   const tabs = getTeleconsultationTabs(role);
   
   const groups: TabGroup[] = [

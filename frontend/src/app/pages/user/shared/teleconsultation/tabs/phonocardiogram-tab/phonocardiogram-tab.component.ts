@@ -532,7 +532,7 @@ export class PhonocardiogramTabComponent implements OnInit, OnDestroy, AfterView
   @ViewChild('debugTextarea', { static: false }) debugTextareaRef!: ElementRef<HTMLTextAreaElement>;
   
   @Input() appointmentId: string | null = null;
-  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PATIENT';
+  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' | 'REGULATOR' = 'PATIENT';
 
   // Estados
   isCapturing = false;

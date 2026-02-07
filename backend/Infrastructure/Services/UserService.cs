@@ -24,6 +24,7 @@ public class UserService : IUserService
             .Include(u => u.PatientProfile)
             .Include(u => u.ProfessionalProfile)
                 .ThenInclude(p => p!.Specialty)
+            .Include(u => u.Municipio)
             .AsQueryable();
 
         // Apply filters
@@ -86,6 +87,7 @@ public class UserService : IUserService
             .Include(u => u.PatientProfile)
             .Include(u => u.ProfessionalProfile)
                 .ThenInclude(p => p!.Specialty)
+            .Include(u => u.Municipio)
             .FirstOrDefaultAsync(u => u.Id == id);
 
         if (user == null) return null;
@@ -148,6 +150,16 @@ public class UserService : IUserService
         {
             throw new InvalidOperationException("Invalid role");
         }
+        
+        // Validar MunicipioId se for regulador
+        if (userRole == UserRole.REGULATOR && dto.MunicipioId.HasValue)
+        {
+            var municipioExists = await _context.Municipalities.AnyAsync(m => m.Id == dto.MunicipioId.Value);
+            if (!municipioExists)
+            {
+                throw new InvalidOperationException("Municipality not found");
+            }
+        }
 
         var user = new User
         {
@@ -159,7 +171,8 @@ public class UserService : IUserService
             PasswordHash = _passwordHasher.HashPassword(dto.Password),
             Role = userRole,
             Status = UserStatus.Active,
-            EmailVerified = false
+            EmailVerified = false,
+            MunicipioId = userRole == UserRole.REGULATOR ? dto.MunicipioId : null
         };
 
         _context.Users.Add(user);
@@ -205,6 +218,7 @@ public class UserService : IUserService
         var user = await _context.Users
             .Include(u => u.PatientProfile)
             .Include(u => u.ProfessionalProfile)
+            .Include(u => u.Municipio)
             .FirstOrDefaultAsync(u => u.Id == id);
             
         if (user == null) return null;
@@ -254,6 +268,18 @@ public class UserService : IUserService
 
         if (!string.IsNullOrEmpty(dto.Role) && Enum.TryParse<UserRole>(dto.Role, true, out var role))
             user.Role = role;
+        
+        // Atualizar vínculo municipal (para Reguladores)
+        if (dto.MunicipioId.HasValue)
+        {
+            // Verificar se o município existe
+            var municipioExists = await _context.Municipalities.AnyAsync(m => m.Id == dto.MunicipioId.Value);
+            if (!municipioExists)
+            {
+                throw new InvalidOperationException("Municipality not found");
+            }
+            user.MunicipioId = dto.MunicipioId.Value;
+        }
 
         user.UpdatedAt = DateTime.UtcNow;
 
@@ -279,6 +305,7 @@ public class UserService : IUserService
         var user = await _context.Users
             .Include(u => u.PatientProfile)
             .Include(u => u.ProfessionalProfile)
+            .Include(u => u.Municipio)
             .FirstOrDefaultAsync(u => u.Id == id);
             
         if (user == null) return false;
@@ -395,6 +422,8 @@ public class UserService : IUserService
             EmailVerified = user.EmailVerified,
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt,
+            MunicipioId = user.MunicipioId,
+            MunicipioNome = user.Municipio?.Nome,
             PatientProfile = user.PatientProfile != null ? MapToPatientProfileDto(user.PatientProfile) : null,
             ProfessionalProfile = user.ProfessionalProfile != null ? MapToProfessionalProfileDto(user.ProfessionalProfile) : null
         };

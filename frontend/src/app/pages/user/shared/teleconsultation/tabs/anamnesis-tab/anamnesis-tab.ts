@@ -17,7 +17,7 @@ import { Subject, takeUntil, debounceTime } from 'rxjs';
 export class AnamnesisTabComponent implements OnInit, OnDestroy, OnChanges {
   @Input() appointmentId: string | null = null;
   @Input() appointment: Appointment | null = null;
-  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PROFESSIONAL';
+  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' | 'REGULATOR' = 'PROFESSIONAL';
   @Input() readonly = false;
 
   anamnesisForm: FormGroup;

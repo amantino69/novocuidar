@@ -87,7 +87,7 @@ export class AppointmentDetailsComponent implements OnInit, OnDestroy {
   appointment: Appointment | null = null;
   appointmentId: string | null = null;
   loading = false;
-  userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PATIENT';
+  userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' | 'REGULATOR' | 'REGULATOR' = 'PATIENT';
   
   // Modo de visualização - todas as interações são bloqueadas
   readonly isDetailsView = true;

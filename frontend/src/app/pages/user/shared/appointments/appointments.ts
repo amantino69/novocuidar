@@ -67,7 +67,7 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
   appointments: Appointment[] = [];
   allAppointments: Appointment[] = []; // Store all to count
   loading = false;
-  userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PATIENT';
+  userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' | 'REGULATOR' | 'REGULATOR' = 'PATIENT';
   
   // Counts
   counts = {

@@ -212,7 +212,7 @@ type SubTab = 'vitals' | 'auscultation' | 'exam';
 export class MedicalDevicesTabComponent implements OnInit, OnDestroy {
   @Input() appointmentId: string | null = null;
   @Input() appointment: Appointment | null = null;
-  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PATIENT';
+  @Input() userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' | 'REGULATOR' = 'PATIENT';
 
   activeSubTab: SubTab = 'vitals';
   isConnected = false;

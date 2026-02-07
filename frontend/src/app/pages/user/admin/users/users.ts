@@ -227,7 +227,8 @@ export class UsersComponent implements OnInit, OnDestroy {
       PROFESSIONAL: 'primary',
       ADMIN: 'warning',
       ASSISTANT: 'success',
-      RECEPTIONIST: 'info'
+      RECEPTIONIST: 'info',
+      REGULATOR: 'primary',
     };
     return variantMap[role];
   }

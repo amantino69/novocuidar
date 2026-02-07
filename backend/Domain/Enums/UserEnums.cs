@@ -6,7 +6,8 @@ public enum UserRole
     PROFESSIONAL,
     ADMIN,
     ASSISTANT,
-    RECEPTIONIST
+    RECEPTIONIST,
+    REGULATOR
 }
 
 public enum UserStatus

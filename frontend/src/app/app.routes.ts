@@ -33,6 +33,7 @@ import { SpecialtiesComponent } from '@pages/user/admin/specialties/specialties'
 import { SchedulesComponent } from '@pages/user/admin/schedules';
 import { ReportsComponent } from '@pages/user/admin/reports/reports';
 import { AuditLogsComponent } from '@pages/user/admin/audit-logs/audit-logs';
+import { AdminRegulatorsComponent } from '@pages/user/admin/regulators/admin-regulators';
 
 // Patient-specific components
 import { SchedulingComponent } from '@pages/user/patient/scheduling/scheduling';
@@ -46,6 +47,11 @@ import { DigitalOfficeComponent } from '@pages/user/assistant/digital-office/dig
 // Receptionist-specific components
 import { ReceptionistDashboardComponent } from '../app/features/receptionist/receptionist-dashboard/receptionist-dashboard.component';
 import { SpontaneousDemandComponent } from '../app/features/receptionist/spontaneous-demand/spontaneous-demand.component';
+
+// Regulator-specific components
+import { RegulatorPatientsComponent } from '@pages/user/regulator/patients/regulator-patients';
+import { RegulatorSchedulesComponent } from '@pages/user/regulator/schedules/regulator-schedules';
+import { RegulatorQueueComponent } from '@pages/user/regulator/queue/regulator-queue';
 
 import { TeleconsultationComponent } from '@pages/user/shared/teleconsultation/teleconsultation';
 
@@ -95,8 +101,10 @@ export const routes: Routes = [
     children: [
       { path: 'notificacoes', component: NotificationsComponent },
       { path: 'perfil', component: ProfileComponent },
-      { path: 'consultas', component: AppointmentsComponent },
-      { path: 'consultas/:id/detalhes', component: AppointmentDetailsComponent },
+      
+      // Consultas - todos exceto REGULATOR (que não participa de teleconsultas)
+      { path: 'consultas', component: AppointmentsComponent, canActivate: [roleGuard(['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT', 'RECEPTIONIST'])] },
+      { path: 'consultas/:id/detalhes', component: AppointmentDetailsComponent, canActivate: [roleGuard(['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT', 'RECEPTIONIST'])] },
       
       // Admin only
       { path: 'usuarios', component: UsersComponent, canActivate: [roleGuard(['ADMIN'])] },
@@ -106,6 +114,7 @@ export const routes: Routes = [
       { path: 'solicitacoes-bloqueio', component: AdminScheduleBlocksComponent, canActivate: [roleGuard(['ADMIN'])] },
       { path: 'relatorios', component: ReportsComponent, canActivate: [roleGuard(['ADMIN'])] },
       { path: 'logs-auditoria', component: AuditLogsComponent, canActivate: [roleGuard(['ADMIN'])] },
+      { path: 'reguladores', component: AdminRegulatorsComponent, canActivate: [roleGuard(['ADMIN'])] },
       
       // Professional only
       { path: 'bloqueios-agenda', component: ScheduleBlocksComponent, canActivate: [roleGuard(['PROFESSIONAL'])] },
@@ -125,8 +134,13 @@ export const routes: Routes = [
       { path: 'recepcao', component: ReceptionistDashboardComponent, canActivate: [roleGuard(['RECEPTIONIST', 'ADMIN'])] },
       { path: 'recepcao/demanda-espontanea', component: SpontaneousDemandComponent, canActivate: [roleGuard(['RECEPTIONIST', 'ADMIN'])] },
       
-      // Teleconsultation (all authenticated users)
-      { path: 'teleconsulta/:id', component: TeleconsultationComponent }
+      // Regulator only (municipal management)
+      { path: 'regulacao/pacientes', component: RegulatorPatientsComponent, canActivate: [roleGuard(['REGULATOR'])] },
+      { path: 'regulacao/agendas', component: RegulatorSchedulesComponent, canActivate: [roleGuard(['REGULATOR'])] },
+      { path: 'regulacao/fila', component: RegulatorQueueComponent, canActivate: [roleGuard(['REGULATOR'])] },
+      
+      // Teleconsultation - todos exceto REGULATOR (que não participa de teleconsultas)
+      { path: 'teleconsulta/:id', component: TeleconsultationComponent, canActivate: [roleGuard(['PATIENT', 'PROFESSIONAL', 'ADMIN', 'ASSISTANT', 'RECEPTIONIST'])] }
     ]
   }
 ];

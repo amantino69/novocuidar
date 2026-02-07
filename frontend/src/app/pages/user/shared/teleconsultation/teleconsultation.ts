@@ -39,7 +39,7 @@ import { environment } from '@env/environment';
 export class TeleconsultationComponent implements OnInit, OnDestroy {
   appointmentId: string | null = null;
   appointment: Appointment | null = null;
-  userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' = 'PATIENT';
+  userrole: 'PATIENT' | 'PROFESSIONAL' | 'ADMIN' | 'ASSISTANT' | 'RECEPTIONIST' | 'REGULATOR' | 'REGULATOR' = 'PATIENT';
   
   // UI States
   isHeaderVisible = true;

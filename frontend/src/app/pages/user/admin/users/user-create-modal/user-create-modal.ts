@@ -223,13 +223,14 @@ export class UserCreateModalComponent {
     }
   }
 
-  getRoleIcon(role: UserRole): 'user' | 'users' | 'shield' | 'phone' | 'book' {
-    const iconMap: Record<UserRole, 'user' | 'users' | 'shield' | 'phone' | 'book'> = {
+  getRoleIcon(role: UserRole): 'user' | 'users' | 'shield' | 'phone' | 'book' | 'globe' {
+    const iconMap: Record<UserRole, 'user' | 'users' | 'shield' | 'phone' | 'book' | 'globe'> = {
       PATIENT: 'user',
       PROFESSIONAL: 'users',
       ADMIN: 'shield',
       ASSISTANT: 'phone',
-      RECEPTIONIST: 'book'
+      RECEPTIONIST: 'book',
+      REGULATOR: 'globe',
     };
     return iconMap[role];
   }
@@ -240,7 +241,8 @@ export class UserCreateModalComponent {
       PROFESSIONAL: 'Profissional',
       ADMIN: 'Administrador',
       ASSISTANT: 'Assistente',
-      RECEPTIONIST: 'Recepcionista'
+      RECEPTIONIST: 'Recepcionista',
+      REGULATOR: 'Regulador',
     };
     return labels[role];
   }
@@ -251,7 +253,8 @@ export class UserCreateModalComponent {
       PROFESSIONAL: 'Profissional de saúde que realizará atendimentos',
       ADMIN: 'Administrador com acesso total ao sistema',
       ASSISTANT: 'Assistente que auxilia pacientes no consultório digital',
-      RECEPTIONIST: 'Recepcionista que gerencia agendamentos e atendimentos'
+      RECEPTIONIST: 'Recepcionista que gerencia agendamentos e atendimentos',
+      REGULATOR: 'Regulador municipal que gerencia pacientes e estabelecimentos',
     };
     return descriptions[role];
   }

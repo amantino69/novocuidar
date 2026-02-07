@@ -85,6 +85,14 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
       color: 'red'
     },
     {
+      id: 'regulators',
+      title: 'Reguladores',
+      description: 'Gerenciar reguladores municipais',
+      icon: 'globe',
+      route: '/reguladores',
+      color: 'blue'
+    },
+    {
       id: 'notifications',
       title: 'Notificações',
       description: 'Central de notificações',
