@@ -517,15 +517,37 @@ try {{
         
         try
         {
-            var certArg = $"{_certPath}:{_certPassword}";
+            // Determinar argumentos do certificado - preferir PEM se disponível (OpenSSL 3.x compat)
+            var certDir = Path.GetDirectoryName(_certPath) ?? "/app/certs";
+            var pemPath = Path.Combine(certDir, "fullchain.pem");
+            
+            string arguments;
+            if (File.Exists(pemPath))
+            {
+                // Usar PEM (compatível com OpenSSL 3.x)
+                arguments = $"-s -k --cert \"{pemPath}\" " +
+                           $"-H \"Content-Type: application/soap+xml; charset=utf-8\" " +
+                           $"-H \"Authorization: jwt {token}\" " +
+                           $"-d @\"{tempFile}\" \"{_queryUrl}\"";
+                           
+                _logger.LogDebug("Usando certificado PEM para requisição SOAP: {PemPath}", pemPath);
+            }
+            else
+            {
+                // Fallback para PFX
+                var certArg = $"{_certPath}:{_certPassword}";
+                arguments = $"-s -k --cert-type P12 --cert \"{certArg}\" " +
+                           $"-H \"Content-Type: application/soap+xml; charset=utf-8\" " +
+                           $"-H \"Authorization: jwt {token}\" " +
+                           $"-d @\"{tempFile}\" \"{_queryUrl}\"";
+                           
+                _logger.LogWarning("Usando certificado PFX para requisição SOAP (pode falhar em OpenSSL 3.x): {CertPath}", _certPath);
+            }
             
             var startInfo = new ProcessStartInfo
             {
                 FileName = "curl",
-                Arguments = $"-s -k --cert-type P12 --cert \"{certArg}\" " +
-                           $"-H \"Content-Type: application/soap+xml; charset=utf-8\" " +
-                           $"-H \"Authorization: jwt {token}\" " +
-                           $"-d @\"{tempFile}\" \"{_queryUrl}\"",
+                Arguments = arguments,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
