@@ -100,3 +100,22 @@ public class CnsTokenRenewResponseDto
     public string? ExpiresAt { get; set; }
     public string? ExpiresIn { get; set; }
 }
+
+/// <summary>
+/// DTO com informações de diagnóstico do serviço CNS
+/// </summary>
+public class CnsDiagnosticsDto
+{
+    public bool IsConfigured { get; set; }
+    public string Ambiente { get; set; } = string.Empty;
+    public string AuthUrl { get; set; } = string.Empty;
+    public string QueryUrl { get; set; } = string.Empty;
+    public string? CertPathConfigured { get; set; }
+    public string? CertPathResolved { get; set; }
+    public bool CertFileExists { get; set; }
+    public long CertFileSizeBytes { get; set; }
+    public bool PasswordConfigured { get; set; }
+    public int PasswordLength { get; set; }
+    public CnsTokenStatusDto? TokenStatus { get; set; }
+    public string? ErrorMessage { get; set; }
+}

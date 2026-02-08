@@ -252,6 +252,38 @@ public class CnsService : ICnsService
         return GetTokenStatus();
     }
 
+    public CnsDiagnosticsDto GetDiagnostics()
+    {
+        var certPathEnv = Environment.GetEnvironmentVariable("CNS_CERT_PATH") 
+                    ?? Environment.GetEnvironmentVariable("CADSUS_CERT_PATH");
+        
+        var certExists = !string.IsNullOrEmpty(_certPath) && File.Exists(_certPath);
+        long certSize = 0;
+        if (certExists)
+        {
+            try
+            {
+                certSize = new FileInfo(_certPath!).Length;
+            }
+            catch { }
+        }
+        
+        return new CnsDiagnosticsDto
+        {
+            IsConfigured = _isConfigured,
+            Ambiente = _ambiente,
+            AuthUrl = _authUrl,
+            QueryUrl = _queryUrl,
+            CertPathConfigured = certPathEnv,
+            CertPathResolved = _certPath,
+            CertFileExists = certExists,
+            CertFileSizeBytes = certSize,
+            PasswordConfigured = !string.IsNullOrEmpty(_certPassword),
+            PasswordLength = _certPassword?.Length ?? 0,
+            TokenStatus = GetTokenStatus()
+        };
+    }
+
     private async Task<string> GetTokenAsync()
     {
         // Verificar cache com margem de 5 minutos

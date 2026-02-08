@@ -873,6 +873,11 @@ export class HealthFacilitiesComponent implements OnInit {
   modalError: string | null = null;
   facilityForm = this.getEmptyForm();
 
+  // Cache estático para evitar chamadas repetidas ao navegar entre telas
+  private static facilitiesCache: { data: any, timestamp: number, key: string } | null = null;
+  private static municipalitiesCache: { data: Municipality[], timestamp: number } | null = null;
+  private static CACHE_TTL = 30000; // 30 segundos
+
   private searchTimeout: any;
 
   constructor(private http: HttpClient) {}
@@ -880,6 +885,18 @@ export class HealthFacilitiesComponent implements OnInit {
   ngOnInit() {
     this.loadMunicipalities();
     this.loadFacilities();
+  }
+
+  private isCacheValid(cache: { timestamp: number } | null): boolean {
+    return cache !== null && (Date.now() - cache.timestamp) < HealthFacilitiesComponent.CACHE_TTL;
+  }
+
+  private getCacheKey(): string {
+    return `${this.currentPage}-${this.pageSize}-${this.searchTerm}-${this.tipoFiltro}-${this.ativoFiltro}-${this.consultorioFiltro}`;
+  }
+
+  private clearCache() {
+    HealthFacilitiesComponent.facilitiesCache = null;
   }
 
   getEmptyForm() {
@@ -902,14 +919,39 @@ export class HealthFacilitiesComponent implements OnInit {
   }
 
   loadMunicipalities() {
+    // Usar cache se válido
+    if (this.isCacheValid(HealthFacilitiesComponent.municipalitiesCache)) {
+      this.municipalities = HealthFacilitiesComponent.municipalitiesCache!.data;
+      return;
+    }
+
     this.http.get<Municipality[]>(`${environment.apiUrl}/municipalities`)
       .subscribe({
-        next: (data) => this.municipalities = data,
+        next: (data) => {
+          this.municipalities = data;
+          HealthFacilitiesComponent.municipalitiesCache = { data, timestamp: Date.now() };
+        },
         error: (err) => console.error('Erro ao carregar municípios:', err)
       });
   }
 
   loadFacilities() {
+    const cacheKey = this.getCacheKey();
+    
+    // Usar cache se válido e mesma chave
+    if (this.isCacheValid(HealthFacilitiesComponent.facilitiesCache) && 
+        HealthFacilitiesComponent.facilitiesCache!.key === cacheKey) {
+      const cached = HealthFacilitiesComponent.facilitiesCache!.data;
+      this.facilities = cached.data;
+      this.totalFacilities = cached.total;
+      this.totalPages = cached.totalPages;
+      this.facilitiesAtivas = this.facilities.filter((f: any) => f.ativo).length;
+      this.facilitiesComConsultorio = this.facilities.filter((f: any) => f.temConsultorioDigital).length;
+      this.totalPacientesAdscritos = this.facilities.reduce((sum: number, f: any) => sum + f.totalPacientesAdscritos, 0);
+      this.loading = false;
+      return;
+    }
+
     this.loading = true;
 
     let url = `${environment.apiUrl}/healthfacilities?page=${this.currentPage}&pageSize=${this.pageSize}`;
@@ -924,6 +966,13 @@ export class HealthFacilitiesComponent implements OnInit {
         this.facilities = response.data;
         this.totalFacilities = response.total;
         this.totalPages = response.totalPages;
+        
+        // Salvar no cache
+        HealthFacilitiesComponent.facilitiesCache = { 
+          data: response, 
+          timestamp: Date.now(),
+          key: cacheKey 
+        };
         
         // Calcular stats
         this.facilitiesAtivas = this.facilities.filter(f => f.ativo).length;
@@ -1017,6 +1066,7 @@ export class HealthFacilitiesComponent implements OnInit {
       next: () => {
         this.modalLoading = false;
         this.closeModal();
+        this.clearCache(); // Limpar cache após modificação
         this.loadFacilities();
       },
       error: (err) => {
@@ -1030,7 +1080,10 @@ export class HealthFacilitiesComponent implements OnInit {
     this.http.put(`${environment.apiUrl}/healthfacilities/${facility.id}`, {
       temConsultorioDigital: !facility.temConsultorioDigital
     }).subscribe({
-      next: () => this.loadFacilities(),
+      next: () => {
+        this.clearCache(); // Limpar cache após modificação
+        this.loadFacilities();
+      },
       error: (err) => console.error('Erro ao atualizar:', err)
     });
   }
@@ -1039,7 +1092,10 @@ export class HealthFacilitiesComponent implements OnInit {
     this.http.put(`${environment.apiUrl}/healthfacilities/${facility.id}`, {
       ativo: !facility.ativo
     }).subscribe({
-      next: () => this.loadFacilities(),
+      next: () => {
+        this.clearCache(); // Limpar cache após modificação
+        this.loadFacilities();
+      },
       error: (err) => console.error('Erro ao atualizar:', err)
     });
   }

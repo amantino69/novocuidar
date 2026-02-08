@@ -45,11 +45,12 @@ public class HealthFacilitiesController : ControllerBase
 
             if (!string.IsNullOrWhiteSpace(search))
             {
-                search = search.ToLower();
+                // OTIMIZADO: Usar ILike nativo do PostgreSQL (case-insensitive sem ToLower)
+                var searchPattern = $"%{search}%";
                 query = query.Where(h => 
-                    h.NomeFantasia.ToLower().Contains(search) || 
+                    EF.Functions.ILike(h.NomeFantasia, searchPattern) || 
                     h.CodigoCNES.Contains(search) ||
-                    (h.RazaoSocial != null && h.RazaoSocial.ToLower().Contains(search)));
+                    (h.RazaoSocial != null && EF.Functions.ILike(h.RazaoSocial, searchPattern)));
             }
 
             if (!string.IsNullOrWhiteSpace(tipoEstabelecimento))
@@ -69,7 +70,22 @@ public class HealthFacilitiesController : ControllerBase
 
             var total = await query.CountAsync();
 
+            // OTIMIZAÇÃO: Buscar contagem de pacientes em uma única query
+            var facilityIds = await query
+                .OrderBy(h => h.NomeFantasia)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(h => h.Id)
+                .ToListAsync();
+
+            var patientCounts = await _context.PatientProfiles
+                .Where(p => p.UnidadeAdscritaId != null && facilityIds.Contains(p.UnidadeAdscritaId.Value))
+                .GroupBy(p => p.UnidadeAdscritaId)
+                .Select(g => new { FacilityId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.FacilityId!.Value, x => x.Count);
+
             var facilities = await query
+                .AsNoTracking()
                 .OrderBy(h => h.NomeFantasia)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -97,9 +113,16 @@ public class HealthFacilitiesController : ControllerBase
                     MunicipioId = h.MunicipioId,
                     MunicipioNome = h.Municipio.Nome,
                     MunicipioUF = h.Municipio.UF,
-                    TotalPacientesAdscritos = _context.PatientProfiles.Count(p => p.UnidadeAdscritaId == h.Id)
+                    TotalPacientesAdscritos = 0 // Será preenchido abaixo
                 })
                 .ToListAsync();
+
+            // Preencher contagem de pacientes
+            foreach (var facility in facilities)
+            {
+                if (patientCounts.TryGetValue(facility.Id, out var count))
+                    facility.TotalPacientesAdscritos = count;
+            }
 
             return Ok(new
             {

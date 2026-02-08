@@ -6,6 +6,7 @@ using System.Security.Claims;
 using Domain.Entities;
 using Domain.Enums;
 using Application.Interfaces;
+using Application.DTOs.Schedules;
 
 namespace WebAPI.Controllers;
 
@@ -57,6 +58,7 @@ public class RegulatorController : ControllerBase
 
     /// <summary>
     /// Estatísticas do município para o dashboard do regulador
+    /// OTIMIZADO: Queries simplificadas com subquery em vez de joins múltiplos
     /// </summary>
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats()
@@ -67,25 +69,25 @@ public class RegulatorController : ControllerBase
 
         var hoje = DateTime.Today;
 
-        // OTIMIZAÇÃO: Queries em paralelo (Task.WhenAll)
-        var totalPacientesTask = _context.PatientProfiles
+        // OTIMIZAÇÃO: Obter IDs dos pacientes do município uma vez
+        var patientIds = _context.PatientProfiles
             .AsNoTracking()
             .Where(pp => pp.MunicipioId == municipioId)
-            .CountAsync();
+            .Select(pp => pp.UserId);
+
+        // OTIMIZAÇÃO: Queries paralelas usando subquery
+        var totalPacientesTask = patientIds.CountAsync();
 
         var consultasHojeTask = _context.Appointments
             .AsNoTracking()
-            .Where(a => a.Date.Date == hoje &&
-                       a.Patient.PatientProfile != null &&
-                       a.Patient.PatientProfile.MunicipioId == municipioId)
+            .Where(a => a.Date.Date == hoje && patientIds.Contains(a.PatientId))
             .CountAsync();
 
         var consultasPendentesTask = _context.Appointments
             .AsNoTracking()
             .Where(a => a.Date.Date >= hoje &&
                        (a.Status == AppointmentStatus.Scheduled || a.Status == AppointmentStatus.Confirmed) &&
-                       a.Patient.PatientProfile != null &&
-                       a.Patient.PatientProfile.MunicipioId == municipioId)
+                       patientIds.Contains(a.PatientId))
             .CountAsync();
 
         var agendasDisponiveisTask = _context.Schedules
@@ -124,6 +126,7 @@ public class RegulatorController : ControllerBase
 
     /// <summary>
     /// Lista pacientes do município com paginação e filtros
+    /// OTIMIZADO: Usa ILike para busca case-insensitive nativa do PostgreSQL
     /// </summary>
     [HttpGet("patients")]
     public async Task<IActionResult> GetPatients(
@@ -135,22 +138,27 @@ public class RegulatorController : ControllerBase
         if (municipioId == null)
             return BadRequest(new { message = "Regulador não está vinculado a nenhum município" });
 
-        // OTIMIZAÇÃO: Começar pelo PatientProfile (tem índice no MunicipioId)
-        var query = _context.PatientProfiles
+        // OTIMIZAÇÃO: Query simplificada com projeção direta
+        // Primeiro pegar IDs dos pacientes do município
+        var patientIdsQuery = _context.PatientProfiles
             .AsNoTracking()
             .Where(pp => pp.MunicipioId == municipioId)
-            .Select(pp => pp.User);
+            .Select(pp => pp.UserId);
 
-        // Filtro de busca
+        // Depois buscar usuários
+        var query = _context.Users
+            .AsNoTracking()
+            .Where(u => patientIdsQuery.Contains(u.Id));
+
+        // Filtro de busca otimizado (case-insensitive nativo PostgreSQL)
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var searchLower = search.ToLower();
+            var searchPattern = $"%{search}%";
             query = query.Where(u => 
-                u.Name.ToLower().Contains(searchLower) ||
-                u.LastName.ToLower().Contains(searchLower) ||
+                EF.Functions.ILike(u.Name, searchPattern) ||
+                EF.Functions.ILike(u.LastName, searchPattern) ||
                 u.Cpf.Contains(search) ||
-                u.Email.ToLower().Contains(searchLower) ||
-                (u.PatientProfile!.Cns != null && u.PatientProfile.Cns.Contains(search)));
+                EF.Functions.ILike(u.Email, searchPattern));
         }
 
         var total = await query.CountAsync();
@@ -281,6 +289,7 @@ public class RegulatorController : ControllerBase
 
     /// <summary>
     /// Lista consultas do município com filtros - OTIMIZADO
+    /// Usa subquery em vez de joins para melhor performance
     /// </summary>
     [HttpGet("appointments")]
     public async Task<IActionResult> GetAppointments(
@@ -294,11 +303,16 @@ public class RegulatorController : ControllerBase
         if (municipioId == null)
             return BadRequest(new { message = "Regulador não está vinculado a nenhum município" });
 
-        // OTIMIZAÇÃO: Sem Include, apenas projeção
+        // OTIMIZAÇÃO: Obter IDs dos pacientes do município uma vez
+        var patientIds = _context.PatientProfiles
+            .AsNoTracking()
+            .Where(pp => pp.MunicipioId == municipioId)
+            .Select(pp => pp.UserId);
+
+        // Query principal usando subquery
         var query = _context.Appointments
             .AsNoTracking()
-            .Where(a => a.Patient.PatientProfile != null &&
-                       a.Patient.PatientProfile.MunicipioId == municipioId);
+            .Where(a => patientIds.Contains(a.PatientId));
 
         // Filtro de data
         if (startDate.HasValue)
@@ -378,7 +392,10 @@ public class RegulatorController : ControllerBase
                     name = s.Professional.Name + " " + s.Professional.LastName,
                     specialty = s.Professional.ProfessionalProfile != null && s.Professional.ProfessionalProfile.Specialty != null 
                         ? s.Professional.ProfessionalProfile.Specialty.Name 
-                        : "Não definida"
+                        : "Não definida",
+                    specialtyId = s.Professional.ProfessionalProfile != null && s.Professional.ProfessionalProfile.SpecialtyId != null 
+                        ? s.Professional.ProfessionalProfile.SpecialtyId 
+                        : (Guid?)null
                 }
             })
             .OrderBy(s => s.professional.name)
@@ -386,6 +403,262 @@ public class RegulatorController : ControllerBase
 
         return Ok(schedules);
     }
+
+    /// <summary>
+    /// Busca horários disponíveis para uma agenda específica
+    /// Retorna slots disponíveis nos próximos 30 dias
+    /// </summary>
+    [HttpGet("available-schedules/{scheduleId}/slots")]
+    public async Task<IActionResult> GetScheduleSlots(Guid scheduleId, [FromQuery] DateTime? startDate = null, [FromQuery] DateTime? endDate = null)
+    {
+        var schedule = await _context.Schedules
+            .Include(s => s.Professional)
+                .ThenInclude(p => p.ProfessionalProfile)
+                    .ThenInclude(pp => pp!.Specialty)
+            .FirstOrDefaultAsync(s => s.Id == scheduleId && s.IsActive);
+
+        if (schedule == null)
+            return NotFound(new { message = "Agenda não encontrada ou inativa" });
+
+        // Período de busca (padrão: próximos 30 dias)
+        var dataInicio = startDate ?? DateTime.Today;
+        var dataFim = endDate ?? DateTime.Today.AddDays(30);
+
+        // Não permitir datas no passado
+        if (dataInicio < DateTime.Today)
+            dataInicio = DateTime.Today;
+
+        // Limitar a 60 dias
+        if ((dataFim - dataInicio).TotalDays > 60)
+            dataFim = dataInicio.AddDays(60);
+
+        // Parse da configuração dos dias do JSON
+        var daysConfig = new List<DayConfigDto>();
+        var globalConfig = new GlobalConfigDto();
+        
+        try
+        {
+            if (!string.IsNullOrEmpty(schedule.DaysConfigJson))
+                daysConfig = System.Text.Json.JsonSerializer.Deserialize<List<DayConfigDto>>(schedule.DaysConfigJson) ?? new List<DayConfigDto>();
+            if (!string.IsNullOrEmpty(schedule.GlobalConfigJson))
+                globalConfig = System.Text.Json.JsonSerializer.Deserialize<GlobalConfigDto>(schedule.GlobalConfigJson) ?? new GlobalConfigDto();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Erro ao deserializar configuração da agenda {ScheduleId}: {Error}", scheduleId, ex.Message);
+        }
+
+        // Duração do slot a partir da configuração global
+        var slotDuration = globalConfig.ConsultationDuration > 0 ? globalConfig.ConsultationDuration : 30;
+
+        // Buscar consultas já agendadas no período
+        var consultasAgendadas = await _context.Appointments
+            .AsNoTracking()
+            .Where(a => a.ProfessionalId == schedule.ProfessionalId &&
+                       a.Date >= dataInicio && a.Date <= dataFim &&
+                       (a.Status == AppointmentStatus.Scheduled || a.Status == AppointmentStatus.Confirmed))
+            .Select(a => new { a.Date, a.Time })
+            .ToListAsync();
+
+        var slotsDisponiveis = new List<object>();
+
+        // Gerar slots para cada dia no período
+        for (var data = dataInicio; data <= dataFim; data = data.AddDays(1))
+        {
+            var diaSemana = data.DayOfWeek;
+            var dayName = diaSemana.ToString();
+            var configDia = daysConfig.FirstOrDefault(d => d.Day == dayName && d.IsWorking);
+
+            if (configDia == null) continue;
+
+            // Usar horários específicos do dia ou da configuração global
+            var startTimeStr = configDia.TimeRange?.StartTime ?? globalConfig.TimeRange?.StartTime ?? "08:00";
+            var endTimeStr = configDia.TimeRange?.EndTime ?? globalConfig.TimeRange?.EndTime ?? "18:00";
+
+            if (!TimeSpan.TryParse(startTimeStr, out var horaInicio) || 
+                !TimeSpan.TryParse(endTimeStr, out var horaFim))
+                continue;
+
+            // Gerar horários do dia
+            var horaAtual = horaInicio;
+            while (horaAtual < horaFim)
+            {
+                var horarioStr = horaAtual.ToString(@"hh\:mm");
+
+                // Verificar se não está ocupado (comparando TimeSpan)
+                var ocupado = consultasAgendadas.Any(c => c.Date.Date == data.Date && c.Time == horaAtual);
+
+                // Não mostrar horários passados para hoje
+                if (data.Date == DateTime.Today.Date)
+                {
+                    var agora = DateTime.Now.TimeOfDay;
+                    if (horaAtual <= agora)
+                    {
+                        horaAtual = horaAtual.Add(TimeSpan.FromMinutes(slotDuration));
+                        continue;
+                    }
+                }
+
+                if (!ocupado)
+                {
+                    slotsDisponiveis.Add(new
+                    {
+                        date = data.ToString("yyyy-MM-dd"),
+                        time = horarioStr,
+                        dayOfWeek = dayName,
+                        dayOfWeekPt = GetDayOfWeekPt(diaSemana)
+                    });
+                }
+
+                horaAtual = horaAtual.Add(TimeSpan.FromMinutes(slotDuration));
+            }
+        }
+
+        return Ok(new
+        {
+            schedule = new
+            {
+                id = schedule.Id,
+                professional = new
+                {
+                    id = schedule.Professional.Id,
+                    name = schedule.Professional.Name + " " + schedule.Professional.LastName,
+                    specialty = schedule.Professional.ProfessionalProfile?.Specialty?.Name ?? "Não definida",
+                    specialtyId = schedule.Professional.ProfessionalProfile?.SpecialtyId
+                },
+                slotDuration = slotDuration
+            },
+            slots = slotsDisponiveis,
+            totalSlots = slotsDisponiveis.Count
+        });
+    }
+
+    /// <summary>
+    /// Aloca um paciente em um horário disponível (cria consulta)
+    /// </summary>
+    [HttpPost("appointments/allocate")]
+    public async Task<IActionResult> AllocatePatient([FromBody] AllocatePatientDto dto)
+    {
+        var municipioId = await GetRegulatorMunicipioIdAsync();
+        if (municipioId == null)
+            return BadRequest(new { message = "Regulador não está vinculado a nenhum município" });
+
+        // Validar paciente (deve ser do mesmo município)
+        var patient = await _context.Users
+            .Include(u => u.PatientProfile)
+            .FirstOrDefaultAsync(u => u.Id == dto.PatientId && 
+                                     u.Role == UserRole.PATIENT &&
+                                     u.PatientProfile != null &&
+                                     u.PatientProfile.MunicipioId == municipioId);
+
+        if (patient == null)
+            return BadRequest(new { message = "Paciente não encontrado ou não pertence ao seu município" });
+
+        // Validar agenda
+        var schedule = await _context.Schedules
+            .Include(s => s.Professional)
+                .ThenInclude(p => p.ProfessionalProfile)
+                    .ThenInclude(pp => pp!.Specialty)
+            .FirstOrDefaultAsync(s => s.Id == dto.ScheduleId && s.IsActive);
+
+        if (schedule == null)
+            return BadRequest(new { message = "Agenda não encontrada ou inativa" });
+
+        // Validar data
+        if (!DateTime.TryParse(dto.Date, out var appointmentDate))
+            return BadRequest(new { message = "Data inválida" });
+
+        if (appointmentDate.Date < DateTime.Today)
+            return BadRequest(new { message = "Não é possível agendar para datas passadas" });
+
+        // Validar horário
+        if (!TimeSpan.TryParse(dto.Time, out var appointmentTime))
+            return BadRequest(new { message = "Horário inválido" });
+
+        // Verificar se o horário já está ocupado
+        var horarioOcupado = await _context.Appointments
+            .AnyAsync(a => a.ProfessionalId == schedule.ProfessionalId &&
+                          a.Date.Date == appointmentDate.Date &&
+                          a.Time == appointmentTime &&
+                          (a.Status == AppointmentStatus.Scheduled || a.Status == AppointmentStatus.Confirmed));
+
+        if (horarioOcupado)
+            return BadRequest(new { message = "Este horário já está ocupado. Por favor, escolha outro." });
+
+        // Obter duração do slot da agenda
+        var globalConfigAlloc = new GlobalConfigDto();
+        try
+        {
+            if (!string.IsNullOrEmpty(schedule.GlobalConfigJson))
+                globalConfigAlloc = System.Text.Json.JsonSerializer.Deserialize<GlobalConfigDto>(schedule.GlobalConfigJson) ?? new GlobalConfigDto();
+        }
+        catch { }
+        var slotDurationAlloc = globalConfigAlloc.ConsultationDuration > 0 ? globalConfigAlloc.ConsultationDuration : 30;
+
+        // Criar a consulta
+        var specialtyId = schedule.Professional.ProfessionalProfile?.SpecialtyId;
+        if (specialtyId == null)
+            return BadRequest(new { message = "Profissional não possui especialidade configurada" });
+
+        var appointment = new Appointment
+        {
+            PatientId = dto.PatientId,
+            ProfessionalId = schedule.ProfessionalId,
+            SpecialtyId = specialtyId.Value,
+            Date = appointmentDate,
+            Time = appointmentTime,
+            EndTime = appointmentTime.Add(TimeSpan.FromMinutes(slotDurationAlloc)),
+            Type = AppointmentType.Routine, // Consulta de rotina agendada pelo regulador
+            Status = AppointmentStatus.Scheduled,
+            Observation = dto.Observation ?? $"Consulta agendada pelo Regulador Municipal",
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Appointments.Add(appointment);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Regulador alocou paciente {PatientId} na agenda {ScheduleId} para {Date} às {Time}",
+            dto.PatientId, dto.ScheduleId, dto.Date, dto.Time);
+
+        return Ok(new
+        {
+            message = "Paciente alocado com sucesso",
+            appointment = new
+            {
+                id = appointment.Id,
+                date = appointment.Date.ToString("yyyy-MM-dd"),
+                time = appointment.Time.ToString(@"hh\:mm"),
+                patient = new
+                {
+                    id = patient.Id,
+                    name = patient.Name + " " + patient.LastName
+                },
+                professional = new
+                {
+                    id = schedule.Professional.Id,
+                    name = schedule.Professional.Name + " " + schedule.Professional.LastName
+                },
+                specialty = schedule.Professional.ProfessionalProfile?.Specialty?.Name
+            }
+        });
+    }
+
+    private static TimeSpan CalculateEndTime(TimeSpan startTime, int durationMinutes)
+    {
+        return startTime.Add(TimeSpan.FromMinutes(durationMinutes));
+    }
+
+    private static string GetDayOfWeekPt(DayOfWeek day) => day switch
+    {
+        DayOfWeek.Sunday => "Domingo",
+        DayOfWeek.Monday => "Segunda-feira",
+        DayOfWeek.Tuesday => "Terça-feira",
+        DayOfWeek.Wednesday => "Quarta-feira",
+        DayOfWeek.Thursday => "Quinta-feira",
+        DayOfWeek.Friday => "Sexta-feira",
+        DayOfWeek.Saturday => "Sábado",
+        _ => day.ToString()
+    };
 
     /// <summary>
     /// Lista especialidades disponíveis no sistema
@@ -930,6 +1203,18 @@ public class RegulatorController : ControllerBase
     }
 
     /// <summary>
+    /// Obtém informações de diagnóstico do serviço CADSUS/CNS
+    /// Útil para verificar configuração do certificado em produção
+    /// </summary>
+    [HttpGet("cadsus/diagnostics")]
+    public IActionResult GetCadsusDiagnostics()
+    {
+        _logger.LogInformation("Solicitação de diagnóstico CADSUS");
+        var diagnostics = _cnsService.GetDiagnostics();
+        return Ok(diagnostics);
+    }
+
+    /// <summary>
     /// Busca cidadão no CADSUS por CPF ou CNS
     /// NOTA: Versão simulada para POC - substituir por integração real com webservice CADSUS
     /// </summary>
@@ -939,6 +1224,7 @@ public class RegulatorController : ControllerBase
         // Validar que pelo menos um parâmetro foi fornecido
         if (string.IsNullOrWhiteSpace(cpf) && string.IsNullOrWhiteSpace(cns))
             return BadRequest(new { message = "Informe CPF ou CNS para busca" });
+
 
         // Limpar formatação
         var cleanCpf = !string.IsNullOrWhiteSpace(cpf) ? new string(cpf.Where(char.IsDigit).ToArray()) : null;
@@ -1254,6 +1540,16 @@ public class ImportError
     public int Line { get; set; }
     public string Message { get; set; } = "";
     public string? Data { get; set; }
+}
+
+// DTO para alocação de paciente em agenda
+public class AllocatePatientDto
+{
+    public required Guid PatientId { get; set; }
+    public required Guid ScheduleId { get; set; }
+    public required string Date { get; set; } // formato: yyyy-MM-dd
+    public required string Time { get; set; } // formato: HH:mm
+    public string? Observation { get; set; }
 }
 
 // DTO para criação de paciente

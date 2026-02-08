@@ -32,4 +32,10 @@ public interface ICnsService
     /// </summary>
     /// <returns>True se o certificado está configurado corretamente</returns>
     bool IsConfigured();
+    
+    /// <summary>
+    /// Obtém informações de diagnóstico do serviço CNS
+    /// </summary>
+    /// <returns>Informações detalhadas da configuração para debug</returns>
+    CnsDiagnosticsDto GetDiagnostics();
 }

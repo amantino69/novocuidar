@@ -406,12 +406,13 @@ public class ReceptionistController : ControllerBase
         if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
             return Ok(new { data = new List<object>() });
 
-        var queryLower = query.ToLower();
+        // OTIMIZADO: Usar ILike nativo do PostgreSQL (case-insensitive sem ToLower)
+        var searchPattern = $"%{query}%";
         var patients = await _context.Users
-            .Include(u => u.PatientProfile)
+            .AsNoTracking()
             .Where(u => u.Role == UserRole.PATIENT &&
-                       (u.Name.ToLower().Contains(queryLower) || 
-                        u.LastName.ToLower().Contains(queryLower) ||
+                       (EF.Functions.ILike(u.Name, searchPattern) || 
+                        EF.Functions.ILike(u.LastName, searchPattern) ||
                         (u.Cpf != null && u.Cpf.Contains(query))))
             .OrderBy(u => u.Name)
             .ThenBy(u => u.LastName)

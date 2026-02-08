@@ -1,7 +1,16 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of, BehaviorSubject } from 'rxjs';
+import { map, tap, shareReplay } from 'rxjs/operators';
 import { environment } from '@env/environment';
+
+// Cache com expiração para evitar chamadas repetidas
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const CACHE_TTL = 30000; // 30 segundos
 
 export interface MunicipalStats {
   totalPacientes: number;
@@ -111,6 +120,55 @@ export interface AvailableSchedule {
     id: string;
     name: string;
     specialty: string;
+    specialtyId?: string;
+  };
+}
+
+export interface ScheduleSlot {
+  date: string;
+  time: string;
+  dayOfWeek: string;
+  dayOfWeekPt: string;
+}
+
+export interface ScheduleSlotsResponse {
+  schedule: {
+    id: string;
+    professional: {
+      id: string;
+      name: string;
+      specialty: string;
+      specialtyId: string;
+    };
+    slotDuration: number;
+  };
+  slots: ScheduleSlot[];
+  totalSlots: number;
+}
+
+export interface AllocatePatientData {
+  patientId: string;
+  scheduleId: string;
+  date: string;
+  time: string;
+  observation?: string;
+}
+
+export interface AllocatePatientResponse {
+  message: string;
+  appointment: {
+    id: string;
+    date: string;
+    time: string;
+    patient: {
+      id: string;
+      name: string;
+    };
+    professional: {
+      id: string;
+      name: string;
+    };
+    specialty: string;
   };
 }
 
@@ -127,21 +185,54 @@ export class RegulatorService {
   private http = inject(HttpClient);
   private apiUrl = `${environment.apiUrl}/regulator`;
 
-  /**
-   * Obtém estatísticas do município para o dashboard
-   */
-  getStats(): Observable<MunicipalStats> {
-    return this.http.get<MunicipalStats>(`${this.apiUrl}/stats`);
+  // Cache para evitar chamadas repetidas ao navegar entre telas
+  private statsCache: CacheEntry<MunicipalStats> | null = null;
+  private patientsCache = new Map<string, CacheEntry<PaginatedResponse<RegulatorPatient>>>();
+  private schedulesCache: CacheEntry<AvailableSchedule[]> | null = null;
+  private specialtiesCache: CacheEntry<Specialty[]> | null = null;
+
+  private isCacheValid<T>(cache: CacheEntry<T> | null | undefined): cache is CacheEntry<T> {
+    return cache !== null && cache !== undefined && (Date.now() - cache.timestamp) < CACHE_TTL;
   }
 
   /**
-   * Lista pacientes do município com paginação e filtros
+   * Limpa todo o cache (usar após criar/editar dados)
+   */
+  clearCache() {
+    this.statsCache = null;
+    this.patientsCache.clear();
+    this.schedulesCache = null;
+    this.specialtiesCache = null;
+  }
+
+  /**
+   * Obtém estatísticas do município para o dashboard - COM CACHE
+   */
+  getStats(): Observable<MunicipalStats> {
+    if (this.isCacheValid(this.statsCache)) {
+      return of(this.statsCache.data);
+    }
+    return this.http.get<MunicipalStats>(`${this.apiUrl}/stats`).pipe(
+      tap(data => this.statsCache = { data, timestamp: Date.now() })
+    );
+  }
+
+  /**
+   * Lista pacientes do município com paginação e filtros - COM CACHE
    */
   getPatients(params?: {
     search?: string;
     page?: number;
     pageSize?: number;
   }): Observable<PaginatedResponse<RegulatorPatient>> {
+    // Criar chave de cache baseada nos parâmetros
+    const cacheKey = JSON.stringify(params || {});
+    const cached = this.patientsCache.get(cacheKey);
+    
+    if (this.isCacheValid(cached)) {
+      return of(cached.data);
+    }
+
     let httpParams = new HttpParams();
     
     if (params?.search) {
@@ -157,6 +248,8 @@ export class RegulatorService {
     return this.http.get<PaginatedResponse<RegulatorPatient>>(
       `${this.apiUrl}/patients`,
       { params: httpParams }
+    ).pipe(
+      tap(data => this.patientsCache.set(cacheKey, { data, timestamp: Date.now() }))
     );
   }
 
@@ -202,17 +295,59 @@ export class RegulatorService {
   }
 
   /**
-   * Lista agendas disponíveis
+   * Lista agendas disponíveis - COM CACHE
    */
   getAvailableSchedules(): Observable<AvailableSchedule[]> {
-    return this.http.get<AvailableSchedule[]>(`${this.apiUrl}/available-schedules`);
+    if (this.isCacheValid(this.schedulesCache)) {
+      return of(this.schedulesCache.data);
+    }
+    return this.http.get<AvailableSchedule[]>(`${this.apiUrl}/available-schedules`).pipe(
+      tap(data => this.schedulesCache = { data, timestamp: Date.now() })
+    );
   }
 
   /**
-   * Lista especialidades disponíveis
+   * Busca slots disponíveis de uma agenda específica
+   */
+  getScheduleSlots(scheduleId: string, startDate?: string, endDate?: string): Observable<ScheduleSlotsResponse> {
+    let httpParams = new HttpParams();
+    if (startDate) {
+      httpParams = httpParams.set('startDate', startDate);
+    }
+    if (endDate) {
+      httpParams = httpParams.set('endDate', endDate);
+    }
+    return this.http.get<ScheduleSlotsResponse>(`${this.apiUrl}/available-schedules/${scheduleId}/slots`, { params: httpParams });
+  }
+
+  /**
+   * Aloca um paciente em um horário disponível - LIMPA CACHE após sucesso
+   */
+  allocatePatient(data: AllocatePatientData): Observable<AllocatePatientResponse> {
+    return this.http.post<AllocatePatientResponse>(`${this.apiUrl}/appointments/allocate`, data).pipe(
+      tap(() => this.clearCache())
+    );
+  }
+
+  /**
+   * Busca pacientes do município para alocação (pelo nome ou CPF)
+   */
+  searchPatientsForAllocation(query: string): Observable<RegulatorPatient[]> {
+    const params = new HttpParams().set('search', query).set('pageSize', '20');
+    return this.http.get<{ data: RegulatorPatient[], totalCount: number }>(`${this.apiUrl}/patients`, { params })
+      .pipe(map(response => response.data));
+  }
+
+  /**
+   * Lista especialidades disponíveis - COM CACHE
    */
   getSpecialties(): Observable<Specialty[]> {
-    return this.http.get<Specialty[]>(`${this.apiUrl}/specialties`);
+    if (this.isCacheValid(this.specialtiesCache)) {
+      return of(this.specialtiesCache.data);
+    }
+    return this.http.get<Specialty[]>(`${this.apiUrl}/specialties`).pipe(
+      tap(data => this.specialtiesCache = { data, timestamp: Date.now() })
+    );
   }
 
   /**
@@ -232,17 +367,21 @@ export class RegulatorService {
   }
 
   /**
-   * Cria um novo paciente
+   * Cria um novo paciente - LIMPA CACHE após sucesso
    */
   createPatient(data: CreatePatientData): Observable<{ id: string; fullName: string; cpf: string; cns: string }> {
-    return this.http.post<{ id: string; fullName: string; cpf: string; cns: string }>(`${this.apiUrl}/patients`, data);
+    return this.http.post<{ id: string; fullName: string; cpf: string; cns: string }>(`${this.apiUrl}/patients`, data).pipe(
+      tap(() => this.clearCache())
+    );
   }
 
   /**
-   * Atualiza um paciente existente
+   * Atualiza um paciente existente - LIMPA CACHE após sucesso
    */
   updatePatient(patientId: string, data: Partial<CreatePatientData>): Observable<{ message: string }> {
-    return this.http.put<{ message: string }>(`${this.apiUrl}/patients/${patientId}`, data);
+    return this.http.put<{ message: string }>(`${this.apiUrl}/patients/${patientId}`, data).pipe(
+      tap(() => this.clearCache())
+    );
   }
 
   /**

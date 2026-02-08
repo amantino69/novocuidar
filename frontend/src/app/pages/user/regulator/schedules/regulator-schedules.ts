@@ -4,7 +4,7 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '@app/shared/components/atoms/icon/icon';
 import { AuthService } from '@app/core/services/auth.service';
-import { RegulatorService, AvailableSchedule, Specialty } from '@app/core/services/regulator.service';
+import { RegulatorService, AvailableSchedule, Specialty, ScheduleSlot, ScheduleSlotsResponse, RegulatorPatient } from '@app/core/services/regulator.service';
 
 @Component({
   selector: 'app-regulator-schedules',
@@ -137,7 +137,7 @@ import { RegulatorService, AvailableSchedule, Specialty } from '@app/core/servic
     </div>
 
     <!-- Modal Ver Detalhes (simplificado) -->
-    @if (selectedSchedule) {
+    @if (selectedSchedule && !showAllocationModal) {
       <div class="modal-overlay" (click)="closeModal()">
         <div class="modal-content" (click)="$event.stopPropagation()">
           <div class="modal-header">
@@ -168,6 +168,175 @@ import { RegulatorService, AvailableSchedule, Specialty } from '@app/core/servic
             <button class="btn-secondary" (click)="closeModal()">Fechar</button>
           </div>
         </div>
+      </div>
+    }
+
+    <!-- Modal Alocar Paciente -->
+    @if (showAllocationModal && allocationSchedule) {
+      <div class="modal-overlay" (click)="closeAllocationModal()">
+        <div class="modal-content allocation-modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>
+              <app-icon name="plus-circle" [size]="24" />
+              Alocar Paciente
+            </h2>
+            <button class="close-btn" (click)="closeAllocationModal()">
+              <app-icon name="x" [size]="24" />
+            </button>
+          </div>
+          
+          <div class="modal-body allocation-body">
+            <!-- Info do Profissional -->
+            <div class="allocation-info">
+              <div class="professional-badge">
+                <div class="avatar">{{ getInitials(allocationSchedule.professional.name) }}</div>
+                <div>
+                  <strong>{{ allocationSchedule.professional.name }}</strong>
+                  <span>{{ allocationSchedule.professional.specialty }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Passo 1: Selecionar Paciente -->
+            <div class="allocation-step" [class.completed]="selectedPatient">
+              <div class="step-header">
+                <span class="step-number">1</span>
+                <h4>Selecionar Paciente</h4>
+              </div>
+              
+              <div class="patient-search">
+                <div class="search-input">
+                  <app-icon name="search" [size]="18" />
+                  <input 
+                    type="text" 
+                    placeholder="Buscar paciente por nome ou CPF..."
+                    [(ngModel)]="patientSearchTerm"
+                    (input)="searchPatients()"
+                  />
+                </div>
+                
+                @if (loadingPatients) {
+                  <div class="loading-small">
+                    <div class="spinner-small"></div>
+                    <span>Buscando...</span>
+                  </div>
+                }
+                
+                @if (patients.length > 0 && !selectedPatient) {
+                  <div class="patients-list">
+                    @for (patient of patients; track patient.id) {
+                      <div class="patient-item" (click)="selectPatient(patient)">
+                        <div class="patient-avatar">{{ getInitials(patient.fullName) }}</div>
+                        <div class="patient-info">
+                          <strong>{{ patient.fullName }}</strong>
+                          <span>{{ formatCpf(patient.cpf) }}</span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+                
+                @if (selectedPatient) {
+                  <div class="selected-patient">
+                    <div class="patient-avatar selected">{{ getInitials(selectedPatient.fullName) }}</div>
+                    <div class="patient-info">
+                      <strong>{{ selectedPatient.fullName }}</strong>
+                      <span>{{ formatCpf(selectedPatient.cpf) }}</span>
+                    </div>
+                    <button class="btn-change" (click)="clearSelectedPatient()">
+                      <app-icon name="x" [size]="16" />
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- Passo 2: Selecionar Horário -->
+            <div class="allocation-step" [class.disabled]="!selectedPatient" [class.completed]="selectedSlot">
+              <div class="step-header">
+                <span class="step-number">2</span>
+                <h4>Selecionar Horário</h4>
+              </div>
+              
+              @if (selectedPatient) {
+                @if (loadingSlots) {
+                  <div class="loading-small">
+                    <div class="spinner-small"></div>
+                    <span>Carregando horários disponíveis...</span>
+                  </div>
+                } @else if (availableSlots.length === 0) {
+                  <div class="no-slots">
+                    <app-icon name="alert-circle" [size]="32" />
+                    <p>Nenhum horário disponível nos próximos 30 dias.</p>
+                  </div>
+                } @else {
+                  <div class="slots-grid">
+                    @for (slot of displayedSlots; track slot.date + slot.time) {
+                      <div 
+                        class="slot-item" 
+                        [class.selected]="isSlotSelected(slot)"
+                        (click)="selectSlot(slot)"
+                      >
+                        <div class="slot-date">
+                          <strong>{{ formatDateShort(slot.date) }}</strong>
+                          <span>{{ slot.dayOfWeekPt }}</span>
+                        </div>
+                        <div class="slot-time">{{ slot.time }}</div>
+                      </div>
+                    }
+                  </div>
+                  @if (availableSlots.length > 12) {
+                    <button class="btn-load-more" (click)="loadMoreSlots()">
+                      Mostrar mais horários ({{ availableSlots.length - displayedSlots.length }} restantes)
+                    </button>
+                  }
+                }
+              }
+            </div>
+
+            <!-- Passo 3: Observação (opcional) -->
+            <div class="allocation-step" [class.disabled]="!selectedSlot">
+              <div class="step-header">
+                <span class="step-number">3</span>
+                <h4>Observação (opcional)</h4>
+              </div>
+              
+              @if (selectedSlot) {
+                <textarea 
+                  class="observation-input"
+                  placeholder="Digite uma observação sobre esta alocação..."
+                  [(ngModel)]="allocationObservation"
+                  rows="3"
+                ></textarea>
+              }
+            </div>
+          </div>
+          
+          <div class="modal-footer allocation-footer">
+            <button class="btn-secondary" (click)="closeAllocationModal()">Cancelar</button>
+            <button 
+              class="btn-primary" 
+              [disabled]="!canAllocate() || allocating"
+              (click)="confirmAllocation()"
+            >
+              @if (allocating) {
+                <div class="spinner-small white"></div>
+                Alocando...
+              } @else {
+                <app-icon name="check" [size]="18" />
+                Confirmar Alocação
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Toast de Sucesso -->
+    @if (showSuccessToast) {
+      <div class="toast success">
+        <app-icon name="check-circle" [size]="24" />
+        <span>{{ successMessage }}</span>
       </div>
     }
   `,
@@ -537,6 +706,277 @@ import { RegulatorService, AvailableSchedule, Specialty } from '@app/core/servic
       border-top: 1px solid #e2e8f0;
     }
 
+    /* Modal Alocação */
+    .allocation-modal {
+      max-width: 600px;
+      width: 95%;
+    }
+
+    .allocation-body {
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    .allocation-info {
+      margin-bottom: 20px;
+      .professional-badge {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+        border-radius: 12px;
+        color: white;
+        .avatar {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.2);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          font-size: 16px;
+        }
+        strong { display: block; font-size: 16px; }
+        span { opacity: 0.9; font-size: 14px; }
+      }
+    }
+
+    .allocation-step {
+      margin-bottom: 20px;
+      padding: 16px;
+      background: #f8fafc;
+      border-radius: 12px;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+      &.completed { border-color: #10b981; background: #f0fdf4; }
+      &.disabled { opacity: 0.5; pointer-events: none; }
+      .step-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+        .step-number {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: #0d9488;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          font-size: 14px;
+        }
+        h4 { margin: 0; font-size: 15px; color: #0f172a; }
+      }
+    }
+
+    .patient-search {
+      .search-input {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        transition: border-color 0.2s;
+        &:focus-within { border-color: #0d9488; }
+        input {
+          flex: 1;
+          border: none;
+          outline: none;
+          font-size: 14px;
+          &::placeholder { color: #94a3b8; }
+        }
+      }
+    }
+
+    .loading-small {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      color: #64748b;
+      .spinner-small {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #e2e8f0;
+        border-top-color: #0d9488;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        &.white { border-color: rgba(255,255,255,0.3); border-top-color: white; }
+      }
+    }
+
+    .patients-list {
+      margin-top: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: white;
+    }
+
+    .patient-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+      border-bottom: 1px solid #f1f5f9;
+      &:last-child { border-bottom: none; }
+      &:hover { background: #f0fdf4; }
+      .patient-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #e0f2fe;
+        color: #0284c7;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 14px;
+      }
+      .patient-info {
+        strong { display: block; font-size: 14px; color: #0f172a; }
+        span { font-size: 12px; color: #64748b; }
+      }
+    }
+
+    .selected-patient {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+      padding: 12px 16px;
+      background: #dcfce7;
+      border: 2px solid #10b981;
+      border-radius: 10px;
+      .patient-avatar.selected {
+        background: #10b981;
+        color: white;
+      }
+      .btn-change {
+        margin-left: auto;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: none;
+        background: #fee2e2;
+        color: #dc2626;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        &:hover { background: #fecaca; }
+      }
+    }
+
+    .no-slots {
+      text-align: center;
+      padding: 24px;
+      color: #64748b;
+      p { margin: 8px 0 0; }
+    }
+
+    .slots-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    .slot-item {
+      padding: 12px;
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      &:hover { border-color: #0d9488; background: #f0fdfa; }
+      &.selected {
+        border-color: #10b981;
+        background: #dcfce7;
+      }
+      .slot-date {
+        margin-bottom: 4px;
+        strong { display: block; font-size: 14px; color: #0f172a; }
+        span { font-size: 11px; color: #64748b; }
+      }
+      .slot-time {
+        font-size: 16px;
+        font-weight: 700;
+        color: #0d9488;
+      }
+    }
+
+    .btn-load-more {
+      display: block;
+      width: 100%;
+      margin-top: 12px;
+      padding: 10px;
+      background: #f1f5f9;
+      border: 1px dashed #94a3b8;
+      border-radius: 8px;
+      color: #64748b;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      &:hover { background: #e2e8f0; color: #475569; }
+    }
+
+    .observation-input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 14px;
+      resize: vertical;
+      font-family: inherit;
+      &:focus { outline: none; border-color: #0d9488; }
+    }
+
+    .allocation-footer {
+      gap: 12px;
+      .btn-primary {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      }
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 24px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      animation: slideIn 0.3s ease-out;
+      z-index: 10000;
+      &.success { background: #10b981; color: white; }
+      &.error { background: #dc2626; color: white; }
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
     /* Dark mode */
     :host-context([data-theme="dark"]) {
       .page-header h1 { color: #f1f5f9; }
@@ -584,6 +1024,31 @@ export class RegulatorSchedulesComponent implements OnInit {
   filtroStatus = '';
   
   selectedSchedule: AvailableSchedule | null = null;
+
+  // Allocation Modal
+  showAllocationModal = false;
+  allocationSchedule: AvailableSchedule | null = null;
+  
+  // Patient selection
+  patientSearchTerm = '';
+  patients: RegulatorPatient[] = [];
+  selectedPatient: RegulatorPatient | null = null;
+  loadingPatients = false;
+  private searchTimeout: any;
+  
+  // Slot selection
+  availableSlots: ScheduleSlot[] = [];
+  displayedSlots: ScheduleSlot[] = [];
+  selectedSlot: ScheduleSlot | null = null;
+  loadingSlots = false;
+  
+  // Allocation
+  allocationObservation = '';
+  allocating = false;
+  
+  // Toast
+  showSuccessToast = false;
+  successMessage = '';
 
   constructor(
     private authService: AuthService,
@@ -667,16 +1132,159 @@ export class RegulatorSchedulesComponent implements OnInit {
     return date.toLocaleDateString('pt-BR');
   }
 
+  formatDateShort(dateStr: string): string {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  }
+
+  formatCpf(cpf: string): string {
+    if (!cpf) return '-';
+    const cleaned = cpf.replace(/\D/g, '');
+    if (cleaned.length !== 11) return cpf;
+    return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  }
+
   verDetalhes(schedule: AvailableSchedule) {
     this.selectedSchedule = schedule;
   }
 
   alocarPaciente(schedule: AvailableSchedule) {
-    // TODO: Implementar modal de alocação de paciente
-    alert(`Funcionalidade de alocação para agenda de ${schedule.professional.name} será implementada em breve.`);
+    this.allocationSchedule = schedule;
+    this.showAllocationModal = true;
+    this.resetAllocationState();
   }
 
   closeModal() {
     this.selectedSchedule = null;
+  }
+
+  closeAllocationModal() {
+    this.showAllocationModal = false;
+    this.allocationSchedule = null;
+    this.resetAllocationState();
+  }
+
+  private resetAllocationState() {
+    this.patientSearchTerm = '';
+    this.patients = [];
+    this.selectedPatient = null;
+    this.availableSlots = [];
+    this.displayedSlots = [];
+    this.selectedSlot = null;
+    this.allocationObservation = '';
+    this.allocating = false;
+  }
+
+  // Patient Search
+  searchPatients() {
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+    }
+    
+    if (this.patientSearchTerm.length < 2) {
+      this.patients = [];
+      return;
+    }
+    
+    this.searchTimeout = setTimeout(() => {
+      this.loadingPatients = true;
+      this.regulatorService.searchPatientsForAllocation(this.patientSearchTerm).subscribe({
+        next: (data) => {
+          this.patients = data;
+          this.loadingPatients = false;
+        },
+        error: (err) => {
+          console.error('Erro ao buscar pacientes:', err);
+          this.patients = [];
+          this.loadingPatients = false;
+        }
+      });
+    }, 300);
+  }
+
+  selectPatient(patient: RegulatorPatient) {
+    this.selectedPatient = patient;
+    this.patients = [];
+    this.patientSearchTerm = '';
+    this.loadSlots();
+  }
+
+  clearSelectedPatient() {
+    this.selectedPatient = null;
+    this.availableSlots = [];
+    this.displayedSlots = [];
+    this.selectedSlot = null;
+  }
+
+  // Slots
+  loadSlots() {
+    if (!this.allocationSchedule) return;
+    
+    this.loadingSlots = true;
+    this.regulatorService.getScheduleSlots(this.allocationSchedule.id).subscribe({
+      next: (response: ScheduleSlotsResponse) => {
+        this.availableSlots = response.slots;
+        this.displayedSlots = this.availableSlots.slice(0, 12);
+        this.loadingSlots = false;
+      },
+      error: (err) => {
+        console.error('Erro ao carregar horários:', err);
+        this.availableSlots = [];
+        this.displayedSlots = [];
+        this.loadingSlots = false;
+      }
+    });
+  }
+
+  loadMoreSlots() {
+    const currentCount = this.displayedSlots.length;
+    this.displayedSlots = this.availableSlots.slice(0, currentCount + 12);
+  }
+
+  selectSlot(slot: ScheduleSlot) {
+    this.selectedSlot = slot;
+  }
+
+  isSlotSelected(slot: ScheduleSlot): boolean {
+    return this.selectedSlot?.date === slot.date && this.selectedSlot?.time === slot.time;
+  }
+
+  canAllocate(): boolean {
+    return !!this.selectedPatient && !!this.selectedSlot;
+  }
+
+  confirmAllocation() {
+    if (!this.canAllocate() || !this.allocationSchedule || !this.selectedPatient || !this.selectedSlot) return;
+    
+    this.allocating = true;
+    
+    this.regulatorService.allocatePatient({
+      patientId: this.selectedPatient.id,
+      scheduleId: this.allocationSchedule.id,
+      date: this.selectedSlot.date,
+      time: this.selectedSlot.time,
+      observation: this.allocationObservation || undefined
+    }).subscribe({
+      next: (response) => {
+        this.allocating = false;
+        this.closeAllocationModal();
+        this.showSuccess(`Paciente ${this.selectedPatient?.fullName} alocado com sucesso!`);
+        this.loadSchedules(); // Refresh list
+      },
+      error: (err) => {
+        console.error('Erro ao alocar paciente:', err);
+        this.allocating = false;
+        alert(err.error?.message || 'Erro ao alocar paciente. Tente novamente.');
+      }
+    });
+  }
+
+  private showSuccess(message: string) {
+    this.successMessage = message;
+    this.showSuccessToast = true;
+    setTimeout(() => {
+      this.showSuccessToast = false;
+    }, 4000);
   }
 }
