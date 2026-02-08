@@ -36,12 +36,22 @@ POLL_INTERVAL = 2  # segundos entre verificações
 # URLs da API
 API_URL_LOCAL = "http://localhost:5239"
 API_URL_PROD = "https://www.telecuidar.com.br"
+API_URL_LAN = "http://192.168.18.31:5239"  # Rede local
 
+# Configuração dinâmica (definida por argumentos)
+CUSTOM_API_URL = None
 USE_PRODUCTION = False
+USE_LAN = False
 
 
 def get_api_url():
-    return API_URL_PROD if USE_PRODUCTION else API_URL_LOCAL
+    if CUSTOM_API_URL:
+        return CUSTOM_API_URL
+    if USE_PRODUCTION:
+        return API_URL_PROD
+    if USE_LAN:
+        return API_URL_LAN
+    return API_URL_LOCAL
 
 
 def find_default_microphone():
@@ -361,14 +371,29 @@ async def polling_loop(device_id: int, device_name: str):
 
 
 async def main():
-    global USE_PRODUCTION
+    global USE_PRODUCTION, USE_LAN, CUSTOM_API_URL
     
-    parser = argparse.ArgumentParser(description='Ausculta ON-DEMAND - Captura só quando solicitado')
-    parser.add_argument('--prod', action='store_true', help='Usar servidor de produção')
+    parser = argparse.ArgumentParser(
+        description='Ausculta ON-DEMAND - Captura só quando solicitado',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Exemplos:
+  python ausculta_ondemand.py              # Usa localhost:5239
+  python ausculta_ondemand.py --prod       # Usa telecuidar.com.br (produção)
+  python ausculta_ondemand.py --lan        # Usa 192.168.18.31:5239 (rede local)
+  python ausculta_ondemand.py --url http://192.168.1.100:5239  # URL customizada
+        """
+    )
+    parser.add_argument('--prod', action='store_true', help='Usar servidor de produção (telecuidar.com.br)')
+    parser.add_argument('--lan', action='store_true', help='Usar servidor na rede local (192.168.18.31:5239)')
+    parser.add_argument('--url', type=str, help='URL base customizada (ex: http://192.168.1.100:5239)')
     parser.add_argument('--device', type=int, help='ID do dispositivo de audio')
     
     args = parser.parse_args()
     USE_PRODUCTION = args.prod
+    USE_LAN = args.lan
+    if args.url:
+        CUSTOM_API_URL = args.url.rstrip('/')
     
     print("\n" + "=" * 55)
     print("   [AUSCULTA] ESTETOSCOPIO DIGITAL - ON-DEMAND")
@@ -390,7 +415,8 @@ async def main():
     
     device_name = sd.query_devices(device_id)['name']
     print(f"\n[MIC] Microfone: [{device_id}] {device_name}")
-    print(f"[API] Servidor: {'PRODUCAO' if USE_PRODUCTION else 'LOCAL'} ({get_api_url()})")
+    ambiente = 'PRODUCAO' if USE_PRODUCTION else ('LAN' if USE_LAN else ('CUSTOM' if CUSTOM_API_URL else 'LOCAL'))
+    print(f"[API] Servidor: {ambiente} ({get_api_url()})")
     
     try:
         await polling_loop(device_id, device_name)

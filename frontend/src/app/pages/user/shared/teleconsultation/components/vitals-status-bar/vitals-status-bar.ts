@@ -1513,10 +1513,15 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   }
 
   /**
-   * Solicita nova captura com duração fixa de 10s
+   * Solicita nova captura - limpa estado e volta ao modo inicial
+   * Permite escolher nova duração antes de iniciar
    */
   solicitarNovaAusculta(): void {
-    this.executarSolicitacaoAusculta(10);
+    // Limpa o fonocardiograma atual para voltar ao estado inicial
+    this.phonocardiogram = null;
+    this.phonocardiogramAudioUrl = '';
+    this.isPlayingPhono = false;
+    // Não executa automaticamente - usuário escolhe duração e clica em Capturar
   }
 
   /**

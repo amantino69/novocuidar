@@ -300,13 +300,15 @@ public class BleBridgeController : ControllerBase
         await _context.SaveChangesAsync();
 
         // Envia via SignalR para todos na sala da consulta (MedicalDevicesHub)
+        // IMPORTANTE: Enviar APENAS os valores atualizados nesta leitura, NÃO o biometrics completo
+        // para evitar "valores fantasma" de medições anteriores
         await _medicalDevicesHubContext.Clients.Group($"appointment_{appointmentId}")
             .SendAsync("BiometricsUpdated", new
             {
                 appointmentId = dto.AppointmentId,
                 deviceType = dto.DeviceType,
                 values = dto.Values,
-                biometrics,
+                // NÃO enviar biometrics completo - causa valores fantasma!
                 timestamp = biometrics.LastUpdated
             });
 

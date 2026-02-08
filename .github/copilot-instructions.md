@@ -1,4 +1,6 @@
 # 📋 Instruções para IA - TeleCuidar POC
+# Set-Location C:\telecuidar\frontend; ng serve --host 0.0.0.0 --port 4200 --ssl
+
 
 > ** SOMENTE RODE LOCALHOST NA PORTA 4200 (FRONTEND) E 5239 (BACKEND) 
 Se tiverem ocupadas mate elas sem me perguntar**
