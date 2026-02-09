@@ -1,376 +1,222 @@
-<div class="patient-history-tab">
-  <!-- Header -->
-  <div class="tab-header">
-    <div class="header-info">
-      <h3>
-        <app-icon name="book" [size]="20"></app-icon>
-        Histórico Clínico
-      </h3>
-      @if (timeline) {
-        <span class="patient-info">
-          {{ timeline.patientName }} - CPF: {{ timeline.patientCpf }}
-        </span>
-      }
-    </div>
-    <div class="header-actions">
-      <button class="btn btn-sm btn-outline-primary" (click)="loadTimeline()" [disabled]="loading">
-        <app-icon name="refresh-cw" [size]="14"></app-icon>
-        Atualizar
-      </button>
-      @if (timeline && timeline.entries.length > 1) {
-        <button class="btn btn-sm" [class.btn-primary]="compareMode" [class.btn-outline-secondary]="!compareMode" (click)="toggleCompareMode()">
-          <app-icon name="bar-chart" [size]="14"></app-icon>
-          Comparar
-        </button>
-      }
-    </div>
-  </div>
-
-  <!-- Loading -->
+<div class="pep-container">
   @if (loading) {
     <div class="loading-state">
-      <div class="spinner"></div>
-      <p>Carregando histórico clínico...</p>
+      <app-icon name="loader" [size]="32"></app-icon>
+      <p>Carregando prontuário...</p>
     </div>
   }
 
-  <!-- Error -->
-  @if (error) {
+  @if (error && !loading) {
     <div class="error-state">
-      <app-icon name="alert-circle" [size]="48"></app-icon>
+      <app-icon name="alert-circle" [size]="32"></app-icon>
       <p>{{ error }}</p>
-      <button class="btn btn-primary" (click)="loadTimeline()">Tentar novamente</button>
+      <button class="btn-retry" (click)="refresh()">
+        <app-icon name="refresh-cw" [size]="16"></app-icon>
+        Tentar novamente
+      </button>
     </div>
   }
 
-  <!-- Timeline Content -->
-  @if (!loading && !error && timeline) {
-    <!-- Summary Card -->
-    <div class="summary-card">
-      <div class="summary-grid">
-        <div class="summary-item">
-          <span class="value">{{ timeline.summary.totalAppointments }}</span>
-          <span class="label">Consultas</span>
+  @if (timeline && !loading) {
+    <div class="patient-header">
+      <div class="patient-info">
+        <div class="patient-avatar">
+          <app-icon name="user" [size]="32"></app-icon>
         </div>
-        <div class="summary-item">
-          <span class="value">{{ timeline.summary.totalPrescriptions }}</span>
-          <span class="label">Receitas</span>
-        </div>
-        <div class="summary-item">
-          <span class="value">{{ timeline.summary.totalExamRequests }}</span>
-          <span class="label">Exames</span>
-        </div>
-        <div class="summary-item">
-          <span class="value">{{ timeline.summary.totalMedicalCertificates }}</span>
-          <span class="label">Atestados</span>
+        <div class="patient-details">
+          <h2>{{ timeline.patientName }}</h2>
+          <span class="patient-cpf">CPF: {{ timeline.patientCpf }}</span>
         </div>
       </div>
-      @if (timeline.summary.firstAppointmentDate) {
-        <div class="summary-dates">
-          <span>Primeira consulta: {{ formatDate(timeline.summary.firstAppointmentDate) }}</span>
-          <span>Última consulta: {{ formatDate(timeline.summary.lastAppointmentDate!) }}</span>
-        </div>
-      }
+      <button class="btn-refresh" (click)="refresh()" title="Atualizar">
+        <app-icon name="refresh-cw" [size]="18"></app-icon>
+      </button>
     </div>
 
-    <!-- Compare Mode View -->
-    @if (compareMode && selectedForCompare.length === 2) {
-      <div class="compare-container">
-        <h4>Comparação de Consultas</h4>
-        <div class="compare-grid">
-          @for (entry of selectedForCompare; track entry.appointmentId) {
-            <div class="compare-card">
-              <div class="compare-header">
-                <strong>{{ formatDate(entry.date) }}</strong>
-                <span>{{ entry.specialtyName }}</span>
+    @if (vitalTrends.length > 0) {
+      <div class="vitals-section">
+        <h3>
+          <app-icon name="activity" [size]="18"></app-icon>
+          Últimos Sinais Vitais
+        </h3>
+        <div class="vitals-grid">
+          @for (vital of vitalTrends; track vital.label) {
+            <div class="vital-card" [ngClass]="getVitalStatusClass(vital.status)">
+              <div class="vital-icon">
+                <app-icon [name]="vital.icon" [size]="20"></app-icon>
               </div>
-              <div class="compare-biometrics">
-                <div class="metric">
-                  <span class="label">Pressão:</span>
-                  <span class="value">{{ formatBloodPressure(entry.biometrics) }}</span>
-                </div>
-                @if (entry.biometrics?.heartRate) {
-                  <div class="metric">
-                    <span class="label">FC:</span>
-                    <span class="value">{{ entry.biometrics!.heartRate }} bpm</span>
-                  </div>
-                }
-                @if (entry.biometrics?.weight) {
-                  <div class="metric">
-                    <span class="label">Peso:</span>
-                    <span class="value">{{ entry.biometrics!.weight }} kg</span>
-                  </div>
-                }
-                @if (entry.biometrics?.temperature) {
-                  <div class="metric">
-                    <span class="label">Temp:</span>
-                    <span class="value">{{ entry.biometrics!.temperature }}°C</span>
-                  </div>
-                }
-                @if (entry.biometrics?.oxygenSaturation) {
-                  <div class="metric">
-                    <span class="label">SpO2:</span>
-                    <span class="value">{{ entry.biometrics!.oxygenSaturation }}%</span>
-                  </div>
-                }
+              <div class="vital-content">
+                <span class="vital-label">{{ vital.label }}</span>
+                <span class="vital-value">{{ vital.value }} <small>{{ vital.unit }}</small></span>
               </div>
-              @if (entry.soap) {
-                <div class="compare-soap">
-                  @if (entry.soap.assessment) {
-                    <div class="soap-item">
-                      <strong>Avaliação:</strong>
-                      <p>{{ entry.soap.assessment }}</p>
-                    </div>
-                  }
+              @if (vital.trend) {
+                <div class="vital-trend" [ngClass]="'trend-' + vital.trend">
+                  <app-icon [name]="getTrendIcon(vital.trend)" [size]="14"></app-icon>
                 </div>
               }
             </div>
           }
         </div>
-        <button class="btn btn-outline-secondary btn-sm" (click)="selectedForCompare = []">
-          Limpar seleção
-        </button>
       </div>
     }
 
-    <!-- Compare Mode Instructions -->
-    @if (compareMode && selectedForCompare.length < 2) {
-      <div class="compare-instructions">
-        <app-icon name="info" [size]="16"></app-icon>
-        Selecione {{ 2 - selectedForCompare.length }} consulta(s) para comparar
+    @if (hasAIInsights()) {
+      <div class="ai-section">
+        <h3>
+          <app-icon name="sparkles" [size]="18"></app-icon>
+          Insights da IA
+        </h3>
+        <div class="ai-insights">
+          @for (insight of getAIInsights(); track $index) {
+            <div class="ai-insight-card">
+              <p>{{ insight }}</p>
+            </div>
+          }
+        </div>
       </div>
     }
 
-    <!-- Timeline List -->
-    <div class="timeline-list">
-      @for (entry of timeline.entries; track entry.appointmentId) {
-        <div class="timeline-entry" 
-             [class.current]="isCurrentAppointment(entry)"
-             [class.selected]="isSelectedForCompare(entry)"
-             [class.expanded]="selectedEntry?.appointmentId === entry.appointmentId">
+    <div class="summary-section">
+      <div class="summary-stats">
+        <div class="stat">
+          <span class="stat-value">{{ timeline.summary.totalAppointments }}</span>
+          <span class="stat-label">Consultas</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ timeline.summary.totalPrescriptions }}</span>
+          <span class="stat-label">Receitas</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ timeline.summary.totalExamRequests }}</span>
+          <span class="stat-label">Exames</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ timeline.summary.totalMedicalCertificates }}</span>
+          <span class="stat-label">Atestados</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="filters-section">
+      <div class="filter-tabs">
+        <button class="filter-tab" [class.active]="activeFilter === 'all'" (click)="setFilter('all')">Tudo</button>
+        <button class="filter-tab" [class.active]="activeFilter === 'consultations'" (click)="setFilter('consultations')">Consultas</button>
+        <button class="filter-tab" [class.active]="activeFilter === 'prescriptions'" (click)="setFilter('prescriptions')">Receitas</button>
+        <button class="filter-tab" [class.active]="activeFilter === 'exams'" (click)="setFilter('exams')">Exames</button>
+      </div>
+      <div class="date-filters">
+        <button class="date-btn" [class.active]="dateFilter === 'all'" (click)="setDateFilter('all')">Todos</button>
+        <button class="date-btn" [class.active]="dateFilter === '30d'" (click)="setDateFilter('30d')">30d</button>
+        <button class="date-btn" [class.active]="dateFilter === '90d'" (click)="setDateFilter('90d')">90d</button>
+        <button class="date-btn" [class.active]="dateFilter === '1y'" (click)="setDateFilter('1y')">1 ano</button>
+      </div>
+    </div>
+
+    <div class="timeline-section">
+      @if (filteredEntries.length === 0) {
+        <div class="empty-timeline">
+          <app-icon name="calendar" [size]="48"></app-icon>
+          <p>Nenhum registro encontrado</p>
+        </div>
+      }
+
+      @for (entry of filteredEntries; track entry.appointmentId) {
+        <div 
+          class="timeline-entry" 
+          [class.current]="isCurrentAppointment(entry)"
+          [class.expanded]="selectedEntry?.appointmentId === entry.appointmentId"
+          (click)="loadEntryDetails(entry)">
           
-          <!-- Entry Header -->
-          <div class="entry-header" (click)="compareMode ? toggleCompareSelection(entry) : loadEntryDetails(entry)">
-            @if (compareMode) {
-              <div class="compare-checkbox">
-                <input type="checkbox" [checked]="isSelectedForCompare(entry)" [disabled]="!isSelectedForCompare(entry) && selectedForCompare.length >= 2">
-              </div>
-            }
-            
+          <div class="entry-header">
             <div class="entry-date">
               <span class="day">{{ formatDate(entry.date) }}</span>
               <span class="time">{{ entry.time }}</span>
             </div>
-            
             <div class="entry-info">
-              <div class="specialty">
-                <app-icon [name]="getStatusIcon(entry.status)" [size]="14"></app-icon>
-                {{ entry.specialtyName }}
-                @if (isCurrentAppointment(entry)) {
-                  <span class="badge badge-primary">Atual</span>
-                }
-              </div>
-              <div class="professional">
-                {{ entry.professionalName }}
-                @if (entry.councilAcronym) {
-                  <span class="council">{{ entry.councilAcronym }} {{ entry.councilRegistration }}/{{ entry.councilState }}</span>
-                }
-              </div>
+              <span class="professional">{{ entry.professionalName }}</span>
+              <span class="specialty">{{ entry.specialtyName }}</span>
             </div>
-            
-            <div class="entry-counts">
+            <div class="entry-status" [ngClass]="getStatusClass(entry.status)">
+              {{ getStatusText(entry.status) }}
+            </div>
+            <div class="entry-badges">
               @if (entry.prescriptionsCount > 0) {
-                <span class="count" title="Receitas">
-                  <app-icon name="file" [size]="12"></app-icon>
+                <span class="badge badge-prescription" title="Receitas">
+                  <app-icon name="file-text" [size]="12"></app-icon>
                   {{ entry.prescriptionsCount }}
                 </span>
               }
               @if (entry.examRequestsCount > 0) {
-                <span class="count" title="Exames">
-                  <app-icon name="search" [size]="12"></app-icon>
+                <span class="badge badge-exam" title="Exames">
+                  <app-icon name="file" [size]="12"></app-icon>
                   {{ entry.examRequestsCount }}
                 </span>
               }
-              @if (entry.medicalCertificatesCount > 0) {
-                <span class="count" title="Atestados">
-                  <app-icon name="file-text" [size]="12"></app-icon>
-                  {{ entry.medicalCertificatesCount }}
+              @if (entry.aiSummary) {
+                <span class="badge badge-ai" title="Resumo IA">
+                  <app-icon name="sparkles" [size]="12"></app-icon>
                 </span>
               }
             </div>
-            
-            <div class="entry-biometrics">
-              @if (entry.biometrics?.bloodPressureSystolic) {
-                <span class="bp" [class]="getPressureClass(entry.biometrics, timeline.entries[timeline.entries.indexOf(entry) + 1]?.biometrics)">
-                  {{ formatBloodPressure(entry.biometrics) }}
-                </span>
-              }
-            </div>
-            
-            @if (!compareMode) {
-              <div class="entry-expand">
-                <app-icon [name]="selectedEntry?.appointmentId === entry.appointmentId ? 'chevron-up' : 'chevron-down'" [size]="16"></app-icon>
-              </div>
-            }
+            <app-icon 
+              [name]="selectedEntry?.appointmentId === entry.appointmentId ? 'chevron-up' : 'chevron-down'" 
+              [size]="18"
+              class="expand-icon">
+            </app-icon>
           </div>
-          
-          <!-- Entry Details (expanded) -->
-          @if (selectedEntry?.appointmentId === entry.appointmentId && !compareMode && selectedEntry) {
+
+          @if (selectedEntry?.appointmentId === entry.appointmentId) {
             <div class="entry-details">
               @if (loadingDetails) {
                 <div class="loading-details">
-                  <div class="spinner-sm"></div>
-                  Carregando detalhes...
+                  <app-icon name="loader" [size]="20"></app-icon>
+                  <span>Carregando...</span>
                 </div>
               } @else {
-                <!-- AI Summary -->
-                @if (selectedEntry.aiSummary) {
-                  <div class="detail-section">
-                    <h5><app-icon name="activity" [size]="14"></app-icon> Resumo IA</h5>
-                    <p class="ai-summary">{{ selectedEntry.aiSummary }}</p>
+                @if (selectedEntry?.aiSummary) {
+                  <div class="detail-section ai-summary">
+                    <h4><app-icon name="sparkles" [size]="16"></app-icon> Resumo da IA</h4>
+                    <p>{{ selectedEntry?.aiSummary }}</p>
                   </div>
                 }
-                
-                <!-- SOAP -->
-                @if (selectedEntry.soap) {
-                  <div class="detail-section">
-                    <h5><app-icon name="edit" [size]="14"></app-icon> Anamnese</h5>
+
+                @if (selectedEntry?.soap) {
+                  <div class="detail-section soap-section">
+                    <h4><app-icon name="file-text" [size]="16"></app-icon> Registro SOAP</h4>
                     <div class="soap-grid">
-                      @if (selectedEntry.soap.subjective) {
+                      @if (selectedEntry?.soap?.subjective) {
                         <div class="soap-item">
-                          <strong>S - Subjetivo:</strong>
-                          <p>{{ selectedEntry.soap.subjective }}</p>
+                          <span class="soap-letter">S</span>
+                          <div class="soap-content">
+                            <strong>Subjetivo</strong>
+                            <p>{{ selectedEntry?.soap?.subjective }}</p>
+                          </div>
                         </div>
                       }
-                      @if (selectedEntry.soap.objective) {
+                      @if (selectedEntry?.soap?.objective) {
                         <div class="soap-item">
-                          <strong>O - Objetivo:</strong>
-                          <p>{{ selectedEntry.soap.objective }}</p>
+                          <span class="soap-letter">O</span>
+                          <div class="soap-content">
+                            <strong>Objetivo</strong>
+                            <p>{{ selectedEntry?.soap?.objective }}</p>
+                          </div>
                         </div>
                       }
-                      @if (selectedEntry.soap.assessment) {
+                      @if (selectedEntry?.soap?.assessment) {
                         <div class="soap-item">
-                          <strong>A - Avaliação:</strong>
-                          <p>{{ selectedEntry.soap.assessment }}</p>
+                          <span class="soap-letter">A</span>
+                          <div class="soap-content">
+                            <strong>Avaliação</strong>
+                            <p>{{ selectedEntry?.soap?.assessment }}</p>
+                          </div>
                         </div>
                       }
-                      @if (selectedEntry.soap.plan) {
+                      @if (selectedEntry?.soap?.plan) {
                         <div class="soap-item">
-                          <strong>P - Plano:</strong>
-                          <p>{{ selectedEntry.soap.plan }}</p>
-                        </div>
-                      }
-                    </div>
-                  </div>
-                }
-                
-                <!-- Biometrics -->
-                @if (selectedEntry.biometrics) {
-                  <div class="detail-section">
-                    <h5><app-icon name="heart" [size]="14"></app-icon> Sinais Vitais</h5>
-                    <div class="biometrics-grid">
-                      @if (selectedEntry.biometrics.bloodPressureSystolic) {
-                        <div class="bio-item">
-                          <span class="label">Pressão Arterial</span>
-                          <span class="value">{{ formatBloodPressure(selectedEntry.biometrics) }}</span>
-                        </div>
-                      }
-                      @if (selectedEntry.biometrics.heartRate) {
-                        <div class="bio-item">
-                          <span class="label">Freq. Cardíaca</span>
-                          <span class="value">{{ selectedEntry.biometrics.heartRate }} bpm</span>
-                        </div>
-                      }
-                      @if (selectedEntry.biometrics.temperature) {
-                        <div class="bio-item">
-                          <span class="label">Temperatura</span>
-                          <span class="value">{{ selectedEntry.biometrics.temperature }}°C</span>
-                        </div>
-                      }
-                      @if (selectedEntry.biometrics.oxygenSaturation) {
-                        <div class="bio-item">
-                          <span class="label">SpO2</span>
-                          <span class="value">{{ selectedEntry.biometrics.oxygenSaturation }}%</span>
-                        </div>
-                      }
-                      @if (selectedEntry.biometrics.weight) {
-                        <div class="bio-item">
-                          <span class="label">Peso</span>
-                          <span class="value">{{ selectedEntry.biometrics.weight }} kg</span>
-                        </div>
-                      }
-                      @if (selectedEntry.biometrics.glycemicIndex) {
-                        <div class="bio-item">
-                          <span class="label">Glicemia</span>
-                          <span class="value">{{ selectedEntry.biometrics.glycemicIndex }} mg/dL</span>
-                        </div>
-                      }
-                    </div>
-                  </div>
-                }
-                
-                <!-- Prescriptions -->
-                @if (selectedEntry.prescriptions && selectedEntry.prescriptions.length > 0) {
-                  <div class="detail-section">
-                    <h5><app-icon name="file" [size]="14"></app-icon> Receitas</h5>
-                    <div class="document-list">
-                      @for (rx of selectedEntry.prescriptions; track rx.id) {
-                        <div class="document-item">
-                          <div class="doc-info">
-                            <span class="doc-date">{{ formatDate(rx.createdAt) }}</span>
-                            @if (rx.isSigned) {
-                              <span class="badge badge-success">Assinada</span>
-                            }
-                          </div>
-                          <div class="doc-content">
-                            @for (med of rx.medications; track med) {
-                              <span class="medication">{{ med }}</span>
-                            }
-                          </div>
-                        </div>
-                      }
-                    </div>
-                  </div>
-                }
-                
-                <!-- Exam Requests -->
-                @if (selectedEntry.examRequests && selectedEntry.examRequests.length > 0) {
-                  <div class="detail-section">
-                    <h5><app-icon name="file-text" [size]="14"></app-icon> Exames Solicitados</h5>
-                    <div class="document-list">
-                      @for (exam of selectedEntry.examRequests; track exam.id) {
-                        <div class="document-item">
-                          <div class="doc-info">
-                            <span class="doc-date">{{ formatDate(exam.dataEmissao) }}</span>
-                            <span class="badge" [class.badge-warning]="exam.prioridade === 'Urgente'" [class.badge-secondary]="exam.prioridade !== 'Urgente'">
-                              {{ exam.prioridade }}
-                            </span>
-                          </div>
-                          <div class="doc-content">
-                            <strong>{{ exam.nomeExame }}</strong>
-                            <span class="category">({{ exam.categoria }})</span>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                  </div>
-                }
-                
-                <!-- Medical Certificates -->
-                @if (selectedEntry.medicalCertificates && selectedEntry.medicalCertificates.length > 0) {
-                  <div class="detail-section">
-                    <h5><app-icon name="file-text" [size]="14"></app-icon> Atestados</h5>
-                    <div class="document-list">
-                      @for (cert of selectedEntry.medicalCertificates; track cert.id) {
-                        <div class="document-item">
-                          <div class="doc-info">
-                            <span class="doc-date">{{ formatDate(cert.dataEmissao) }}</span>
-                            @if (cert.diasAfastamento) {
-                              <span class="badge badge-info">{{ cert.diasAfastamento }} dias</span>
-                            }
-                          </div>
-                          <div class="doc-content">
-                            <strong>{{ cert.tipo }}</strong>
+                          <span class="soap-letter">P</span>
+                          <div class="soap-content">
+                            <strong>Plano</strong>
+                            <p>{{ selectedEntry?.soap?.plan }}</p>
                           </div>
                         </div>
                       }
@@ -378,15 +224,111 @@
                   </div>
                 }
 
-                <!-- Mensagem quando não há dados registrados -->
-                @if (!selectedEntry.aiSummary && !selectedEntry.soap && !selectedEntry.biometrics && 
-                     (!selectedEntry.prescriptions || selectedEntry.prescriptions.length === 0) &&
-                     (!selectedEntry.examRequests || selectedEntry.examRequests.length === 0) &&
-                     (!selectedEntry.medicalCertificates || selectedEntry.medicalCertificates.length === 0)) {
+                @if (selectedEntry?.biometrics) {
+                  <div class="detail-section biometrics-section">
+                    <h4><app-icon name="activity" [size]="16"></app-icon> Sinais Vitais</h4>
+                    <div class="biometrics-grid">
+                      @if (selectedEntry?.biometrics?.bloodPressureSystolic) {
+                        <div class="bio-item">
+                          <span class="bio-label">Pressão</span>
+                          <span class="bio-value">{{ selectedEntry?.biometrics?.bloodPressureSystolic }}/{{ selectedEntry?.biometrics?.bloodPressureDiastolic }} mmHg</span>
+                        </div>
+                      }
+                      @if (selectedEntry?.biometrics?.heartRate) {
+                        <div class="bio-item">
+                          <span class="bio-label">FC</span>
+                          <span class="bio-value">{{ selectedEntry?.biometrics?.heartRate }} bpm</span>
+                        </div>
+                      }
+                      @if (selectedEntry?.biometrics?.oxygenSaturation) {
+                        <div class="bio-item">
+                          <span class="bio-label">SpO₂</span>
+                          <span class="bio-value">{{ selectedEntry?.biometrics?.oxygenSaturation }}%</span>
+                        </div>
+                      }
+                      @if (selectedEntry?.biometrics?.temperature) {
+                        <div class="bio-item">
+                          <span class="bio-label">Temp</span>
+                          <span class="bio-value">{{ selectedEntry?.biometrics?.temperature }}°C</span>
+                        </div>
+                      }
+                      @if (selectedEntry?.biometrics?.weight) {
+                        <div class="bio-item">
+                          <span class="bio-label">Peso</span>
+                          <span class="bio-value">{{ selectedEntry?.biometrics?.weight }} kg</span>
+                        </div>
+                      }
+                      @if (selectedEntry?.biometrics?.height) {
+                        <div class="bio-item">
+                          <span class="bio-label">Altura</span>
+                          <span class="bio-value">{{ selectedEntry?.biometrics?.height }} cm</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+
+                @if ((selectedEntry?.prescriptions?.length ?? 0) > 0) {
+                  <div class="detail-section prescriptions-section">
+                    <h4><app-icon name="file-text" [size]="16"></app-icon> Prescrições</h4>
+                    <div class="prescriptions-list">
+                      @for (rx of (selectedEntry?.prescriptions ?? []); track rx.id) {
+                        <div class="prescription-card">
+                          <div class="rx-header">
+                            <span class="rx-date">{{ formatDate(rx.createdAt) }}</span>
+                            @if (rx.isSigned) {
+                              <span class="rx-signed">
+                                <app-icon name="check-circle" [size]="12"></app-icon>
+                                Assinada
+                              </span>
+                            }
+                          </div>
+                          <div class="rx-meds">
+                            @for (med of rx.medications; track $index) {
+                              <span class="med-item">{{ med }}</span>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+
+                @if ((selectedEntry?.examRequests?.length ?? 0) > 0) {
+                  <div class="detail-section exams-section">
+                    <h4><app-icon name="file" [size]="16"></app-icon> Solicitações de Exame</h4>
+                    <div class="exams-list">
+                      @for (exam of (selectedEntry?.examRequests ?? []); track exam.id) {
+                        <div class="exam-card">
+                          <span class="exam-name">{{ exam.nomeExame }}</span>
+                          <span class="exam-date">{{ formatDate(exam.dataEmissao) }}</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+
+                @if ((selectedEntry?.medicalCertificates?.length ?? 0) > 0) {
+                  <div class="detail-section certificates-section">
+                    <h4><app-icon name="award" [size]="16"></app-icon> Atestados</h4>
+                    <div class="certificates-list">
+                      @for (cert of (selectedEntry?.medicalCertificates ?? []); track cert.id) {
+                        <div class="certificate-card">
+                          <span class="cert-date">{{ formatDate(cert.dataEmissao) }}</span>
+                          @if (cert.diasAfastamento) {
+                            <span class="cert-days">{{ cert.diasAfastamento }} dia(s)</span>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+
+                @if (!selectedEntry?.aiSummary && !selectedEntry?.soap && !selectedEntry?.biometrics && 
+                     selectedEntry?.prescriptionsCount === 0 && selectedEntry?.examRequestsCount === 0 && selectedEntry?.medicalCertificatesCount === 0) {
                   <div class="empty-details">
                     <app-icon name="info" [size]="20"></app-icon>
-                    <p>Nenhuma informação clínica foi registrada nesta consulta.</p>
-                    <span class="hint">Dados como anamnese, sinais vitais, receitas e exames aparecem aqui quando preenchidos durante o atendimento.</span>
+                    <p>Nenhuma informação clínica registrada.</p>
                   </div>
                 }
               }
@@ -394,13 +336,15 @@
           }
         </div>
       }
-      
-      @if (timeline.entries.length === 0) {
-        <div class="empty-state">
-          <app-icon name="folder" [size]="48"></app-icon>
-          <p>Nenhum histórico clínico encontrado para este paciente.</p>
-        </div>
-      }
     </div>
+
+    @if (timeline.summary.firstAppointmentDate) {
+      <div class="timeline-footer">
+        <span>Primeira consulta: {{ formatDate(timeline.summary.firstAppointmentDate) }}</span>
+        @if (timeline.summary.lastAppointmentDate) {
+          <span>Última: {{ formatDate(timeline.summary.lastAppointmentDate) }}</span>
+        }
+      </div>
+    }
   }
 </div>
