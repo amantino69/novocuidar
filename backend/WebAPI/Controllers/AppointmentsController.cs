@@ -333,7 +333,7 @@ public class AppointmentsController : ControllerBase
             return Unauthorized(new { message = "Usuário não identificado" });
 
         // Atualizar appointment
-        appointment.Status = AppointmentStatus.InProgress;
+        appointment.Status = AppointmentStatus.AwaitingDoctor;
         appointment.ConsultationStartedAt = DateTime.UtcNow;
         appointment.AssistantId = assistantId.Value;
         appointment.NotificationsSentCount++;
@@ -505,7 +505,7 @@ public class AppointmentsController : ControllerBase
                 .ThenInclude(p => p.PatientProfile)
             .Include(a => a.Specialty)
             .Where(a => a.ProfessionalId == professionalId.Value)
-            .Where(a => a.Status == AppointmentStatus.InProgress)
+            .Where(a => a.Status == AppointmentStatus.AwaitingDoctor)
             .Where(a => a.DoctorJoinedAt == null) // Médico ainda não entrou
             .OrderBy(a => a.ConsultationStartedAt)
             .Select(a => new

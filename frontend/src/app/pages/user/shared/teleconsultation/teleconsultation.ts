@@ -202,6 +202,20 @@ export class TeleconsultationComponent implements OnInit, OnDestroy {
       }
     );
     this.subscriptions.push(dataSub);
+    
+    // Subscribe to access denied - redirecionar usuário para painel com alerta
+    const accessDeniedSub = this.teleconsultationRealTime.accessDenied$.subscribe(
+      (event) => {
+        console.warn('[Teleconsultation] Acesso negado:', event.message);
+        this.modalService.alert({
+          title: 'Acesso Não Permitido',
+          message: event.message,
+        }).subscribe(() => {
+          this.router.navigate(['/painel']);
+        });
+      }
+    );
+    this.subscriptions.push(accessDeniedSub);
   }
 
   private reloadAppointment(): void {
@@ -358,21 +372,44 @@ export class TeleconsultationComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Sair da consulta com alertas contextualizados por papel
+   */
   exitCall() {
-    this.modalService.confirm({
-      title: 'Sair da Consulta',
-      message: 'Tem certeza que deseja sair da teleconsulta?',
-      variant: 'warning',
-      confirmText: 'Sim, sair',
-      cancelText: 'Cancelar'
-    }).subscribe({
-      next: (result) => {
-        if (result.confirmed) {
-          this.jitsiService.dispose();
-          this.router.navigate(['/painel']);
+    if (this.userrole === 'PROFESSIONAL') {
+      // Alerta para MÉDICO - perguntar se quer sair sem finalizar
+      this.modalService.confirm({
+        title: 'Consulta Não Finalizada',
+        message: 'Você ainda não finalizou a consulta formalmente. A consulta ficará com status "Pendente Fechamento" e você poderá retomar depois.\n\nDeseja realmente sair?',
+        variant: 'warning',
+        confirmText: 'Sair e Retomar Depois',
+        cancelText: 'Voltar e Finalizar'
+      }).subscribe({
+        next: (result) => {
+          if (result.confirmed) {
+            // Não muda o status aqui - o backend vai tratar automaticamente
+            this.jitsiService.dispose();
+            this.router.navigate(['/painel']);
+          }
         }
-      }
-    });
+      });
+    } else {
+      // Alerta para PACIENTE/ASSISTENTE - informar que consulta continua
+      this.modalService.confirm({
+        title: 'Sair da Consulta',
+        message: 'Você está saindo antes do médico finalizar a consulta.\n\nO médico poderá encerrar o atendimento sem sua presença. Deseja realmente sair?',
+        variant: 'warning',
+        confirmText: 'Sim, sair',
+        cancelText: 'Continuar na Consulta'
+      }).subscribe({
+        next: (result) => {
+          if (result.confirmed) {
+            this.jitsiService.dispose();
+            this.router.navigate(['/painel']);
+          }
+        }
+      });
+    }
   }
 
   /**

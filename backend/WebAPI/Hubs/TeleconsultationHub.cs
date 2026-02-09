@@ -39,71 +39,126 @@ public class TeleconsultationHub : Hub
 
     /// <summary>
     /// Entra na sala da teleconsulta (appointment)
-    /// Também atualiza o status para InProgress se estiver Scheduled/Confirmed/Abandoned (reconexão automática)
-    /// E notifica o médico se for paciente/enfermeira entrando
+    /// Validações de acesso:
+    /// - PATIENT: Só pode acessar consulta do dia e não pode ser PendingClosure
+    /// - PROFESSIONAL: Pode acessar suas consultas não finalizadas (pode retomar PendingClosure)
+    /// - ASSISTANT: Só pode acessar consulta do dia
     /// Atualiza LastActivityAt para rastrear timeout
     /// </summary>
     public async Task JoinConsultation(string appointmentId, string? userRole = null, string? userName = null)
     {
+        if (!Guid.TryParse(appointmentId, out var id))
+        {
+            await Clients.Caller.SendAsync("AccessDenied", new { Message = "ID de consulta inválido." });
+            return;
+        }
+
+        var appointment = await _context.Appointments
+            .Include(a => a.Professional)
+            .Include(a => a.Patient)
+            .FirstOrDefaultAsync(a => a.Id == id);
+            
+        if (appointment == null)
+        {
+            await Clients.Caller.SendAsync("AccessDenied", new { Message = "Consulta não encontrada." });
+            return;
+        }
+
+        // ===== VALIDAÇÕES DE ACESSO =====
+        var isToday = appointment.Date.Date == DateTime.Today;
+        var isCompletedOrCancelled = appointment.Status == AppointmentStatus.Completed || 
+                                      appointment.Status == AppointmentStatus.Cancelled ||
+                                      appointment.Status == AppointmentStatus.NoShow;
+
+        // Consulta já finalizada - apenas visualização
+        if (isCompletedOrCancelled)
+        {
+            await Clients.Caller.SendAsync("AccessDenied", new { 
+                Message = "Esta consulta já foi finalizada. Acesse o histórico para visualizar os dados."
+            });
+            return;
+        }
+
+        // PACIENTE: só acessa no dia e não pode acessar PendingClosure
+        if (userRole == "PATIENT")
+        {
+            if (!isToday)
+            {
+                await Clients.Caller.SendAsync("AccessDenied", new { 
+                    Message = "Esta consulta não está mais disponível. Consultas só podem ser acessadas no dia agendado."
+                });
+                return;
+            }
+            if (appointment.Status == AppointmentStatus.PendingClosure)
+            {
+                await Clients.Caller.SendAsync("AccessDenied", new { 
+                    Message = "O médico ainda está finalizando esta consulta. Você receberá o resumo em breve."
+                });
+                return;
+            }
+        }
+
+        // ASSISTENTE: só acessa no dia
+        if (userRole == "ASSISTANT" && !isToday)
+        {
+            await Clients.Caller.SendAsync("AccessDenied", new { 
+                Message = "Esta consulta não está mais disponível. Consultas só podem ser acessadas no dia agendado."
+            });
+            return;
+        }
+
+        // ===== ACESSO PERMITIDO - ENTRAR NA SALA =====
         await Groups.AddToGroupAsync(Context.ConnectionId, $"consultation_{appointmentId}");
         _logger.LogInformation("Cliente {ConnectionId} entrou na consulta {AppointmentId} (Role: {Role})", 
             Context.ConnectionId, appointmentId, userRole ?? "unknown");
         
-        // Atualizar status para InProgress se a consulta existir e não estiver finalizada
-        if (Guid.TryParse(appointmentId, out var id))
+        var now = DateTime.UtcNow;
+        
+        // Reconexão automática: Se estava pendente de fechamento e é médico, voltar para InConsultation
+        if (appointment.Status == AppointmentStatus.PendingClosure && userRole == "PROFESSIONAL")
         {
-            var appointment = await _context.Appointments
-                .Include(a => a.Professional)
-                .Include(a => a.Patient)
-                .FirstOrDefaultAsync(a => a.Id == id);
-                
-            if (appointment != null)
-            {
-                var statusChanged = false;
-                var now = DateTime.UtcNow;
-                
-                // Reconexão automática: Se foi abandonada, voltar para InProgress
-                if (appointment.Status == AppointmentStatus.Abandoned)
+            appointment.Status = AppointmentStatus.InConsultation;
+            _logger.LogInformation("[Reconexão] Médico retomou consulta {AppointmentId} - Status: InConsultation", appointmentId);
+        }
+        // Médico entrando: mudar para InConsultation
+        else if (userRole == "PROFESSIONAL" && 
+            (appointment.Status == AppointmentStatus.AwaitingDoctor || 
+             appointment.Status == AppointmentStatus.CheckedIn))
+        {
+            appointment.Status = AppointmentStatus.InConsultation;
+            _logger.LogInformation("[Teleconsulta] Médico entrou - Status: InConsultation: {AppointmentId}", appointmentId);
+        }
+        // Enfermeira/Paciente entrando: mudar para AwaitingDoctor (se agendada/confirmada)
+        else if (appointment.Status == AppointmentStatus.Scheduled || 
+            appointment.Status == AppointmentStatus.Confirmed)
+        {
+            appointment.Status = AppointmentStatus.AwaitingDoctor;
+            _logger.LogInformation("[Teleconsulta] Sala preparada - Status: AwaitingDoctor: {AppointmentId}", appointmentId);
+        }
+        
+        // Atualizar LastActivityAt para rastrear timeout
+        appointment.LastActivityAt = now;
+        appointment.UpdatedAt = now;
+        await _context.SaveChangesAsync();
+        
+        // Se NÃO for o médico entrando, notificar o médico que tem alguém aguardando
+        if (userRole != null && userRole != "PROFESSIONAL" && appointment.Professional != null)
+        {
+            var patientName = userName ?? appointment.Patient?.Name ?? "Paciente";
+            
+            // Enviar notificação ao médico via NotificationHub
+            await _notificationHub.Clients
+                .Group($"user_{appointment.Professional.Id}")
+                .SendAsync("WaitingInRoom", new
                 {
-                    appointment.Status = AppointmentStatus.InProgress;
-                    statusChanged = true;
-                    _logger.LogInformation("[Timeout] Reconexão automática - Consulta {AppointmentId} voltou de Abandoned para InProgress", appointmentId);
-                }
-                // Atualizar status se necessário
-                else if (appointment.Status == AppointmentStatus.Scheduled || 
-                    appointment.Status == AppointmentStatus.Confirmed)
-                {
-                    appointment.Status = AppointmentStatus.InProgress;
-                    statusChanged = true;
-                    _logger.LogInformation("[Teleconsulta] Status atualizado para InProgress: {AppointmentId}", appointmentId);
-                }
-                
-                // Atualizar LastActivityAt para rastrear timeout
-                appointment.LastActivityAt = now;
-                appointment.UpdatedAt = now;
-                await _context.SaveChangesAsync();
-                
-                // Se NÃO for o médico entrando, notificar o médico que tem alguém aguardando
-                // appointment.Professional é do tipo User (não ProfessionalProfile)
-                if (userRole != null && userRole != "PROFESSIONAL" && appointment.Professional != null)
-                {
-                    var patientName = userName ?? appointment.Patient?.Name ?? "Paciente";
-                    
-                    // Enviar notificação ao médico via NotificationHub
-                    await _notificationHub.Clients
-                        .Group($"user_{appointment.Professional.Id}")
-                        .SendAsync("WaitingInRoom", new
-                        {
-                            AppointmentId = appointmentId,
-                            PatientName = patientName,
-                            UserRole = userRole,
-                            Timestamp = now
-                        });
-                    
-                    _logger.LogInformation("[Teleconsulta] Notificação WaitingInRoom enviada ao médico {DoctorId} para consulta {AppointmentId}", 
-                        appointment.Professional.Id, appointmentId);
-                }
-            }
+                    AppointmentId = appointmentId,
+                    PatientName = patientName,
+                    UserRole = userRole,
+                    Timestamp = now
+                });
+            
+            _logger.LogInformation("[Teleconsulta] Notificação WaitingInRoom enviada ao médico {DoctorId} para consulta {AppointmentId}", 
+                appointment.Professional.Id, appointmentId);
         }
         
         // Notificar outros participantes

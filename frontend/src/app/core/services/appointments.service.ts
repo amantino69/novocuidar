@@ -5,7 +5,20 @@ import { environment } from '@env/environment';
 
 const API_BASE_URL = environment.apiUrl;
 
-export type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'InProgress' | 'Completed' | 'Cancelled' | 'Abandoned';
+// Status de consultas - alinhado com backend
+export type AppointmentStatus = 
+  | 'Scheduled'       // Agendada
+  | 'Confirmed'       // Confirmada
+  | 'CheckedIn'       // Recepcionado
+  | 'AwaitingDoctor'  // Aguardando Médico (novo)
+  | 'InConsultation'  // Em Consulta
+  | 'PendingClosure'  // Pendente Fechamento (substituiu Abandoned)
+  | 'Completed'       // Finalizada
+  | 'Cancelled'       // Cancelada
+  | 'NoShow'          // Não Compareceu
+  // Legado (mantido para compatibilidade)
+  | 'InProgress'      // -> AwaitingDoctor
+  | 'Abandoned';      // -> PendingClosure
 export type AppointmentType = 'FirstVisit' | 'Return' | 'Routine' | 'Emergency' | 'Common' | 'Referral';
 
 export interface PreConsultationForm {

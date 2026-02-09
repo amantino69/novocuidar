@@ -117,7 +117,7 @@ public class NotificationHub : Hub
             var pendingConsultations = await _context.Appointments
                 .Include(a => a.Patient)
                 .Where(a => a.ProfessionalId == doctorId 
-                         && a.Status == AppointmentStatus.InProgress
+                         && (a.Status == AppointmentStatus.AwaitingDoctor || a.Status == AppointmentStatus.InConsultation)
                          && a.LastActivityAt != null 
                          && a.LastActivityAt > twentyMinutesAgo)
                 .ToListAsync();

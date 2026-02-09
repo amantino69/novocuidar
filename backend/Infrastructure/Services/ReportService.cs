@@ -43,7 +43,7 @@ public class ReportService : IReportService
             Total = await appointmentsQuery.CountAsync(),
             Scheduled = await appointmentsQuery.CountAsync(a => a.Status == AppointmentStatus.Scheduled),
             Confirmed = await appointmentsQuery.CountAsync(a => a.Status == AppointmentStatus.Confirmed),
-            InProgress = await appointmentsQuery.CountAsync(a => a.Status == AppointmentStatus.InProgress),
+            InProgress = await appointmentsQuery.CountAsync(a => a.Status == AppointmentStatus.AwaitingDoctor || a.Status == AppointmentStatus.InConsultation),
             Completed = await appointmentsQuery.CountAsync(a => a.Status == AppointmentStatus.Completed),
             Cancelled = await appointmentsQuery.CountAsync(a => a.Status == AppointmentStatus.Cancelled)
         };
@@ -141,7 +141,7 @@ public class ReportService : IReportService
             Total = appointments.Count,
             Scheduled = appointments.Count(a => a.Status == AppointmentStatus.Scheduled),
             Confirmed = appointments.Count(a => a.Status == AppointmentStatus.Confirmed),
-            InProgress = appointments.Count(a => a.Status == AppointmentStatus.InProgress),
+            InProgress = appointments.Count(a => a.Status == AppointmentStatus.AwaitingDoctor || a.Status == AppointmentStatus.InConsultation),
             Completed = appointments.Count(a => a.Status == AppointmentStatus.Completed),
             Cancelled = appointments.Count(a => a.Status == AppointmentStatus.Cancelled)
         };

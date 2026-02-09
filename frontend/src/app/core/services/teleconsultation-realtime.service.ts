@@ -98,6 +98,9 @@ export class TeleconsultationRealTimeService implements OnDestroy {
   private _chatMessage$ = new Subject<ChatMessageEvent>();
   public chatMessage$ = this._chatMessage$.asObservable();
   
+  private _accessDenied$ = new Subject<{ message: string }>();
+  public accessDenied$ = this._accessDenied$.asObservable();
+  
   private _mobileUploadReceived$ = new Subject<MobileUploadEvent>();
   public mobileUploadReceived$ = this._mobileUploadReceived$.asObservable();
 
@@ -199,6 +202,12 @@ export class TeleconsultationRealTimeService implements OnDestroy {
 
     this.hubConnection.on('ChatMessage', (event: ChatMessageEvent) => {
       this.ngZone.run(() => this._chatMessage$.next(event));
+    });
+
+    // Acesso negado à consulta (expirada, pendente fechamento, etc)
+    this.hubConnection.on('AccessDenied', (data: { Message: string }) => {
+      console.warn('[TeleconsultationRealTime] Acesso negado:', data.Message);
+      this.ngZone.run(() => this._accessDenied$.next({ message: data.Message }));
     });
 
     this.hubConnection.on('MobileUploadReceived', (event: MobileUploadEvent) => {

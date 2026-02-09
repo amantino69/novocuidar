@@ -73,10 +73,13 @@ export class DigitalOfficeComponent implements OnInit, OnDestroy {
     { value: 'all', label: 'Todos os status' },
     { value: 'Scheduled', label: 'Agendada' },
     { value: 'Confirmed', label: 'Confirmada' },
-    { value: 'InProgress', label: 'Em Andamento' },
-    { value: 'Completed', label: 'Concluída' },
+    { value: 'CheckedIn', label: 'Recepcionado' },
+    { value: 'AwaitingDoctor', label: 'Aguardando Médico' },
+    { value: 'InConsultation', label: 'Em Consulta' },
+    { value: 'PendingClosure', label: 'Pendente Fechamento' },
+    { value: 'Completed', label: 'Finalizada' },
     { value: 'Cancelled', label: 'Cancelada' },
-    { value: 'Abandoned', label: 'Abandonada' }
+    { value: 'NoShow', label: 'Não Compareceu' }
   ];
 
   // Modal
@@ -426,22 +429,34 @@ export class DigitalOfficeComponent implements OnInit, OnDestroy {
     const variantMap: Record<AppointmentStatus, BadgeVariant> = {
       Scheduled: 'info',
       Confirmed: 'primary',
-      InProgress: 'warning',
+      CheckedIn: 'primary',
+      AwaitingDoctor: 'warning',
+      InConsultation: 'success',
+      PendingClosure: 'warning',
       Completed: 'success',
       Cancelled: 'error',
-      Abandoned: 'neutral'
+      NoShow: 'error',
+      // Legado
+      InProgress: 'warning',
+      Abandoned: 'warning'
     };
     return variantMap[status] || 'neutral';
   }
 
   getStatusLabel(status: AppointmentStatus): string {
-    const labels: Record<AppointmentStatus, string> = {
+    const labels: Record<string, string> = {
       Scheduled: 'Agendada',
       Confirmed: 'Confirmada',
-      InProgress: 'Em Andamento',
-      Completed: 'Concluída',
+      CheckedIn: 'Recepcionado',
+      AwaitingDoctor: 'Aguardando Médico',
+      InConsultation: 'Em Consulta',
+      PendingClosure: 'Pendente Fechamento',
+      Completed: 'Finalizada',
       Cancelled: 'Cancelada',
-      Abandoned: 'Abandonada'
+      NoShow: 'Não Compareceu',
+      // Legado
+      InProgress: 'Em Andamento',
+      Abandoned: 'Pendente Fechamento'
     };
     return labels[status] || status;
   }

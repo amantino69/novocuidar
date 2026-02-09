@@ -695,13 +695,19 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
   }
 
   getStatusLabel(status: AppointmentStatus): string {
-    const labels: Record<AppointmentStatus, string> = {
+    const labels: Record<string, string> = {
       'Scheduled': 'Agendada',
       'Confirmed': 'Confirmada',
-      'InProgress': 'Em Andamento',
+      'CheckedIn': 'Recepcionado',
+      'AwaitingDoctor': 'Aguardando Médico',
+      'InConsultation': 'Em Consulta',
+      'PendingClosure': 'Pendente Fechamento',
       'Completed': 'Realizada',
       'Cancelled': 'Cancelada',
-      'Abandoned': 'Abandonada'
+      'NoShow': 'Não Compareceu',
+      // Legado
+      'InProgress': 'Em Andamento',
+      'Abandoned': 'Pendente Fechamento'
     };
     return labels[status] || status;
   }

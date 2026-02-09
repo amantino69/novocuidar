@@ -58,7 +58,9 @@ public class ClinicalTimelineService : IClinicalTimelineService
             .Include(a => a.Specialty)
             .Where(a => a.PatientId == patientId)
             .Where(a => a.Status == AppointmentStatus.Completed || 
-                       a.Status == AppointmentStatus.InProgress)
+                       a.Status == AppointmentStatus.InConsultation ||
+                       a.Status == AppointmentStatus.AwaitingDoctor ||
+                       a.Status == AppointmentStatus.PendingClosure)
             .OrderByDescending(a => a.Date);
         
         var appointments = (await appointmentsQuery.ToListAsync())

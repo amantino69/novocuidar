@@ -206,9 +206,10 @@ public class BleBridgeController : ControllerBase
             }
         }
 
-        // PRIORIDADE 2: Consulta InProgress COM ATIVIDADE RECENTE (últimos 5 minutos)
+        // PRIORIDADE 2: Consulta InConsultation ou AwaitingDoctor COM ATIVIDADE RECENTE (últimos 5 minutos)
         var activeAppointment = await _context.Appointments
-            .Where(a => a.Status == Domain.Enums.AppointmentStatus.InProgress &&
+            .Where(a => (a.Status == Domain.Enums.AppointmentStatus.InConsultation ||
+                        a.Status == Domain.Enums.AppointmentStatus.AwaitingDoctor) &&
                        a.LastActivityAt != null && 
                        a.LastActivityAt > cutoffTime)
             .OrderByDescending(a => a.LastActivityAt)
@@ -222,9 +223,10 @@ public class BleBridgeController : ControllerBase
             return Ok(new { activeAppointment.Id, activeAppointment.PatientId, activeAppointment.ProfessionalId, activeAppointment.Date, activeAppointment.Time });
         }
 
-        // AUTO-LIMPEZA: Marcar consultas InProgress sem atividade como Abandoned
+        // AUTO-LIMPEZA: Marcar consultas em andamento sem atividade como PendingClosure
         var staleAppointments = await _context.Appointments
-            .Where(a => a.Status == Domain.Enums.AppointmentStatus.InProgress &&
+            .Where(a => (a.Status == Domain.Enums.AppointmentStatus.InConsultation ||
+                        a.Status == Domain.Enums.AppointmentStatus.AwaitingDoctor) &&
                        (a.LastActivityAt == null || a.LastActivityAt <= cutoffTime))
             .ToListAsync();
         
@@ -233,14 +235,14 @@ public class BleBridgeController : ControllerBase
             var now = DateTime.UtcNow;
             foreach (var stale in staleAppointments)
             {
-                stale.Status = Domain.Enums.AppointmentStatus.Abandoned;
+                stale.Status = Domain.Enums.AppointmentStatus.PendingClosure;
                 stale.UpdatedAt = now;
-                _logger.LogInformation("[Maleta] Consulta {Id} marcada como Abandoned (sem atividade desde {LastActivity})", 
+                _logger.LogInformation("[Maleta] Consulta {Id} marcada como PendingClosure (sem atividade desde {LastActivity})", 
                     stale.Id, stale.LastActivityAt?.ToString("HH:mm:ss") ?? "nunca");
             }
             await _context.SaveChangesAsync();
             
-            _logger.LogWarning("[Maleta] {Count} consulta(s) marcadas como Abandoned por inatividade", staleAppointments.Count);
+            _logger.LogWarning("[Maleta] {Count} consulta(s) marcadas como PendingClosure por inatividade", staleAppointments.Count);
         }
         
         _logger.LogWarning("[Maleta] Nenhuma consulta ativa encontrada");
