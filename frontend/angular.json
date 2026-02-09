@@ -48,17 +48,17 @@
                 "src/environments"
               ]
             },
-            "server": "src/main.server.ts",
-            "outputMode": "server",
-            "ssr": {
-              "entry": "src/server.ts"
-            },
             "allowedCommonJsDependencies": [
               "qrcode"
             ]
           },
           "configurations": {
             "production": {
+              "server": "src/main.server.ts",
+              "outputMode": "server",
+              "ssr": {
+                "entry": "src/server.ts"
+              },
               "budgets": [
                 {
                   "type": "initial",
@@ -80,6 +80,11 @@
               ]
             },
             "docker": {
+              "server": "src/main.server.ts",
+              "outputMode": "server",
+              "ssr": {
+                "entry": "src/server.ts"
+              },
               "optimization": true,
               "extractLicenses": true,
               "sourceMap": false,

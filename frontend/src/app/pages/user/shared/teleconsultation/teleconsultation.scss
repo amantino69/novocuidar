@@ -7,12 +7,12 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: var(--neutral-900); // Video background
+  background: var(--background); // Theme-aware background
   z-index: $z-index-modal + 10; // Above everything
   display: flex;
   flex-direction: column; // Mudou para column para acomodar a barra de status
   overflow: hidden;
-  color: var(--neutral-50);
+  color: var(--text-primary);
 
   // Wrapper do body (vídeo + sidebar)
   .teleconsultation-body {
@@ -29,8 +29,8 @@
     width: 100%;
     flex-shrink: 0;
     z-index: 100;
-    background: #1e293b;
-    border-top: 3px solid #3b82f6;
+    background: var(--surface);
+    border-top: 3px solid var(--primary-500);
     
     app-vitals-status-bar {
       display: block;
@@ -153,7 +153,7 @@
       flex-direction: column;
       align-items: center;
       gap: $spacing-md;
-      color: rgba(255, 255, 255, 0.5);
+      color: var(--text-secondary);
       
       p {
         font-size: $font-size-xl;
@@ -176,12 +176,12 @@
       z-index: 10;
       
       .show-header-btn {
-        background: rgba(0, 0, 0, 0.6);
-        color: var(--neutral-50);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: var(--surface);
+        color: var(--text-primary);
+        border: 1px solid var(--border);
         
         &:hover {
-          background: rgba(0, 0, 0, 0.8);
+          background: var(--background);
         }
       }
     }
@@ -200,28 +200,22 @@
     display: flex;
     align-items: center;
     transition: all $transition-base;
-    z-index: 40;
+    z-index: 150; // Above Jitsi (z-index: 100)
     color: var(--text-primary);
     flex-shrink: 0;
-    overflow: hidden;
+    overflow: visible; // Allow dropdowns to overflow
     max-height: 80px;
     
-    // Modo paciente: fundo escuro
-    &.patient-mode,
-    &.dark-header {
-      background: #1e293b;
-      border-bottom: none;
-      color: #f1f5f9;
-    }
+    // Classes removidas - usar tema do sistema
 
     padding: 0 $spacing-2xl;
     display: flex;
     align-items: center;
     transition: all $transition-base;
-    z-index: 40;
+    z-index: 150; // Above Jitsi (z-index: 100)
     color: var(--text-primary);
     flex-shrink: 0;
-    overflow: hidden;
+    overflow: visible; // Allow dropdowns to overflow
     max-height: 80px;
 
     // When sidebar is full-screen and header is visible, put header above sidebar
@@ -367,7 +361,7 @@
           min-width: 60px;
           border-radius: 8px;
           border: none;
-          background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+          background: linear-gradient(180deg, var(--primary-500) 0%, var(--primary-600) 100%);
           color: white;
           font-size: 10px;
           font-weight: 500;
@@ -386,24 +380,24 @@
           }
 
           &:hover {
-            background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
+            background: linear-gradient(180deg, var(--primary-400) 0%, var(--primary-500) 100%);
             transform: translateY(-1px);
           }
 
           &.registry-btn {
-            background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%);
-            box-shadow: 0 2px 6px rgba(14, 165, 233, 0.3);
+            background: linear-gradient(180deg, var(--primary-400) 0%, var(--primary-500) 100%);
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
 
             &:hover {
-              background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%);
-              box-shadow: 0 4px 10px rgba(14, 165, 233, 0.4);
+              background: linear-gradient(180deg, var(--primary-300) 0%, var(--primary-400) 100%);
+              box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
             }
           }
         }
       }
 
-      // Layout para header PROFESSIONAL
-      &.dark-header .header-content {
+      // Layout para header
+      .header-content {
         justify-content: space-between;
         width: 100%;
 

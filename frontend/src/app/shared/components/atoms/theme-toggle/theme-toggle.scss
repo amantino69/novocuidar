@@ -3,6 +3,7 @@
 
 .theme-toggle-container {
   position: relative;
+  z-index: 99999;
 }
 
 .theme-toggle {
@@ -87,7 +88,7 @@
     0 10px 40px rgba(0, 0, 0, 0.15),
     0 4px 12px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  z-index: 1000;
+  z-index: 999999;
   animation: dropdownSlide 0.2s ease-out;
 
   @keyframes dropdownSlide {

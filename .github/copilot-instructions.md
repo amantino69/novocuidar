@@ -1,5 +1,5 @@
 # 📋 Instruções para IA - TeleCuidar POC
-# Set-Location C:\telecuidar\frontend; ng serve --host 0.0.0.0 --port 4200 --ssl
+# Set-Location C:\telecuidar\frontend; ng serve --host 0.0.0.0 --port 4200
 
 # cd C:\telecuidar\maleta
 # python ausculta_ondemand.py --prod
@@ -247,79 +247,14 @@ Remove-Item "C:\telecuidar\backend\WebAPI\telecuidar.db" -Force
 
 ---
 
-## 🎥 ATIVAR JITSI EM DESENVOLVIMENTO LOCAL (HTTPS)
+## 🎥 TESTAR JITSI (VIDEOCONFERÊNCIA)
 
-### Por que HTTPS é necessário?
-O Jitsi Meet (meet.telecuidar.com.br) requer HTTPS para funcionar. Quando o frontend roda em HTTP (localhost:4200), o navegador bloqueia:
-- Mixed content (HTTP carregando recursos HTTPS)
-- Acesso à câmera/microfone (requer contexto seguro)
+> ⚠️ **IMPORTANTE**: Para testar videochamadas com Jitsi, use o ambiente de **PRODUÇÃO** (https://www.telecuidar.com.br).
+> O Jitsi requer HTTPS e não funciona corretamente em desenvolvimento local HTTP.
 
-### Método: Frontend com SSL Auto-Assinado
-
-**Passo 1 - Iniciar Frontend com HTTPS:**
-```powershell
-cd C:\telecuidar\frontend
-ng serve --host 0.0.0.0 --port 4200 --ssl
-```
-> Aguardar aparecer: `➜ Local: https://localhost:4200/`
-
-**Passo 2 - Iniciar Backend (em outro terminal):**
-```powershell
-cd C:\telecuidar
-dotnet run --project backend/WebAPI/WebAPI.csproj
-```
-
-**Passo 3 - Acessar no navegador:**
-```
-https://localhost:4200
-```
-
-⚠️ **IMPORTANTE - Aceitar certificado auto-assinado:**
-Na primeira vez, o navegador mostrará aviso de segurança:
-- **Chrome**: Clicar em "Avançado" → "Continuar para localhost (não seguro)"
-- **Firefox**: Clicar em "Avançado" → "Aceitar o risco e continuar"
-- **Edge**: Clicar em "Avançado" → "Continuar para localhost (não seguro)"
-
-### Configuração do Jitsi
-O backend está configurado para usar o Jitsi de produção:
+### Configuração do Jitsi (Produção)
 - **Domínio**: `meet.telecuidar.com.br`
-- **Arquivo de config**: `backend/WebAPI/appsettings.Development.json`
-
-```json
-{
-  "JitsiSettings": {
-    "Enabled": true,
-    "Domain": "meet.telecuidar.com.br",
-    "AppId": "telecuidar",
-    "AppSecret": "TelecuidarJitsiSecretKey2024LocalDevelopment!@#$%^&*()",
-    "RequiresAuth": true,
-    "DynamicDomain": false
-  }
-}
-```
-
-### Resumo das URLs em Desenvolvimento com Jitsi
-| Serviço | URL | Protocolo |
-|---------|-----|-----------|
-| Frontend | https://localhost:4200 | HTTPS (obrigatório) |
-| Backend | http://localhost:5239 | HTTP |
-| Jitsi | https://meet.telecuidar.com.br | HTTPS (produção) |
-
-### Comando Rápido (Copiar e Colar)
-```powershell
-# Terminal 1 - Frontend com HTTPS
-cd C:\telecuidar\frontend; ng serve --host 0.0.0.0 --port 4200 --ssl
-
-# Terminal 2 - Backend
-cd C:\telecuidar; dotnet run --project backend/WebAPI/WebAPI.csproj
-```
-
-### Credenciais de Teste
-| Tipo | Email | Senha |
-|------|-------|-------|
-| Médico | med_gt@telecuidar.com | 123 |
-| Paciente | pac_aj@telecuidar.com | 123 |
-| Enfermeira | enf_do@telecuidar.com | 123 |
+- **URL**: https://www.telecuidar.com.br
 
 ---
 
@@ -791,9 +726,9 @@ Isso vai:
 3. ✅ Limpar cache do Angular
 4. ✅ Regenerar arquivos de environment
 5. ✅ Fazer build verificação do backend
-6. ✅ Iniciar Frontend HTTPS na 4200
-7. ✅ Iniciar Backend (HTTP 5239 + HTTPS 7121)
-8. ✅ Abrir automaticamente https://localhost:4200/
+6. ✅ Iniciar Frontend HTTP na 4200
+7. ✅ Iniciar Backend HTTP 5239
+8. ✅ Abrir automaticamente http://localhost:4200/
 
 **Credenciais:**
 - Email: `med_gt@telecuidar.com`
@@ -819,14 +754,14 @@ cd C:\telecuidar
 
 # 4. Frontend (Terminal 1)
 cd C:\telecuidar\frontend
-ng serve --host 0.0.0.0 --port 4200 --ssl --disable-host-check
+ng serve --host 0.0.0.0 --port 4200
 
 # 5. Backend (Terminal 2)
 cd C:\telecuidar
 dotnet run --project backend/WebAPI/WebAPI.csproj
 
 # 6. Abrir navegador
-https://localhost:4200/
+http://localhost:4200/
 ```
 
 ### ❌ Troubleshooting
@@ -834,10 +769,8 @@ https://localhost:4200/
 | Problema | Solução |
 |----------|---------|
 | Porta já em uso | Rodar `start-local.bat` novamente (mata processos) |
-| "Mixed content" no HTTPS | Regenerar environment: `cd frontend && node scripts\generate-env.js` |
 | Docker não inicia | Abrir Docker Desktop e rodar novamente |
-| Backend não responde | Verificar: `Invoke-WebRequest https://localhost:7121/Health` |
-| Frontend branco | Acessar via https://localhost:4200 e aceitar certificado |
+| Backend não responde | Verificar: `curl.exe -s http://localhost:5239/health` |
 | Erro de build | `dotnet clean backend/WebAPI/WebAPI.csproj` antes de rodar |
 | Porta 5239 ocupada após crash | `Get-Process | Where {$_.ProcessName -match "dotnet"} | Stop-Process -Force` |
 

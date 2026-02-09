@@ -4,10 +4,9 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '@app/shared/components/atoms/icon/icon';
 import { AuthService } from '@app/core/services/auth.service';
-import { RegulatorService, RegulatorPatient, Specialty } from '@app/core/services/regulator.service';
+import { RegulatorService, WaitingQueuePatient, Specialty, AvailableSchedule, ScheduleSlot, AllocatePatientData } from '@app/core/services/regulator.service';
 
-interface QueuePatient extends RegulatorPatient {
-  urgency: 'normal' | 'priority' | 'urgent';
+interface QueuePatient extends WaitingQueuePatient {
   requestedSpecialty?: string;
   waitingSince?: string;
   notes?: string;
@@ -166,6 +165,16 @@ interface QueuePatient extends RegulatorPatient {
                   }
                 </div>
 
+                @if (patient.hasAllocation) {
+                  <div class="allocation-badge allocated">
+                    <app-icon name="check-circle" [size]="16" />
+                    Já Alocado
+                    @if (patient.nextAppointmentDate) {
+                      <span class="date-info">{{ patient.nextAppointmentDate }}</span>
+                    }
+                  </div>
+                }
+
                 <div class="item-actions">
                   <button class="btn-icon" title="Alterar prioridade" (click)="alterarPrioridade(patient)">
                     <app-icon name="chevrons-up-down" [size]="18" />
@@ -305,6 +314,158 @@ interface QueuePatient extends RegulatorPatient {
             <button class="btn-secondary" (click)="closePriorityModal()">Cancelar</button>
             <button class="btn-primary" (click)="confirmarPrioridade()">
               Confirmar
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Modal de Alocação -->
+    @if (showAllocationModal && patientForAllocation) {
+      <div class="modal-overlay" (click)="closeAllocationModal()">
+        <div class="modal-content allocation-modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>
+              <app-icon name="calendar" [size]="24" />
+              Alocar Paciente
+            </h2>
+            <button class="close-btn" (click)="closeAllocationModal()">
+              <app-icon name="x" [size]="24" />
+            </button>
+          </div>
+          <div class="modal-body">
+            <!-- Info do Paciente -->
+            <div class="allocation-patient-info">
+              <div class="avatar" [style.background]="getAvatarColor(patientForAllocation.urgency)">
+                {{ getInitials(patientForAllocation.fullName) }}
+              </div>
+              <div class="info">
+                <h3>{{ patientForAllocation.fullName }}</h3>
+                <span class="urgency-tag" [class]="patientForAllocation.urgency">
+                  @switch (patientForAllocation.urgency) {
+                    @case ('urgent') { Urgente }
+                    @case ('priority') { Prioritário }
+                    @default { Normal }
+                  }
+                </span>
+              </div>
+            </div>
+
+            <!-- Mensagens de erro/sucesso -->
+            @if (allocationError) {
+              <div class="allocation-message error">
+                <app-icon name="alert-circle" [size]="18" />
+                {{ allocationError }}
+              </div>
+            }
+            @if (allocationSuccess) {
+              <div class="allocation-message success">
+                <app-icon name="check-circle" [size]="18" />
+                {{ allocationSuccess }}
+              </div>
+            }
+
+            <!-- Step 1: Selecionar Profissional/Agenda -->
+            <div class="allocation-step">
+              <label>
+                <app-icon name="user-check" [size]="16" />
+                Selecione o Profissional
+              </label>
+              @if (loadingSchedules) {
+                <div class="loading-inline">
+                  <div class="spinner-small"></div>
+                  Carregando agendas...
+                </div>
+              } @else if (availableSchedules.length === 0) {
+                <div class="no-schedules">
+                  <app-icon name="calendar" [size]="24" />
+                  <p>Nenhuma agenda disponível no momento.</p>
+                </div>
+              } @else {
+                <div class="schedules-list">
+                  @for (schedule of availableSchedules; track schedule.id) {
+                    <button 
+                      class="schedule-option"
+                      [class.selected]="selectedSchedule?.id === schedule.id"
+                      (click)="selectSchedule(schedule)"
+                    >
+                      <div class="schedule-info">
+                        <strong>{{ schedule.professional.name }}</strong>
+                        <span class="specialty">{{ schedule.professional.specialty }}</span>
+                      </div>
+                      <app-icon name="chevron-right" [size]="18" />
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+
+            <!-- Step 2: Selecionar Horário -->
+            @if (selectedSchedule) {
+              <div class="allocation-step">
+                <label>
+                  <app-icon name="clock" [size]="16" />
+                  Selecione o Horário
+                </label>
+                @if (loadingSlots) {
+                  <div class="loading-inline">
+                    <div class="spinner-small"></div>
+                    Carregando horários...
+                  </div>
+                } @else if (availableSlots.length === 0) {
+                  <div class="no-schedules">
+                    <app-icon name="calendar" [size]="24" />
+                    <p>Nenhum horário disponível para esta agenda.</p>
+                  </div>
+                } @else {
+                  <div class="slots-grid">
+                    @for (slot of availableSlots; track slot.date + slot.time) {
+                      <button 
+                        class="slot-option"
+                        [class.selected]="selectedSlot === slot"
+                        (click)="selectedSlot = slot"
+                      >
+                        <span class="slot-date">{{ formatSlotDate(slot.date) }}</span>
+                        <span class="slot-day">{{ slot.dayOfWeekPt }}</span>
+                        <span class="slot-time">{{ slot.time }}</span>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Step 3: Observação (opcional) -->
+            @if (selectedSlot) {
+              <div class="allocation-step">
+                <label>
+                  <app-icon name="file-text" [size]="16" />
+                  Observação (opcional)
+                </label>
+                <textarea 
+                  [(ngModel)]="allocationObservation"
+                  placeholder="Adicione uma observação para a consulta..."
+                  rows="3"
+                ></textarea>
+              </div>
+            }
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" (click)="closeAllocationModal()" [disabled]="allocating">
+              Cancelar
+            </button>
+            <button 
+              class="btn-primary" 
+              (click)="confirmarAlocacao()"
+              [disabled]="!selectedSlot || allocating"
+            >
+              @if (allocating) {
+                <div class="spinner-small white"></div>
+                Alocando...
+              } @else {
+                <app-icon name="check" [size]="16" />
+                Confirmar Alocação
+              }
             </button>
           </div>
         </div>
@@ -587,6 +748,27 @@ interface QueuePatient extends RegulatorPatient {
         &.normal { background: #f0fdf4; color: #16a34a; }
       }
 
+      .allocation-badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+        
+        &.allocated { 
+          background: #dbeafe; 
+          color: #2563eb;
+          
+          .date-info {
+            font-size: 10px;
+            opacity: 0.8;
+            margin-left: 4px;
+          }
+        }
+      }
+
       .item-actions {
         display: flex;
         gap: 8px;
@@ -767,6 +949,7 @@ interface QueuePatient extends RegulatorPatient {
         border-radius: 8px;
         cursor: pointer;
         &:hover { background: #f1f5f9; }
+        &:disabled { opacity: 0.6; cursor: not-allowed; }
       }
 
       .btn-primary {
@@ -780,6 +963,198 @@ interface QueuePatient extends RegulatorPatient {
         color: white;
         cursor: pointer;
         &:hover { background: #0f766e; }
+        &:disabled { opacity: 0.6; cursor: not-allowed; }
+      }
+    }
+
+    /* Modal de Alocação */
+    .allocation-modal {
+      max-width: 600px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .allocation-patient-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: #f8fafc;
+      border-radius: 12px;
+      margin-bottom: 20px;
+
+      .avatar {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: 700;
+        color: white;
+      }
+
+      .info {
+        h3 { margin: 0 0 6px; font-size: 18px; color: #0f172a; }
+        .urgency-tag {
+          display: inline-block;
+          padding: 4px 10px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 600;
+          &.urgent { background: #fef2f2; color: #dc2626; }
+          &.priority { background: #fefce8; color: #ca8a04; }
+          &.normal { background: #f0fdf4; color: #16a34a; }
+        }
+      }
+    }
+
+    .allocation-message {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+
+      &.error {
+        background: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+      }
+
+      &.success {
+        background: #f0fdf4;
+        color: #16a34a;
+        border: 1px solid #bbf7d0;
+      }
+    }
+
+    .allocation-step {
+      margin-bottom: 20px;
+
+      > label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 12px;
+        font-size: 14px;
+      }
+
+      textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 14px;
+        resize: vertical;
+        &:focus { outline: none; border-color: #0d9488; }
+      }
+    }
+
+    .loading-inline {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .spinner-small {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #e2e8f0;
+      border-top-color: #0d9488;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      &.white { border-color: rgba(255,255,255,0.3); border-top-color: white; }
+    }
+
+    .no-schedules {
+      text-align: center;
+      padding: 24px;
+      color: #64748b;
+      app-icon { margin-bottom: 8px; }
+      p { margin: 0; }
+    }
+
+    .schedules-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .schedule-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+
+      &:hover { border-color: #94a3b8; background: #f8fafc; }
+
+      &.selected {
+        border-color: #0d9488;
+        background: #f0fdfa;
+        app-icon { color: #0d9488; }
+      }
+
+      .schedule-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        strong { color: #0f172a; font-size: 15px; }
+        .specialty { color: #64748b; font-size: 13px; }
+      }
+
+      app-icon { color: #94a3b8; }
+    }
+
+    .slots-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px;
+      max-height: 280px;
+      overflow-y: auto;
+      padding: 4px;
+    }
+
+    .slot-option {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover { border-color: #94a3b8; background: #f8fafc; }
+
+      &.selected {
+        border-color: #0d9488;
+        background: #f0fdfa;
+      }
+
+      .slot-date { font-weight: 600; color: #0f172a; font-size: 14px; }
+      .slot-day { color: #64748b; font-size: 12px; }
+      .slot-time { 
+        font-weight: 700; 
+        color: #0d9488; 
+        font-size: 16px; 
+        margin-top: 4px;
       }
     }
 
@@ -868,6 +1243,20 @@ export class RegulatorQueueComponent implements OnInit {
   patientForPriority: QueuePatient | null = null;
   newPriority: 'normal' | 'priority' | 'urgent' = 'normal';
 
+  // Propriedades do modal de alocação
+  showAllocationModal = false;
+  patientForAllocation: QueuePatient | null = null;
+  availableSchedules: AvailableSchedule[] = [];
+  selectedSchedule: AvailableSchedule | null = null;
+  availableSlots: ScheduleSlot[] = [];
+  selectedSlot: ScheduleSlot | null = null;
+  allocationObservation = '';
+  loadingSchedules = false;
+  loadingSlots = false;
+  allocating = false;
+  allocationError: string | null = null;
+  allocationSuccess: string | null = null;
+
   private searchTimeout: any;
 
   constructor(
@@ -886,15 +1275,14 @@ export class RegulatorQueueComponent implements OnInit {
     this.loading = true;
     this.error = null;
     
-    // Carregar pacientes do município (simulando fila de espera)
-    this.regulatorService.getPatients({ pageSize: 100 }).subscribe({
+    // Carregar fila de espera com urgência real e status de alocação
+    this.regulatorService.getWaitingQueue(100).subscribe({
       next: (response) => {
-        // Transformar pacientes em itens de fila com prioridade simulada
-        this.queue = response.data.map((patient, index) => ({
+        // Usar dados reais do backend (urgência e alocação já calculados)
+        this.queue = response.data.map(patient => ({
           ...patient,
-          urgency: this.getRandomUrgency(index),
-          requestedSpecialty: this.getRandomSpecialty(),
-          waitingSince: this.getRandomDate()
+          requestedSpecialty: this.getRandomSpecialty(), // TODO: adicionar no backend
+          waitingSince: this.getRandomDate() // TODO: adicionar no backend
         }));
         this.aplicarFiltros();
         this.loading = false;
@@ -1053,8 +1441,120 @@ export class RegulatorQueueComponent implements OnInit {
     }
   }
 
+  // === MODAL DE ALOCAÇÃO ===
+
   alocarPaciente(patient: QueuePatient) {
-    // TODO: Implementar modal de alocação
-    alert(`Funcionalidade de alocação para ${patient.fullName} será implementada em breve.`);
+    this.patientForAllocation = patient;
+    this.showAllocationModal = true;
+    this.allocationError = null;
+    this.allocationSuccess = null;
+    this.selectedSchedule = null;
+    this.selectedSlot = null;
+    this.availableSlots = [];
+    this.allocationObservation = '';
+    this.loadAvailableSchedules();
+  }
+
+  closeAllocationModal() {
+    this.showAllocationModal = false;
+    this.patientForAllocation = null;
+    this.selectedSchedule = null;
+    this.selectedSlot = null;
+    this.availableSlots = [];
+    this.allocationObservation = '';
+    this.allocationError = null;
+    this.allocationSuccess = null;
+  }
+
+  loadAvailableSchedules() {
+    this.loadingSchedules = true;
+    this.regulatorService.getAvailableSchedules().subscribe({
+      next: (schedules) => {
+        this.availableSchedules = schedules;
+        this.loadingSchedules = false;
+      },
+      error: (err) => {
+        console.error('Erro ao carregar agendas:', err);
+        this.allocationError = 'Erro ao carregar agendas disponíveis.';
+        this.loadingSchedules = false;
+      }
+    });
+  }
+
+  selectSchedule(schedule: AvailableSchedule) {
+    this.selectedSchedule = schedule;
+    this.selectedSlot = null;
+    this.availableSlots = [];
+    this.loadScheduleSlots(schedule.id);
+  }
+
+  loadScheduleSlots(scheduleId: string) {
+    this.loadingSlots = true;
+    
+    // Buscar slots para os próximos 14 dias
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 14);
+    
+    const startStr = startDate.toISOString().split('T')[0];
+    const endStr = endDate.toISOString().split('T')[0];
+    
+    this.regulatorService.getScheduleSlots(scheduleId, startStr, endStr).subscribe({
+      next: (response) => {
+        this.availableSlots = response.slots;
+        this.loadingSlots = false;
+      },
+      error: (err) => {
+        console.error('Erro ao carregar horários:', err);
+        this.allocationError = 'Erro ao carregar horários disponíveis.';
+        this.loadingSlots = false;
+      }
+    });
+  }
+
+  formatSlotDate(dateStr: string): string {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  }
+
+  confirmarAlocacao() {
+    if (!this.patientForAllocation || !this.selectedSchedule || !this.selectedSlot) {
+      return;
+    }
+
+    this.allocating = true;
+    this.allocationError = null;
+    this.allocationSuccess = null;
+
+    const data: AllocatePatientData = {
+      patientId: this.patientForAllocation.id,
+      scheduleId: this.selectedSchedule.id,
+      date: this.selectedSlot.date,
+      time: this.selectedSlot.time,
+      observation: this.allocationObservation || undefined
+    };
+
+    this.regulatorService.allocatePatient(data).subscribe({
+      next: (response) => {
+        this.allocating = false;
+        this.allocationSuccess = `Paciente alocado com sucesso para ${this.formatSlotDate(this.selectedSlot!.date)} às ${this.selectedSlot!.time} com Dr(a). ${response.appointment.professional.name}`;
+        
+        // Atualizar status do paciente na lista
+        if (this.patientForAllocation) {
+          this.patientForAllocation.hasAllocation = true;
+          this.patientForAllocation.nextAppointmentDate = this.selectedSlot!.date;
+        }
+        
+        // Fechar modal após 2 segundos
+        setTimeout(() => {
+          this.closeAllocationModal();
+          this.loadPatients(); // Recarregar lista
+        }, 2000);
+      },
+      error: (err) => {
+        this.allocating = false;
+        this.allocationError = err.error?.message || 'Erro ao alocar paciente. Tente novamente.';
+      }
+    });
   }
 }

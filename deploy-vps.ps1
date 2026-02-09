@@ -45,6 +45,7 @@ if (-not $SkipLocalTest) {
 # PASSO 2: EXPORTAR BANCO LOCAL (SEM REDIRECIONAMENTO!)
 # ============================================================================
 $backupFile = "C:\telecuidar\backups\deploy_backup.sql"
+$containerName = "telecuidar-postgres-dev"  # Container de desenvolvimento local
 
 if (-not $SkipBanco) {
     Write-Host ""
@@ -54,17 +55,18 @@ if (-not $SkipBanco) {
     # Solucao: gravar DENTRO do container e depois copiar com docker cp
     
     # 1. Remove backup anterior do container
-    docker exec telecuidar-postgres rm -f /tmp/backup.sql 2>$null
+    docker exec $containerName rm -f /tmp/backup.sql 2>$null
     
     # 2. Faz dump DENTRO do container (opcao -f grava direto no arquivo)
-    $dumpResult = docker exec telecuidar-postgres pg_dump -U postgres -d telecuidar --no-owner --no-acl --clean --if-exists -f /tmp/backup.sql 2>&1
+    #    --encoding=UTF8 garante encoding correto
+    $dumpResult = docker exec $containerName pg_dump -U postgres -d telecuidar --no-owner --no-acl --clean --if-exists --encoding=UTF8 -f /tmp/backup.sql 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  ERRO - pg_dump falhou: $dumpResult" -ForegroundColor Red
         exit 1
     }
     
     # 3. Copia do container para o host (transferencia binaria, sem conversao)
-    docker cp telecuidar-postgres:/tmp/backup.sql $backupFile
+    docker cp ${containerName}:/tmp/backup.sql $backupFile
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  ERRO - docker cp falhou!" -ForegroundColor Red
         exit 1

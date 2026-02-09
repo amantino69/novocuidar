@@ -67,41 +67,36 @@ public class RegulatorController : ControllerBase
         if (municipioId == null)
             return BadRequest(new { message = "Regulador não está vinculado a nenhum município" });
 
-        var hoje = DateTime.Today;
-
-        // OTIMIZAÇÃO: Obter IDs dos pacientes do município uma vez
-        var patientIds = _context.PatientProfiles
+        // FIX: Materializar patientIds para evitar erro de tradução LINQ
+        var patientIdsList = await _context.PatientProfiles
             .AsNoTracking()
             .Where(pp => pp.MunicipioId == municipioId)
-            .Select(pp => pp.UserId);
+            .Select(pp => pp.UserId)
+            .ToListAsync();
 
-        // OTIMIZAÇÃO: Queries paralelas usando subquery
-        var totalPacientesTask = patientIds.CountAsync();
+        var totalPacientes = patientIdsList.Count;
 
-        var consultasHojeTask = _context.Appointments
+        // FIX: Usar range de datas ao invés de Date.Date (não traduzível)
+        var hojeInicio = DateTime.Today;
+        var hojeFim = hojeInicio.AddDays(1);
+
+        var consultasHoje = await _context.Appointments
             .AsNoTracking()
-            .Where(a => a.Date.Date == hoje && patientIds.Contains(a.PatientId))
+            .Where(a => a.Date >= hojeInicio && a.Date < hojeFim && 
+                       patientIdsList.Contains(a.PatientId))
             .CountAsync();
 
-        var consultasPendentesTask = _context.Appointments
+        var consultasPendentes = await _context.Appointments
             .AsNoTracking()
-            .Where(a => a.Date.Date >= hoje &&
+            .Where(a => a.Date >= hojeInicio &&
                        (a.Status == AppointmentStatus.Scheduled || a.Status == AppointmentStatus.Confirmed) &&
-                       patientIds.Contains(a.PatientId))
+                       patientIdsList.Contains(a.PatientId))
             .CountAsync();
 
-        var agendasDisponiveisTask = _context.Schedules
+        var agendasDisponiveis = await _context.Schedules
             .AsNoTracking()
             .Where(s => s.IsActive)
             .CountAsync();
-
-        // Executar todas as queries em paralelo
-        await Task.WhenAll(totalPacientesTask, consultasHojeTask, consultasPendentesTask, agendasDisponiveisTask);
-
-        var totalPacientes = await totalPacientesTask;
-        var consultasHoje = await consultasHojeTask;
-        var consultasPendentes = await consultasPendentesTask;
-        var agendasDisponiveis = await agendasDisponiveisTask;
 
         // Info do município
         var municipio = await _context.Municipalities
@@ -1472,6 +1467,151 @@ public class RegulatorController : ControllerBase
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Retorna pacientes do município na fila de espera para alocação
+    /// Inclui urgência calculada e status de alocação
+    /// </summary>
+    [HttpGet("waiting-queue")]
+    public async Task<IActionResult> GetWaitingQueue([FromQuery] int pageSize = 50)
+    {
+        var municipioId = await GetRegulatorMunicipioIdAsync();
+        if (municipioId == null)
+            return BadRequest(new { message = "Regulador não está vinculado a nenhum município" });
+
+        var today = DateTime.Today;
+        var now = DateTime.UtcNow;
+
+        // Buscar pacientes do município com suas consultas
+        var patientsQuery = _context.Users
+            .Include(u => u.PatientProfile)
+            .Where(u => u.Role == UserRole.PATIENT && u.Status == UserStatus.Active)
+            .Where(u => u.MunicipioId == municipioId || 
+                       (u.PatientProfile != null && u.PatientProfile.MunicipioId == municipioId))
+            .OrderBy(u => u.Name)
+            .Take(pageSize);
+
+        var patients = await patientsQuery
+            .Select(u => new
+            {
+                u.Id,
+                u.Name,
+                u.LastName,
+                u.Cpf,
+                u.Phone,
+                u.Email,
+                u.Avatar,
+                Profile = u.PatientProfile
+            })
+            .ToListAsync();
+
+        // Buscar consultas futuras e últimas consultas para todos os pacientes
+        var patientIds = patients.Select(p => p.Id).ToList();
+        
+        // Consultas futuras agendadas (Status = Scheduled)
+        var futureAppointments = await _context.Appointments
+            .Where(a => patientIds.Contains(a.PatientId) && 
+                       a.Date >= today && 
+                       a.Status == AppointmentStatus.Scheduled)
+            .GroupBy(a => a.PatientId)
+            .Select(g => new { PatientId = g.Key, HasFuture = true, NextDate = g.Min(a => a.Date) })
+            .ToListAsync();
+
+        // Última consulta realizada de cada paciente
+        var lastAppointments = await _context.Appointments
+            .Where(a => patientIds.Contains(a.PatientId) && 
+                       a.Status == AppointmentStatus.Completed)
+            .GroupBy(a => a.PatientId)
+            .Select(g => new { PatientId = g.Key, LastDate = g.Max(a => a.Date) })
+            .ToListAsync();
+
+        // Verificar se há na WaitingList com urgência definida (tabela pode não existir)
+        Dictionary<Guid, UrgencyLevel?> urgencyDict = new();
+        try 
+        {
+            var waitingListUrgencies = await _context.WaitingLists
+                .Where(w => patientIds.Contains(w.PatientId) && 
+                           w.Status == WaitingListStatus.Waiting)
+                .Select(w => new { w.PatientId, w.UrgencyLevel })
+                .ToListAsync();
+            urgencyDict = waitingListUrgencies.ToDictionary(w => w.PatientId, w => w.UrgencyLevel);
+        }
+        catch 
+        {
+            // Tabela WaitingLists pode não existir ainda - urgencyDict fica vazio
+        }
+
+        // Mapear resultados
+        var futureDict = futureAppointments.ToDictionary(f => f.PatientId);
+        var lastDict = lastAppointments.ToDictionary(l => l.PatientId);
+
+        var queue = patients.Select(p => 
+        {
+            // Verificar se tem consulta futura (já alocado)
+            var hasAllocation = futureDict.ContainsKey(p.Id);
+            var nextAppointment = hasAllocation ? futureDict[p.Id].NextDate : (DateTime?)null;
+            
+            // Determinar urgência
+            string urgency;
+            if (urgencyDict.TryGetValue(p.Id, out var wlUrgency) && wlUrgency.HasValue)
+            {
+                // Usar urgência da WaitingList se existir
+                urgency = wlUrgency.Value switch
+                {
+                    UrgencyLevel.Red => "urgent",
+                    UrgencyLevel.Orange => "urgent",
+                    UrgencyLevel.Yellow => "priority",
+                    _ => "normal"
+                };
+            }
+            else if (lastDict.TryGetValue(p.Id, out var lastAppt))
+            {
+                // Calcular urgência baseada na última consulta
+                var daysSinceLastAppt = (today - lastAppt.LastDate).Days;
+                urgency = daysSinceLastAppt > 60 ? "urgent" : 
+                         daysSinceLastAppt > 30 ? "priority" : "normal";
+            }
+            else
+            {
+                // Paciente nunca teve consulta = prioridade média
+                urgency = "priority";
+            }
+
+            return new
+            {
+                id = p.Id,
+                name = p.Name,
+                lastName = p.LastName,
+                fullName = $"{p.Name} {p.LastName}".Trim(),
+                cpf = p.Cpf,
+                phone = p.Phone,
+                email = p.Email,
+                avatar = p.Avatar,
+                cns = p.Profile?.Cns,
+                birthDate = p.Profile?.BirthDate,
+                gender = p.Profile?.Gender,
+                city = p.Profile?.City,
+                state = p.Profile?.State,
+                urgency,
+                hasAllocation,
+                nextAppointmentDate = nextAppointment?.ToString("dd/MM/yyyy")
+            };
+        })
+        // Ordenar por urgência (urgentes primeiro) e depois por nome
+        .OrderByDescending(p => p.urgency == "urgent" ? 2 : p.urgency == "priority" ? 1 : 0)
+        .ThenBy(p => p.fullName)
+        .ToList();
+
+        return Ok(new
+        {
+            data = queue,
+            total = queue.Count,
+            urgentCount = queue.Count(q => q.urgency == "urgent"),
+            priorityCount = queue.Count(q => q.urgency == "priority"),
+            normalCount = queue.Count(q => q.urgency == "normal"),
+            allocatedCount = queue.Count(q => q.hasAllocation)
+        });
     }
 }
 

@@ -13,7 +13,7 @@
     <!-- Main Content (Video + Header) -->
     <div class="main-content" [class.sidebar-open]="isSidebarOpen && !isSidebarFull" [class.full-screen]="isSidebarOpen && isSidebarFull">
     <!-- Header -->
-    <div class="tele-header dark-header" [class.hidden]="!isHeaderVisible">
+    <div class="tele-header" [class.hidden]="!isHeaderVisible">
       <div class="header-content">
         <!-- LAYOUT PARA PROFESSIONAL: Header simplificado -->
         <ng-container *ngIf="userrole === 'PROFESSIONAL'">
@@ -25,6 +25,7 @@
           </div>
 
           <div class="controls-section controls-right">
+            <app-theme-toggle />
             <app-button variant="primary" size="sm" (click)="toggleSidebar()" *ngIf="!isSidebarOpen">
               <app-icon name="edit" [size]="18" />
               Registros da Consulta
@@ -39,6 +40,7 @@
           </div>
 
           <div class="controls-section">
+            <app-theme-toggle />
             <!-- Botão CAMPAINHA - Enfermeira chama o médico -->
             <app-button 
               *ngIf="userrole === 'ASSISTANT'"

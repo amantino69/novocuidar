@@ -43,6 +43,34 @@ export interface RegulatorPatient {
   createdAt: string;
 }
 
+export interface WaitingQueuePatient {
+  id: string;
+  name: string;
+  lastName: string;
+  fullName: string;
+  cpf: string;
+  phone: string | null;
+  email: string;
+  avatar: string | null;
+  cns: string | null;
+  birthDate: string | null;
+  gender: string | null;
+  city: string | null;
+  state: string | null;
+  urgency: 'normal' | 'priority' | 'urgent';
+  hasAllocation: boolean;
+  nextAppointmentDate: string | null;
+}
+
+export interface WaitingQueueResponse {
+  data: WaitingQueuePatient[];
+  total: number;
+  urgentCount: number;
+  priorityCount: number;
+  normalCount: number;
+  allocatedCount: number;
+}
+
 export interface PatientDetails {
   patient: {
     id: string;
@@ -214,6 +242,16 @@ export class RegulatorService {
     }
     return this.http.get<MunicipalStats>(`${this.apiUrl}/stats`).pipe(
       tap(data => this.statsCache = { data, timestamp: Date.now() })
+    );
+  }
+
+  /**
+   * Lista pacientes na fila de espera com urgência e status de alocação
+   */
+  getWaitingQueue(pageSize: number = 50): Observable<WaitingQueueResponse> {
+    return this.http.get<WaitingQueueResponse>(
+      `${this.apiUrl}/waiting-queue`,
+      { params: { pageSize: pageSize.toString() } }
     );
   }
 

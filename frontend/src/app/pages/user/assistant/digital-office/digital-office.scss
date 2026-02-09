@@ -80,9 +80,9 @@
   }
 
   &__spontaneous-card {
-    background: var(--white);
+    background: var(--surface);
     border-radius: $border-radius-md;
-    border: 1px solid var(--gray-200);
+    border: 1px solid var(--neutral-200);
     border-left: 5px solid var(--danger-500);
     padding: $spacing-md;
     display: flex;
@@ -102,7 +102,7 @@
     align-self: flex-start;
     padding: $spacing-xs $spacing-sm;
     border-radius: $border-radius-sm;
-    color: var(--white);
+    color: white;
     font-size: $font-size-xs;
     font-weight: 600;
     text-transform: uppercase;
@@ -145,7 +145,7 @@
     color: var(--text-secondary);
 
     app-icon {
-      color: var(--gray-400);
+      color: var(--neutral-400);
       flex-shrink: 0;
     }
   }
@@ -153,7 +153,7 @@
   &__spontaneous-complaint {
     font-size: $font-size-sm;
     color: var(--text-tertiary);
-    background: var(--gray-50);
+    background: var(--neutral-50);
     padding: $spacing-xs $spacing-sm;
     border-radius: $border-radius-sm;
     font-style: italic;
@@ -166,7 +166,7 @@
     gap: $spacing-xs;
     padding: $spacing-sm $spacing-md;
     background: var(--primary-500);
-    color: var(--white);
+    color: white;
     border: none;
     border-radius: $border-radius-md;
     font-size: $font-size-base;
@@ -730,3 +730,60 @@
     }
   }
 }
+
+// =====================================================================
+// DARK MODE SUPPORT
+// =====================================================================
+:host-context([data-theme="dark"]) {
+  .digital-office {
+    &__spontaneous {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(251, 191, 36, 0.1));
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    &__spontaneous-card {
+      background: var(--surface);
+      border-color: var(--border);
+    }
+
+    &__spontaneous-complaint {
+      background: var(--neutral-800);
+      color: var(--text-secondary);
+    }
+
+    &__filter-clear:hover {
+      background: var(--neutral-700);
+    }
+  }
+
+  .digital-office-table {
+    &__row:hover {
+      background: var(--neutral-800);
+    }
+
+    &__action-btn:hover {
+      background: var(--neutral-700);
+    }
+  }
+
+  .appointment-card {
+    &:hover {
+      border-color: var(--primary-600);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    &__btn-secondary {
+      background: var(--neutral-800);
+      color: var(--text-primary);
+
+      &:hover {
+        background: var(--neutral-700);
+      }
+
+      &:active {
+        background: var(--neutral-900);
+      }
+    }
+  }
+}
+
