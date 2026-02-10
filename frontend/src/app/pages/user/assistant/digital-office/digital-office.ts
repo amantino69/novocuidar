@@ -488,8 +488,7 @@ export class DigitalOfficeComponent implements OnInit, OnDestroy {
   }
 
   canEnterConsultation(appointment: Appointment): boolean {
-    return appointment.status === 'Scheduled' || 
-           appointment.status === 'Confirmed' || 
-           appointment.status === 'InProgress';
+    // MODO APRESENTAÇÃO: Permite entrada em qualquer consulta exceto cancelada/noshow
+    return appointment.status !== 'Cancelled' && appointment.status !== 'NoShow';
   }
 }

@@ -39,11 +39,8 @@ public class TeleconsultationHub : Hub
 
     /// <summary>
     /// Entra na sala da teleconsulta (appointment)
-    /// Validações de acesso:
-    /// - PATIENT: Só pode acessar consulta do dia e não pode ser PendingClosure
-    /// - PROFESSIONAL: Pode acessar suas consultas não finalizadas (pode retomar PendingClosure)
-    /// - ASSISTANT: Só pode acessar consulta do dia
-    /// Atualiza LastActivityAt para rastrear timeout
+    /// MODO APRESENTAÇÃO: Todas as validações de acesso removidas
+    /// Qualquer usuário pode entrar em qualquer consulta
     /// </summary>
     public async Task JoinConsultation(string appointmentId, string? userRole = null, string? userName = null)
     {
@@ -64,43 +61,9 @@ public class TeleconsultationHub : Hub
             return;
         }
 
-        // ===== VALIDAÇÕES DE ACESSO =====
-        var isToday = appointment.Date.Date == DateTime.Today;
-        var isCompletedOrCancelled = appointment.Status == AppointmentStatus.Completed || 
-                                      appointment.Status == AppointmentStatus.Cancelled ||
-                                      appointment.Status == AppointmentStatus.NoShow;
-
-        // Consulta já finalizada - apenas visualização
-        if (isCompletedOrCancelled)
-        {
-            await Clients.Caller.SendAsync("AccessDenied", new { 
-                Message = "Esta consulta já foi finalizada. Acesse o histórico para visualizar os dados."
-            });
-            return;
-        }
-
-        // PACIENTE: só acessa no dia e não pode acessar PendingClosure
-        if (userRole == "PATIENT")
-        {
-            if (!isToday)
-            {
-                await Clients.Caller.SendAsync("AccessDenied", new { 
-                    Message = "Esta consulta não está mais disponível. Consultas só podem ser acessadas no dia agendado."
-                });
-                return;
-            }
-            if (appointment.Status == AppointmentStatus.PendingClosure)
-            {
-                await Clients.Caller.SendAsync("AccessDenied", new { 
-                    Message = "O médico ainda está finalizando esta consulta. Você receberá o resumo em breve."
-                });
-                return;
-            }
-        }
-
-        // ASSISTENTE: pode acessar QUALQUER consulta (inclusive passadas)
-        // Isso permite que enfermeiras visualizem histórico ou retomem atendimentos
-        // Restrição removida conforme solicitação - assistentes precisam de acesso livre
+        // ===== MODO APRESENTAÇÃO - SEM VALIDAÇÕES DE ACESSO =====
+        // Todas as restrições removidas para garantir funcionamento na apresentação
+        // TODO: Reativar validações após fase de POC
 
         // ===== ACESSO PERMITIDO - ENTRAR NA SALA =====
         await Groups.AddToGroupAsync(Context.ConnectionId, $"consultation_{appointmentId}");

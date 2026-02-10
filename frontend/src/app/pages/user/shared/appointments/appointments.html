@@ -300,7 +300,7 @@
           </div>
 
           <app-button 
-              *ngIf="appointment.status === 'Scheduled' || appointment.status === 'Confirmed' || appointment.status === 'InProgress'" 
+              *ngIf="appointment.status !== 'Cancelled' && appointment.status !== 'NoShow'" 
               variant="primary" 
               size="sm" 
               [ngClass]="{'waiting-button': isWaitingInRoom(appointment.id)}"
