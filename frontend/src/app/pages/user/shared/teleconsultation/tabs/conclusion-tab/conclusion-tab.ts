@@ -36,14 +36,31 @@ export class ConclusionTabComponent {
 
   /** Traduz o status da consulta para português */
   getStatusLabel(status: string | undefined): string {
+    if (!status) return '--';
+    // Normaliza UPPERCASE para PascalCase
+    const normalizedStatus = this.normalizeStatus(status);
     const labels: Record<string, string> = {
       'Scheduled': 'Agendada',
       'Confirmed': 'Confirmada',
-      'InProgress': 'Em Andamento',
+      'CheckedIn': 'Recepcionado',
+      'AwaitingDoctor': 'Aguardando Médico',
+      'InConsultation': 'Em Consulta',
+      'PendingClosure': 'Pendente Fechamento',
       'Completed': 'Realizada',
       'Cancelled': 'Cancelada',
-      'NoShow': 'Não Compareceu'
+      'NoShow': 'Não Compareceu',
+      'InProgress': 'Em Andamento'
     };
-    return labels[status || ''] || status || '--';
+    return labels[normalizedStatus] || status;
+  }
+
+  private normalizeStatus(status: string): string {
+    const statusMap: Record<string, string> = {
+      'SCHEDULED': 'Scheduled', 'CONFIRMED': 'Confirmed', 'CHECKEDIN': 'CheckedIn',
+      'AWAITINGDOCTOR': 'AwaitingDoctor', 'INCONSULTATION': 'InConsultation',
+      'PENDINGCLOSURE': 'PendingClosure', 'COMPLETED': 'Completed',
+      'CANCELLED': 'Cancelled', 'NOSHOW': 'NoShow', 'INPROGRESS': 'InProgress'
+    };
+    return statusMap[status.toUpperCase()] || status;
   }
 }

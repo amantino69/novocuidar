@@ -583,15 +583,30 @@ export class MyScheduleComponent implements OnInit, OnDestroy {
   }
 
   getAppointmentStatusLabel(status: string): string {
+    const normalizedStatus = this.normalizeStatus(status);
     const statusLabels: Record<string, string> = {
       'Scheduled': 'Agendado',
       'Confirmed': 'Confirmado',
+      'CheckedIn': 'Recepcionado',
+      'AwaitingDoctor': 'Aguardando Médico',
+      'InConsultation': 'Em Consulta',
       'InProgress': 'Em Andamento',
+      'PendingClosure': 'Pendente Fechamento',
       'Completed': 'Finalizado',
       'Cancelled': 'Cancelado',
       'NoShow': 'Não Compareceu'
     };
-    return statusLabels[status] || status;
+    return statusLabels[normalizedStatus] || status;
+  }
+
+  private normalizeStatus(status: string): string {
+    const statusMap: Record<string, string> = {
+      'SCHEDULED': 'Scheduled', 'CONFIRMED': 'Confirmed', 'CHECKEDIN': 'CheckedIn',
+      'AWAITINGDOCTOR': 'AwaitingDoctor', 'INCONSULTATION': 'InConsultation',
+      'PENDINGCLOSURE': 'PendingClosure', 'COMPLETED': 'Completed',
+      'CANCELLED': 'Cancelled', 'NOSHOW': 'NoShow', 'INPROGRESS': 'InProgress'
+    };
+    return statusMap[status.toUpperCase()] || status;
   }
 
   // Week totals

@@ -1001,25 +1001,47 @@ export class ReferralTabComponent implements OnDestroy, OnChanges {
   }
 
   getStatusLabel(status: string): string {
+    const normalizedStatus = this.normalizeStatus(status);
     const statusLabels: Record<string, string> = {
       'Scheduled': 'Agendado',
       'Confirmed': 'Confirmado',
-      'InProgress': 'Em andamento',
+      'CheckedIn': 'Recepcionado',
+      'AwaitingDoctor': 'Aguardando Médico',
+      'InConsultation': 'Em Consulta',
+      'PendingClosure': 'Pendente Fechamento',
+      'InProgress': 'Em Andamento',
       'Completed': 'Concluído',
-      'Cancelled': 'Cancelado'
+      'Cancelled': 'Cancelado',
+      'NoShow': 'Não Compareceu'
     };
-    return statusLabels[status] || status;
+    return statusLabels[normalizedStatus] || status;
   }
 
   getStatusClass(status: string): string {
+    const normalizedStatus = this.normalizeStatus(status);
     const statusClasses: Record<string, string> = {
       'Scheduled': 'status-scheduled',
       'Confirmed': 'status-confirmed',
+      'CheckedIn': 'status-confirmed',
+      'AwaitingDoctor': 'status-scheduled',
+      'InConsultation': 'status-in-progress',
+      'PendingClosure': 'status-scheduled',
       'InProgress': 'status-in-progress',
       'Completed': 'status-completed',
-      'Cancelled': 'status-cancelled'
+      'Cancelled': 'status-cancelled',
+      'NoShow': 'status-cancelled'
     };
-    return statusClasses[status] || '';
+    return statusClasses[normalizedStatus] || '';
+  }
+
+  private normalizeStatus(status: string): string {
+    const statusMap: Record<string, string> = {
+      'SCHEDULED': 'Scheduled', 'CONFIRMED': 'Confirmed', 'CHECKEDIN': 'CheckedIn',
+      'AWAITINGDOCTOR': 'AwaitingDoctor', 'INCONSULTATION': 'InConsultation',
+      'PENDINGCLOSURE': 'PendingClosure', 'COMPLETED': 'Completed',
+      'CANCELLED': 'Cancelled', 'NOSHOW': 'NoShow', 'INPROGRESS': 'InProgress'
+    };
+    return statusMap[status.toUpperCase()] || status;
   }
 
   /**

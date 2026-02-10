@@ -121,7 +121,7 @@
             @for (item of reportData.usersByRole; track item.role) {
               <div class="reports__bar-item">
                 <div class="reports__bar-info">
-                  <span class="reports__bar-label">{{ item.role }}</span>
+                  <span class="reports__bar-label">{{ getRoleLabel(item.role) }}</span>
                   <span class="reports__bar-value">{{ item.count }} ({{ item.percentage }}%)</span>
                 </div>
                 <div class="reports__bar-track">
@@ -148,7 +148,7 @@
                   [style.background-color]="item.color"
                 ></div>
                 <div class="reports__status-info">
-                  <span class="reports__status-label">{{ item.status }}</span>
+                  <span class="reports__status-label">{{ getStatusLabel(item.status) }}</span>
                   <span class="reports__status-value">{{ item.count }}</span>
                 </div>
               </div>

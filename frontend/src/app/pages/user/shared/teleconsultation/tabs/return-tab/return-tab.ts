@@ -58,11 +58,11 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   
   steps: { id: Step, label: string }[] = [
     { id: 'date', label: 'Data' },
-    { id: 'time', label: 'Horário' },
-    { id: 'confirmation', label: 'Confirmação' }
+    { id: 'time', label: 'Horï¿½rio' },
+    { id: 'confirmation', label: 'Confirmaï¿½ï¿½o' }
   ];
 
-  weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sï¿½b'];
 
   // Step 1: Date Selection
   currentMonth: Date = new Date();
@@ -101,7 +101,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
       this.initializeSignalR();
       this.loadExistingReturns();
       
-      // Monitorar expiração de reserva
+      // Monitorar expiraï¿½ï¿½o de reserva
       this.slotReservationService.getReservationExpired$().subscribe(() => {
         this.handleReservationExpired();
       });
@@ -115,7 +115,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   }
 
   /**
-   * Libera a reserva quando o usuário fecha a aba/navegador
+   * Libera a reserva quando o usuï¿½rio fecha a aba/navegador
    */
   @HostListener('window:beforeunload', ['$event'])
   onBeforeUnload(event: BeforeUnloadEvent): void {
@@ -132,7 +132,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   }
 
   /**
-   * Carrega os retornos já agendados para este paciente/profissional
+   * Carrega os retornos jï¿½ agendados para este paciente/profissional
    */
   loadExistingReturns(): void {
     if (!this.appointment) return;
@@ -140,14 +140,14 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
     this.isLoadingReturns = true;
     
     // Buscar agendamentos do tipo Return para o mesmo paciente e profissional
-    // que foram agendados após a data desta consulta
+    // que foram agendados apï¿½s a data desta consulta
     this.appointmentsService.getAppointments({
       patientId: this.appointment.patientId,
       professionalId: this.appointment.professionalId,
       specialtyId: this.appointment.specialtyId
     }, 1, 50).subscribe({
       next: (response) => {
-        // Filtrar apenas retornos agendados após esta consulta
+        // Filtrar apenas retornos agendados apï¿½s esta consulta
         const currentDate = new Date(this.appointment!.date);
         this.existingReturns = response.data.filter(apt => 
           apt.type === 'Return' && 
@@ -195,14 +195,14 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
     // Clean up SignalR subscriptions
     this.signalRSubscriptions.forEach(sub => sub.unsubscribe());
     
-    // Apenas desconectar - não precisa chamar leaveProfessionalGroup antes
-    // pois o disconnect já limpa tudo e evita race condition
+    // Apenas desconectar - nï¿½o precisa chamar leaveProfessionalGroup antes
+    // pois o disconnect jï¿½ limpa tudo e evita race condition
     this.currentProfessionalGroup = null;
     this.schedulingSignalR.disconnect();
   }
 
   /**
-   * Libera a reserva atual do usuário
+   * Libera a reserva atual do usuï¿½rio
    */
   private releaseCurrentReservation(): void {
     const reservation = this.slotReservationService.getCurrentReservation();
@@ -232,7 +232,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
     if (this.currentStep === 'confirmation') {
       this.modalService.alert({
         title: 'Reserva Expirada',
-        message: 'Sua reserva expirou. Por favor, selecione um novo horário.',
+        message: 'Sua reserva expirou. Por favor, selecione um novo horï¿½rio.',
         variant: 'warning'
       }).subscribe(() => {
         this.selectedSlot = null;
@@ -261,7 +261,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
     });
     this.signalRSubscriptions.push(daySub);
 
-    // Subscribe to slot professionals updates (para atualizar slots disponíveis)
+    // Subscribe to slot professionals updates (para atualizar slots disponï¿½veis)
     const slotProfessionalsSub = this.schedulingSignalR.slotProfessionalsUpdated$.subscribe(notification => {
       if (notification) {
         this.handleSlotProfessionalsUpdate(notification);
@@ -300,12 +300,12 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
       return;
     }
 
-    // Ignorar notificações durante criação de agendamento
+    // Ignorar notificaï¿½ï¿½es durante criaï¿½ï¿½o de agendamento
     if (this.isCreatingAppointment && this.currentStep === 'confirmation') {
       return;
     }
 
-    // Verificar se é nossa própria reserva (pendente ou confirmada)
+    // Verificar se ï¿½ nossa prï¿½pria reserva (pendente ou confirmada)
     const currentReservation = this.slotReservationService.getCurrentReservation();
     const isPendingReservation = this.pendingReservation &&
         this.pendingReservation.professionalId === notification.professionalId &&
@@ -314,13 +314,13 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
         currentReservation.professionalId === notification.professionalId &&
         currentReservation.time === notification.time;
     
-    // Também verificar se é o slot selecionado no step de confirmação (reserva em andamento)
+    // Tambï¿½m verificar se ï¿½ o slot selecionado no step de confirmaï¿½ï¿½o (reserva em andamento)
     const isSelectedSlotBeingReserved = this.selectedSlot?.time === notification.time &&
         this.currentStep === 'confirmation' &&
         this.appointment.professionalId === notification.professionalId;
     
     if ((isPendingReservation || isCurrentReservation || isSelectedSlotBeingReserved) && !notification.isAvailable) {
-      console.log('[SignalR] Ignorando notificação - é nossa própria reserva ou slot selecionado');
+      console.log('[SignalR] Ignorando notificaï¿½ï¿½o - ï¿½ nossa prï¿½pria reserva ou slot selecionado');
       return;
     }
 
@@ -340,8 +340,8 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
             if (this.selectedSlot?.time === notification.time) {
               this.selectedSlot = null;
               this.modalService.alert({
-                title: 'Horário indisponível',
-                message: 'Este horário acabou de ser reservado. Por favor, escolha outro horário.',
+                title: 'Horï¿½rio indisponï¿½vel',
+                message: 'Este horï¿½rio acabou de ser reservado. Por favor, escolha outro horï¿½rio.',
                 variant: 'warning'
               }).subscribe(() => {
                 if (this.currentStep === 'confirmation') {
@@ -373,7 +373,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
     );
     
     if (dayIndex !== -1) {
-      // Aplicar o delta ao número de slots
+      // Aplicar o delta ao nï¿½mero de slots
       const newSlots = Math.max(0, this.calendarDays[dayIndex].slots + notification.slotsDelta);
       this.calendarDays[dayIndex].slots = newSlots;
       this.calendarDays[dayIndex].available = newSlots > 0;
@@ -382,13 +382,13 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   }
 
   private handleSlotProfessionalsUpdate(notification: SlotProfessionalsUpdateNotification): void {
-    // Para return-tab, não precisamos tratar profissionais pois é fixo
+    // Para return-tab, nï¿½o precisamos tratar profissionais pois ï¿½ fixo
     // Mas podemos usar para atualizar a disponibilidade do slot
     if (!this.appointment || !this.selectedDate) {
       return;
     }
 
-    // Ignorar se é nossa própria reserva
+    // Ignorar se ï¿½ nossa prï¿½pria reserva
     const currentReservation = this.slotReservationService.getCurrentReservation();
     const isPendingReservation = this.pendingReservation &&
         this.pendingReservation.professionalId === notification.professionalId &&
@@ -401,7 +401,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
         this.appointment.professionalId === notification.professionalId;
     
     if ((isPendingReservation || isCurrentReservation || isSelectedSlotBeingReserved) && !notification.isAvailable) {
-      console.log('[SignalR] Ignorando slotProfessionalsUpdate - é nossa própria reserva');
+      console.log('[SignalR] Ignorando slotProfessionalsUpdate - ï¿½ nossa prï¿½pria reserva');
       return;
     }
 
@@ -411,14 +411,14 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
       
       if (slotIndex !== -1 && notification.professionalId === this.appointment.professionalId) {
         if (!notification.isAvailable) {
-          // Slot não está mais disponível
+          // Slot nï¿½o estï¿½ mais disponï¿½vel
           this.availableSlots.splice(slotIndex, 1);
           
           if (this.selectedSlot?.time === notification.time) {
             this.selectedSlot = null;
             this.modalService.alert({
-              title: 'Horário indisponível',
-              message: 'Este horário acabou de ser reservado. Por favor, escolha outro.',
+              title: 'Horï¿½rio indisponï¿½vel',
+              message: 'Este horï¿½rio acabou de ser reservado. Por favor, escolha outro.',
               variant: 'warning'
             }).subscribe(() => {
               if (this.currentStep === 'confirmation') {
@@ -450,13 +450,13 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
       }
       
       if (affectsSelectedDate) {
-        // Se estamos na etapa de horário ou posterior, voltar e alertar
+        // Se estamos na etapa de horï¿½rio ou posterior, voltar e alertar
         if (this.currentStep === 'time' || this.currentStep === 'confirmation') {
           this.modalService.alert({
             title: notification.isBlocked ? 'Data bloqueada' : 'Data desbloqueada',
             message: notification.isBlocked 
               ? 'A data selecionada foi bloqueada. Por favor, escolha outra data.'
-              : 'A data selecionada foi desbloqueada e agora pode ter novos horários disponíveis.',
+              : 'A data selecionada foi desbloqueada e agora pode ter novos horï¿½rios disponï¿½veis.',
             variant: notification.isBlocked ? 'warning' : 'info'
           }).subscribe(() => {
             if (notification.isBlocked) {
@@ -464,18 +464,18 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
               this.selectedSlot = null;
               this.currentStep = 'date';
             }
-            // Recarregar calendário
+            // Recarregar calendï¿½rio
             this.generateCalendar();
           });
         } else {
-          // Apenas recarregar o calendário
+          // Apenas recarregar o calendï¿½rio
           this.generateCalendar();
         }
         return;
       }
     }
     
-    // Se estamos na etapa de data, recarregar o calendário
+    // Se estamos na etapa de data, recarregar o calendï¿½rio
     if (this.currentStep === 'date') {
       this.generateCalendar();
     }
@@ -622,7 +622,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   selectSlot(slot: TimeSlot) {
     this.selectedSlot = slot;
     
-    // Reservar o slot imediatamente quando o usuário clica nele
+    // Reservar o slot imediatamente quando o usuï¿½rio clica nele
     if (this.selectedDate && this.appointment) {
       this.reserveSlotImmediately(slot);
     }
@@ -631,7 +631,7 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   }
 
   /**
-   * Reserva um slot temporariamente assim que o usuário clica nele
+   * Reserva um slot temporariamente assim que o usuï¿½rio clica nele
    */
   private reserveSlotImmediately(slot: TimeSlot): void {
     if (!slot || !this.selectedDate || !this.appointment) {
@@ -664,8 +664,8 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
         this.pendingReservation = null;
         if (err.status === 409) {
           this.modalService.alert({
-            title: 'Slot Indisponível',
-            message: 'Este horário foi reservado por outro usuário. Por favor, escolha outro horário.',
+            title: 'Slot Indisponï¿½vel',
+            message: 'Este horï¿½rio foi reservado por outro usuï¿½rio. Por favor, escolha outro horï¿½rio.',
             variant: 'warning'
           }).subscribe(() => {
             this.selectedSlot = null;
@@ -771,24 +771,46 @@ export class ReturnTabComponent implements OnDestroy, OnChanges {
   }
 
   getStatusLabel(status: string): string {
+    const normalizedStatus = this.normalizeStatus(status);
     const statusLabels: Record<string, string> = {
       'Scheduled': 'Agendado',
       'Confirmed': 'Confirmado',
-      'InProgress': 'Em andamento',
-      'Completed': 'Concluído',
-      'Cancelled': 'Cancelado'
+      'CheckedIn': 'Recepcionado',
+      'AwaitingDoctor': 'Aguardando MÃ©dico',
+      'InConsultation': 'Em Consulta',
+      'PendingClosure': 'Pendente Fechamento',
+      'InProgress': 'Em Andamento',
+      'Completed': 'ConcluÃ­do',
+      'Cancelled': 'Cancelado',
+      'NoShow': 'NÃ£o Compareceu'
     };
-    return statusLabels[status] || status;
+    return statusLabels[normalizedStatus] || status;
   }
 
   getStatusClass(status: string): string {
+    const normalizedStatus = this.normalizeStatus(status);
     const statusClasses: Record<string, string> = {
       'Scheduled': 'status-scheduled',
       'Confirmed': 'status-confirmed',
+      'CheckedIn': 'status-confirmed',
+      'AwaitingDoctor': 'status-scheduled',
+      'InConsultation': 'status-in-progress',
+      'PendingClosure': 'status-scheduled',
       'InProgress': 'status-in-progress',
       'Completed': 'status-completed',
-      'Cancelled': 'status-cancelled'
+      'Cancelled': 'status-cancelled',
+      'NoShow': 'status-cancelled'
     };
-    return statusClasses[status] || '';
+    return statusClasses[normalizedStatus] || '';
+  }
+
+  private normalizeStatus(status: string): string {
+    const statusMap: Record<string, string> = {
+      'SCHEDULED': 'Scheduled', 'CONFIRMED': 'Confirmed', 'CHECKEDIN': 'CheckedIn',
+      'AWAITINGDOCTOR': 'AwaitingDoctor', 'INCONSULTATION': 'InConsultation',
+      'PENDINGCLOSURE': 'PendingClosure', 'COMPLETED': 'Completed',
+      'CANCELLED': 'Cancelled', 'NOSHOW': 'NoShow', 'INPROGRESS': 'InProgress'
+    };
+    return statusMap[status.toUpperCase()] || status;
   }
 }

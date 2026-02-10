@@ -135,4 +135,49 @@ export class ReportsComponent implements OnInit, OnDestroy {
     }
     return this.reportData.specialtiesRanking[0].specialty;
   }
+
+  getStatusLabel(status: string): string {
+    const normalizedStatus = this.normalizeStatus(status);
+    const labels: Record<string, string> = {
+      'Scheduled': 'Agendada',
+      'Confirmed': 'Confirmada',
+      'CheckedIn': 'Recepcionado',
+      'AwaitingDoctor': 'Aguardando Médico',
+      'InConsultation': 'Em Consulta',
+      'PendingClosure': 'Pendente Fechamento',
+      'Completed': 'Concluída',
+      'Cancelled': 'Cancelada',
+      'NoShow': 'Não Compareceu',
+      'InProgress': 'Em Andamento'
+    };
+    return labels[normalizedStatus] || status;
+  }
+
+  private normalizeStatus(status: string): string {
+    const statusMap: Record<string, string> = {
+      'SCHEDULED': 'Scheduled', 'CONFIRMED': 'Confirmed', 'CHECKEDIN': 'CheckedIn',
+      'AWAITINGDOCTOR': 'AwaitingDoctor', 'INCONSULTATION': 'InConsultation',
+      'PENDINGCLOSURE': 'PendingClosure', 'COMPLETED': 'Completed',
+      'CANCELLED': 'Cancelled', 'NOSHOW': 'NoShow', 'INPROGRESS': 'InProgress'
+    };
+    return statusMap[status.toUpperCase()] || status;
+  }
+
+  getRoleLabel(role: string): string {
+    const labels: Record<string, string> = {
+      'PATIENT': 'Paciente',
+      'PROFESSIONAL': 'Profissional',
+      'ADMIN': 'Administrador',
+      'ASSISTANT': 'Assistente',
+      'REGULATOR': 'Regulador',
+      'RECEPTIONIST': 'Recepcionista',
+      'Patient': 'Paciente',
+      'Professional': 'Profissional',
+      'Admin': 'Administrador',
+      'Assistant': 'Assistente',
+      'Regulator': 'Regulador',
+      'Receptionist': 'Recepcionista'
+    };
+    return labels[role] || role;
+  }
 }

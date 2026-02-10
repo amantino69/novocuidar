@@ -131,27 +131,47 @@ export class MyPatientsComponent {
   }
 
   getStatusLabel(status: string): string {
+    const normalizedStatus = this.normalizeStatus(status);
     const labels: Record<string, string> = {
       'Scheduled': 'Agendada',
       'Confirmed': 'Confirmada',
-      'InProgress': 'Em Andamento',
+      'CheckedIn': 'Recepcionado',
+      'AwaitingDoctor': 'Aguardando Médico',
+      'InConsultation': 'Em Consulta',
+      'PendingClosure': 'Pendente Fechamento',
       'Completed': 'Realizada',
       'Cancelled': 'Cancelada',
-      'NoShow': 'Não Compareceu'
+      'NoShow': 'Não Compareceu',
+      'InProgress': 'Em Andamento'
     };
-    return labels[status] || status;
+    return labels[normalizedStatus] || status;
   }
 
   getStatusClass(status: string): BadgeVariant {
+    const normalizedStatus = this.normalizeStatus(status);
     const classes: Record<string, BadgeVariant> = {
       'Scheduled': 'warning',
       'Confirmed': 'info',
+      'CheckedIn': 'info',
+      'AwaitingDoctor': 'warning',
+      'InConsultation': 'primary',
+      'PendingClosure': 'warning',
       'InProgress': 'primary',
       'Completed': 'success',
       'Cancelled': 'error',
       'NoShow': 'neutral'
     };
-    return classes[status] || 'neutral';
+    return classes[normalizedStatus] || 'neutral';
+  }
+
+  private normalizeStatus(status: string): string {
+    const statusMap: Record<string, string> = {
+      'SCHEDULED': 'Scheduled', 'CONFIRMED': 'Confirmed', 'CHECKEDIN': 'CheckedIn',
+      'AWAITINGDOCTOR': 'AwaitingDoctor', 'INCONSULTATION': 'InConsultation',
+      'PENDINGCLOSURE': 'PendingClosure', 'COMPLETED': 'Completed',
+      'CANCELLED': 'Cancelled', 'NOSHOW': 'NoShow', 'INPROGRESS': 'InProgress'
+    };
+    return statusMap[status.toUpperCase()] || status;
   }
 
   getTypeLabel(type: string): string {

@@ -695,6 +695,8 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
   }
 
   getStatusLabel(status: AppointmentStatus): string {
+    // Normaliza UPPERCASE para PascalCase (ex: PENDINGCLOSURE -> PendingClosure)
+    const normalizedStatus = this.normalizeStatus(status);
     const labels: Record<string, string> = {
       'Scheduled': 'Agendada',
       'Confirmed': 'Confirmada',
@@ -709,7 +711,25 @@ export class AppointmentsComponent implements OnInit, OnDestroy {
       'InProgress': 'Em Andamento',
       'Abandoned': 'Pendente Fechamento'
     };
-    return labels[status] || status;
+    return labels[normalizedStatus] || status;
+  }
+
+  private normalizeStatus(status: string): string {
+    // Mapa de status em uppercase para PascalCase
+    const statusMap: Record<string, string> = {
+      'SCHEDULED': 'Scheduled',
+      'CONFIRMED': 'Confirmed',
+      'CHECKEDIN': 'CheckedIn',
+      'AWAITINGDOCTOR': 'AwaitingDoctor',
+      'INCONSULTATION': 'InConsultation',
+      'PENDINGCLOSURE': 'PendingClosure',
+      'COMPLETED': 'Completed',
+      'CANCELLED': 'Cancelled',
+      'NOSHOW': 'NoShow',
+      'INPROGRESS': 'InProgress',
+      'ABANDONED': 'Abandoned'
+    };
+    return statusMap[status.toUpperCase()] || status;
   }
 
   private loadSchedules(): void {

@@ -909,18 +909,31 @@ export class ReceptionistDashboardComponent implements OnInit, OnDestroy {
   }
 
   getStatusLabel(status: string): string {
+    const normalizedStatus = this.normalizeStatus(status);
     const labels: Record<string, string> = {
       'Scheduled': 'Agendada',
       'Confirmed': 'Confirmada',
       'CheckedIn': 'Presente',
+      'AwaitingDoctor': 'Aguardando Médico',
       'InProgress': 'Em Consulta',
       'InConsultation': 'Em Consulta',
+      'PendingClosure': 'Pendente Fechamento',
       'Completed': 'Concluída',
       'Cancelled': 'Cancelada',
       'NoShow': 'Faltou',
       'Waiting': 'Aguardando',
       'Called': 'Chamado'
     };
-    return labels[status] || status;
+    return labels[normalizedStatus] || status;
+  }
+
+  private normalizeStatus(status: string): string {
+    const statusMap: Record<string, string> = {
+      'SCHEDULED': 'Scheduled', 'CONFIRMED': 'Confirmed', 'CHECKEDIN': 'CheckedIn',
+      'AWAITINGDOCTOR': 'AwaitingDoctor', 'INCONSULTATION': 'InConsultation',
+      'PENDINGCLOSURE': 'PendingClosure', 'COMPLETED': 'Completed',
+      'CANCELLED': 'Cancelled', 'NOSHOW': 'NoShow', 'INPROGRESS': 'InProgress'
+    };
+    return statusMap[status.toUpperCase()] || status;
   }
 }
