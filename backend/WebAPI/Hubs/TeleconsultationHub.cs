@@ -98,16 +98,9 @@ public class TeleconsultationHub : Hub
             }
         }
 
-        // ASSISTENTE: pode acessar consultas do dia ou futuras (para preparação prévia)
-        // Não pode acessar consultas PASSADAS
-        var isPastDate = appointment.Date.Date < DateTime.Today;
-        if (userRole == "ASSISTANT" && isPastDate)
-        {
-            await Clients.Caller.SendAsync("AccessDenied", new { 
-                Message = "Esta consulta já passou. Consultas anteriores não podem mais ser acessadas."
-            });
-            return;
-        }
+        // ASSISTENTE: pode acessar QUALQUER consulta (inclusive passadas)
+        // Isso permite que enfermeiras visualizem histórico ou retomem atendimentos
+        // Restrição removida conforme solicitação - assistentes precisam de acesso livre
 
         // ===== ACESSO PERMITIDO - ENTRAR NA SALA =====
         await Groups.AddToGroupAsync(Context.ConnectionId, $"consultation_{appointmentId}");
