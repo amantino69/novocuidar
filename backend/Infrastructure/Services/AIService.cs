@@ -35,7 +35,7 @@ public class AIService : IAIService
     public async Task<AISummaryResponseDto> GenerateSummaryAsync(GenerateSummaryRequestDto request)
     {
         var prompt = BuildSummaryPrompt(request);
-        var response = await CallDeepSeekAPIAsync(prompt);
+        var response = await CallAIAPIAsync(prompt);
         
         // Save the summary to the appointment
         await SaveSummaryToAppointment(request.AppointmentId, response);
@@ -50,7 +50,7 @@ public class AIService : IAIService
     public async Task<AIDiagnosisResponseDto> GenerateDiagnosticHypothesisAsync(GenerateDiagnosisRequestDto request)
     {
         var prompt = BuildDiagnosisPrompt(request);
-        var response = await CallDeepSeekAPIAsync(prompt);
+        var response = await CallAIAPIAsync(prompt);
         
         // Save the diagnosis to the appointment
         await SaveDiagnosisToAppointment(request.AppointmentId, response);
@@ -101,7 +101,7 @@ public class AIService : IAIService
     public async Task<AnalyzeVitalsResponseDto> AnalyzeVitalsAsync(AnalyzeVitalsRequestDto request)
     {
         var prompt = BuildVitalsAnalysisPrompt(request);
-        var response = await CallDeepSeekAPIAsync(prompt);
+        var response = await CallAIAPIAsync(prompt);
         
         return new AnalyzeVitalsResponseDto
         {
@@ -198,7 +198,7 @@ IMPORTANTE: Esta é uma análise de apoio. O médico responsável deve validar t
         }
     }
 
-    private async Task<string> CallDeepSeekAPIAsync(string prompt)
+    private async Task<string> CallAIAPIAsync(string prompt)
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
@@ -227,7 +227,7 @@ IMPORTANTE: Esta é uma análise de apoio. O médico responsável deve validar t
 
             if (!response.IsSuccessStatusCode)
             {
-                throw new HttpRequestException($"DeepSeek API error: {response.StatusCode} - {responseContent}");
+                throw new HttpRequestException($"OpenAI API error: {response.StatusCode} - {responseContent}");
             }
 
             using var doc = JsonDocument.Parse(responseContent);
@@ -241,7 +241,7 @@ IMPORTANTE: Esta é uma análise de apoio. O médico responsável deve validar t
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Error calling DeepSeek API: {ex.Message}", ex);
+            throw new InvalidOperationException($"Error calling OpenAI API: {ex.Message}", ex);
         }
     }
 

@@ -216,7 +216,7 @@ interface VitalDisplay {
               @if (isAnalyzing) {
                 <div class="analyzing-state">
                   <app-icon name="loader" [size]="32" class="spin" />
-                  <p>Consultando DeepSeek AI...</p>
+                  <p>Consultando OpenAI...</p>
                 </div>
               } @else if (aiAnalysisError) {
                 <div class="error-state">

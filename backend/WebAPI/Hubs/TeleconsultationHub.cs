@@ -98,11 +98,13 @@ public class TeleconsultationHub : Hub
             }
         }
 
-        // ASSISTENTE: só acessa no dia
-        if (userRole == "ASSISTANT" && !isToday)
+        // ASSISTENTE: pode acessar consultas do dia ou futuras (para preparação prévia)
+        // Não pode acessar consultas PASSADAS
+        var isPastDate = appointment.Date.Date < DateTime.Today;
+        if (userRole == "ASSISTANT" && isPastDate)
         {
             await Clients.Caller.SendAsync("AccessDenied", new { 
-                Message = "Esta consulta não está mais disponível. Consultas só podem ser acessadas no dia agendado."
+                Message = "Esta consulta já passou. Consultas anteriores não podem mais ser acessadas."
             });
             return;
         }

@@ -303,15 +303,24 @@ export class PatientWaitingModalComponent implements OnInit, OnDestroy {
     this.signalRService.patientWaiting$
       .pipe(takeUntil(this.destroy$))
       .subscribe((notification: any) => {
-        console.log('� CAMPAINHA recebida:', notification);
+        console.log('🔔 CAMPAINHA recebida:', notification);
         if (notification && notification.type === 'PatientWaiting') {
-          console.log('✅ Mostrando modal de paciente aguardando');
-          
           // Extrair appointmentId de várias fontes possíveis
-          this.appointmentId = notification.data?.appointmentId 
+          const notificationAppointmentId = notification.data?.appointmentId 
                             || notification.data?.AppointmentId 
                             || notification.notificationId 
                             || '';
+          
+          // VERIFICAR SE JÁ ESTAMOS NA TELECONSULTA DESTA CONSULTA
+          const currentUrl = this.router.url;
+          if (currentUrl.includes('/teleconsulta/') && currentUrl.includes(notificationAppointmentId)) {
+            console.log('⏭️ Ignorando notificação - já estamos nesta teleconsulta:', notificationAppointmentId);
+            return; // Não mostrar modal se já estamos na mesma consulta
+          }
+          
+          console.log('✅ Mostrando modal de paciente aguardando');
+          
+          this.appointmentId = notificationAppointmentId;
           this.meetLink = notification.data?.meetLink || notification.data?.MeetLink || '';
           
           console.log('💾 Dados da campainha:', { appointmentId: this.appointmentId });
@@ -330,7 +339,16 @@ export class PatientWaitingModalComponent implements OnInit, OnDestroy {
           console.log('📬 Notificação recebida:', notification);
           
           // Salvar dados adicionais PRIMEIRO
-          this.appointmentId = notification.data?.appointmentId || '';
+          const notificationAppointmentId = notification.data?.appointmentId || '';
+          
+          // VERIFICAR SE JÁ ESTAMOS NA TELECONSULTA DESTA CONSULTA
+          const currentUrl = this.router.url;
+          if (currentUrl.includes('/teleconsulta/') && notificationAppointmentId && currentUrl.includes(notificationAppointmentId)) {
+            console.log('⏭️ Ignorando notificação - já estamos nesta teleconsulta:', notificationAppointmentId);
+            return; // Não mostrar modal se já estamos na mesma consulta
+          }
+          
+          this.appointmentId = notificationAppointmentId;
           this.meetLink = notification.data?.meetLink || '';
           
           console.log('💾 Dados salvos:', { appointmentId: this.appointmentId, meetLink: this.meetLink });

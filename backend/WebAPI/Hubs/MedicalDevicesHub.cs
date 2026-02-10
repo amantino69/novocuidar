@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text.Json;
+using Infrastructure.Data;
+using WebAPI.Controllers;  // Para BiometricsDto
 
 namespace WebAPI.Hubs;
 
@@ -13,10 +16,12 @@ namespace WebAPI.Hubs;
 public class MedicalDevicesHub : Hub
 {
     private readonly ILogger<MedicalDevicesHub> _logger;
+    private readonly IServiceProvider _serviceProvider;
 
-    public MedicalDevicesHub(ILogger<MedicalDevicesHub> logger)
+    public MedicalDevicesHub(ILogger<MedicalDevicesHub> logger, IServiceProvider serviceProvider)
     {
         _logger = logger;
+        _serviceProvider = serviceProvider;
     }
 
     public override async Task OnConnectedAsync()
@@ -182,7 +187,7 @@ public class MedicalDevicesHub : Hub
     }
 
     /// <summary>
-    /// Envia sinais vitais em tempo real
+    /// Envia sinais vitais em tempo real e persiste no banco de dados
     /// </summary>
     public async Task SendVitalSigns(JsonElement vitalSignsData)
     {
@@ -210,6 +215,10 @@ public class MedicalDevicesHub : Hub
             return;
         }
 
+        // === SALVAR NO BANCO DE DADOS ===
+        // Isso garante que a IA tenha acesso aos sinais vitais
+        await SaveVitalsToDatabase(appointmentId, vitalSignsData);
+
         _logger.LogInformation(
             "[MedicalDevicesHub] Enviando sinais vitais para sala appointment_{AppointmentId}",
             appointmentId);
@@ -217,7 +226,83 @@ public class MedicalDevicesHub : Hub
         await Clients.OthersInGroup($"appointment_{appointmentId}")
             .SendAsync("ReceiveVitalSigns", vitalSignsData);
         
-        _logger.LogInformation("[MedicalDevicesHub] ✓ Sinais vitais enviados via SignalR!");
+        _logger.LogInformation("[MedicalDevicesHub] ✓ Sinais vitais enviados via SignalR e salvos no banco!");
+    }
+
+    /// <summary>
+    /// Persiste os sinais vitais no BiometricsJson da consulta
+    /// </summary>
+    private async Task SaveVitalsToDatabase(string appointmentId, JsonElement vitalSignsData)
+    {
+        try
+        {
+            if (!Guid.TryParse(appointmentId, out var appointmentGuid))
+            {
+                _logger.LogWarning("[MedicalDevicesHub] appointmentId inválido: {Id}", appointmentId);
+                return;
+            }
+
+            // Criar um escopo para obter o DbContext (SignalR hubs não podem usar scoped services diretamente)
+            using var scope = _serviceProvider.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+            var appointment = await context.Appointments.FindAsync(appointmentGuid);
+            if (appointment == null)
+            {
+                _logger.LogWarning("[MedicalDevicesHub] Consulta não encontrada: {Id}", appointmentId);
+                return;
+            }
+
+            // Carregar biometrics existentes ou criar novo
+            BiometricsDto biometrics;
+            if (string.IsNullOrEmpty(appointment.BiometricsJson))
+            {
+                biometrics = new BiometricsDto();
+            }
+            else
+            {
+                biometrics = JsonSerializer.Deserialize<BiometricsDto>(appointment.BiometricsJson) ?? new BiometricsDto();
+            }
+
+            // Extrair e aplicar os valores de "vitals" do objeto recebido
+            if (vitalSignsData.TryGetProperty("vitals", out var vitals))
+            {
+                if (vitals.TryGetProperty("weight", out var weight) && weight.ValueKind == JsonValueKind.Number)
+                    biometrics.Weight = weight.GetDecimal();
+                    
+                if (vitals.TryGetProperty("height", out var height) && height.ValueKind == JsonValueKind.Number)
+                    biometrics.Height = height.GetDecimal();
+                    
+                if (vitals.TryGetProperty("spo2", out var spo2) && spo2.ValueKind == JsonValueKind.Number)
+                    biometrics.OxygenSaturation = spo2.GetInt32();
+                    
+                if (vitals.TryGetProperty("heartRate", out var hr) && hr.ValueKind == JsonValueKind.Number)
+                    biometrics.HeartRate = hr.GetInt32();
+                    
+                if (vitals.TryGetProperty("systolic", out var sys) && sys.ValueKind == JsonValueKind.Number)
+                    biometrics.BloodPressureSystolic = sys.GetInt32();
+                    
+                if (vitals.TryGetProperty("diastolic", out var dia) && dia.ValueKind == JsonValueKind.Number)
+                    biometrics.BloodPressureDiastolic = dia.GetInt32();
+                    
+                if (vitals.TryGetProperty("temperature", out var temp) && temp.ValueKind == JsonValueKind.Number)
+                    biometrics.Temperature = temp.GetDecimal();
+            }
+
+            // Atualizar timestamp
+            biometrics.LastUpdated = DateTime.UtcNow.ToString("o");
+            
+            // Salvar no banco
+            appointment.BiometricsJson = JsonSerializer.Serialize(biometrics);
+            appointment.UpdatedAt = DateTime.UtcNow;
+            await context.SaveChangesAsync();
+
+            _logger.LogInformation("[MedicalDevicesHub] ✓ Biometrics salvos no banco para consulta {Id}", appointmentId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[MedicalDevicesHub] Erro ao salvar biometrics no banco");
+        }
     }
 
     /// <summary>
