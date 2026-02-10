@@ -14,6 +14,13 @@ export interface PatientWaitingNotification {
   unreadCount: number;
 }
 
+export interface WaitingInRoomData {
+  appointmentId: string;
+  patientName: string;
+  userRole: string;
+  timestamp: Date;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -21,11 +28,13 @@ export class SignalRService {
   private hubConnection?: signalR.HubConnection;
   private patientWaitingSubject = new BehaviorSubject<PatientWaitingNotification | null>(null);
   private connectionStateSubject = new BehaviorSubject<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  private waitingInRoomSubject = new BehaviorSubject<WaitingInRoomData | null>(null);
   private isStopping = false;
   private authService = inject(AuthService);
   
   public patientWaiting$ = this.patientWaitingSubject.asObservable();
   public connectionState$ = this.connectionStateSubject.asObservable();
+  public waitingInRoom$ = this.waitingInRoomSubject.asObservable();
 
   constructor() {}
 
@@ -79,13 +88,19 @@ export class SignalRService {
       }
     });
 
-    // Escutar quando paciente entra na sala (WaitingInRoom - evento direto do NotificationHub)
+    // Escutar quando paciente/enfermeira entra na sala (WaitingInRoom - evento direto do NotificationHub)
     // Funciona como uma "campainha" - enfermeira chama o médico
-    // NÃO toca som aqui - o som é tocado no appointments.ts via RealTimeService.waitingInRoom$
-    // para garantir que toque apenas no computador do médico
+    // Este é o EVENTO PRINCIPAL que o DoctorCallAlertComponent escuta
     this.hubConnection.on('WaitingInRoom', (data: any) => {
       console.log('🔔 CAMPAINHA! Evento WaitingInRoom recebido (SignalRService):', data);
-      // Não faz nada aqui - o RealTimeService já trata este evento
+      // Normalizar dados (backend pode enviar PascalCase ou camelCase)
+      const normalizedData: WaitingInRoomData = {
+        appointmentId: data.appointmentId || data.AppointmentId || '',
+        patientName: data.patientName || data.PatientName || 'Paciente',
+        userRole: data.userRole || data.UserRole || 'ASSISTANT',
+        timestamp: data.timestamp || data.Timestamp || new Date()
+      };
+      this.waitingInRoomSubject.next(normalizedData);
     });
 
     // Escutar quando médico entra

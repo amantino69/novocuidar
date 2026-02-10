@@ -4,10 +4,14 @@
  * Componente global que mostra alerta quando enfermeira chama o médico.
  * Funciona em QUALQUER página, não apenas em "Minhas Consultas".
  * 
- * - Escuta evento WaitingInRoom via RealTimeService
+ * - Escuta evento WaitingInRoom via SignalRService (conexão global do app.ts)
  * - Toca som de alerta (campainha)
  * - Mostra toast fixo com informações da consulta
  * - Botão para entrar diretamente na teleconsulta
+ * 
+ * IMPORTANTE: Usa SignalRService (não RealTimeService) para garantir que
+ * a conexão SignalR seja a mesma que é inicializada no app.ts, assim
+ * o médico recebe notificações em QUALQUER página do sistema.
  */
 
 import { Component, OnInit, OnDestroy, PLATFORM_ID, Inject, ChangeDetectorRef } from '@angular/core';
@@ -15,7 +19,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { RealTimeService } from '@core/services/real-time.service';
+import { SignalRService, WaitingInRoomData } from '@core/services/signalr.service';
 import { SoundNotificationService } from '@core/services/sound-notification.service';
 import { AuthService } from '@core/services/auth.service';
 import { IconComponent } from '@app/shared/components/atoms/icon/icon';
@@ -228,7 +232,7 @@ export class DoctorCallAlertComponent implements OnInit, OnDestroy {
   private waitingRoomSubscribed = false;
   
   constructor(
-    private realTimeService: RealTimeService,
+    private signalRService: SignalRService,
     private soundService: SoundNotificationService,
     private authService: AuthService,
     private router: Router,
@@ -267,31 +271,28 @@ export class DoctorCallAlertComponent implements OnInit, OnDestroy {
     if (this.waitingRoomSubscribed) return;
     this.waitingRoomSubscribed = true;
     
-    console.log('[DoctorCallAlert] Conectando ao SignalR e inscrevendo em waitingInRoom$...');
+    console.log('[DoctorCallAlert] Inscrevendo em SignalRService.waitingInRoom$...');
     
-    // IMPORTANTE: Esperar a conexao SignalR estar pronta antes de inscrever
-    // Isso garante que o medico esta no grupo correto (user_{userId})
-    this.realTimeService.connect().then(() => {
-      console.log('[DoctorCallAlert] SignalR conectado! Inscrevendo em waitingInRoom$...');
-      
-      const waitingSub = this.realTimeService.waitingInRoom$.subscribe(data => {
+    // SignalRService já é inicializado globalmente no app.ts
+    // Apenas nos inscrevemos no observable waitingInRoom$
+    const waitingSub = this.signalRService.waitingInRoom$.pipe(
+      filter(data => data !== null)
+    ).subscribe(data => {
+      if (data) {
         console.log('[DoctorCallAlert] *** CHAMADA RECEBIDA ***:', data);
         this.showAlert(data);
         this.cdr.detectChanges();
-      });
-      this.subscriptions.push(waitingSub);
-      
-      // Log estado da conexao
-      console.log('[DoctorCallAlert] Inscricao em waitingInRoom$ ativa!');
-    }).catch(err => {
-      console.error('[DoctorCallAlert] Erro ao conectar SignalR:', err);
+      }
     });
+    this.subscriptions.push(waitingSub);
     
-    // Tambem verificar estado da conexao
-    const connSub = this.realTimeService.isConnected$.subscribe(connected => {
-      console.log('[DoctorCallAlert] Status conexao SignalR:', connected);
+    // Log estado da conexao
+    const connSub = this.signalRService.connectionState$.subscribe(state => {
+      console.log('[DoctorCallAlert] Status conexao SignalR:', state);
     });
     this.subscriptions.push(connSub);
+    
+    console.log('[DoctorCallAlert] Inscricao em waitingInRoom$ ativa!');
   }
   
   ngOnDestroy(): void {
