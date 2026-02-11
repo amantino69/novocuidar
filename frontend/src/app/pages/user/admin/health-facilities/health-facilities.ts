@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -849,18 +849,18 @@ export class HealthFacilitiesComponent implements OnInit {
   facilities: HealthFacility[] = [];
   municipalities: Municipality[] = [];
   tiposEstabelecimento = TIPOS_ESTABELECIMENTO;
-  
+
   loading = true;
   searchTerm = '';
   tipoFiltro = '';
   ativoFiltro = '';
   consultorioFiltro = '';
-  
+
   currentPage = 1;
   pageSize = 12;
   totalPages = 1;
   totalFacilities = 0;
-  
+
   // Stats
   facilitiesAtivas = 0;
   facilitiesComConsultorio = 0;
@@ -880,7 +880,10 @@ export class HealthFacilitiesComponent implements OnInit {
 
   private searchTimeout: any;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private cdr: ChangeDetectorRef
+  ) { }
 
   ngOnInit() {
     this.loadMunicipalities();
@@ -937,10 +940,10 @@ export class HealthFacilitiesComponent implements OnInit {
 
   loadFacilities() {
     const cacheKey = this.getCacheKey();
-    
+
     // Usar cache se válido e mesma chave
-    if (this.isCacheValid(HealthFacilitiesComponent.facilitiesCache) && 
-        HealthFacilitiesComponent.facilitiesCache!.key === cacheKey) {
+    if (this.isCacheValid(HealthFacilitiesComponent.facilitiesCache) &&
+      HealthFacilitiesComponent.facilitiesCache!.key === cacheKey) {
       const cached = HealthFacilitiesComponent.facilitiesCache!.data;
       this.facilities = cached.data;
       this.totalFacilities = cached.total;
@@ -955,7 +958,7 @@ export class HealthFacilitiesComponent implements OnInit {
     this.loading = true;
 
     let url = `${environment.apiUrl}/healthfacilities?page=${this.currentPage}&pageSize=${this.pageSize}`;
-    
+
     if (this.searchTerm) url += `&search=${encodeURIComponent(this.searchTerm)}`;
     if (this.tipoFiltro) url += `&tipoEstabelecimento=${this.tipoFiltro}`;
     if (this.ativoFiltro) url += `&ativo=${this.ativoFiltro}`;
@@ -966,20 +969,21 @@ export class HealthFacilitiesComponent implements OnInit {
         this.facilities = response.data;
         this.totalFacilities = response.total;
         this.totalPages = response.totalPages;
-        
+
         // Salvar no cache
-        HealthFacilitiesComponent.facilitiesCache = { 
-          data: response, 
+        HealthFacilitiesComponent.facilitiesCache = {
+          data: response,
           timestamp: Date.now(),
-          key: cacheKey 
+          key: cacheKey
         };
-        
+
         // Calcular stats
         this.facilitiesAtivas = this.facilities.filter(f => f.ativo).length;
         this.facilitiesComConsultorio = this.facilities.filter(f => f.temConsultorioDigital).length;
         this.totalPacientesAdscritos = this.facilities.reduce((sum, f) => sum + f.totalPacientesAdscritos, 0);
-        
+
         this.loading = false;
+        this.cdr.detectChanges(); // Força atualização da UI
       },
       error: (err) => {
         console.error('Erro ao carregar estabelecimentos:', err);

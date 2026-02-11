@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -310,8 +310,9 @@ export class RegulatorPatientsComponent implements OnInit, OnDestroy {
 
   constructor(
     private authService: AuthService,
-    private regulatorService: RegulatorService
-  ) {}
+    private regulatorService: RegulatorService,
+    private cdr: ChangeDetectorRef
+  ) { }
 
   ngOnInit() {
     const user = this.authService.getCurrentUser();
@@ -349,6 +350,7 @@ export class RegulatorPatientsComponent implements OnInit, OnDestroy {
         this.totalPatients = response.pagination.total;
         this.totalPages = response.pagination.totalPages;
         this.loading = false;
+        this.cdr.detectChanges(); // Força atualização da UI
       },
       error: (err) => {
         this.error = err.error?.message || 'Erro ao carregar pacientes';

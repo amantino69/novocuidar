@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -1230,14 +1230,14 @@ export class RegulatorQueueComponent implements OnInit {
   queue: QueuePatient[] = [];
   queueFiltered: QueuePatient[] = [];
   specialties: Specialty[] = [];
-  
+
   loading = true;
   error: string | null = null;
-  
+
   searchTerm = '';
   filtroUrgencia = '';
   filtroEspecialidade = '';
-  
+
   selectedPatient: QueuePatient | null = null;
   showPriorityModal = false;
   patientForPriority: QueuePatient | null = null;
@@ -1261,8 +1261,9 @@ export class RegulatorQueueComponent implements OnInit {
 
   constructor(
     private authService: AuthService,
-    private regulatorService: RegulatorService
-  ) {}
+    private regulatorService: RegulatorService,
+    private cdr: ChangeDetectorRef
+  ) { }
 
   ngOnInit() {
     const user = this.authService.getCurrentUser();
@@ -1274,7 +1275,7 @@ export class RegulatorQueueComponent implements OnInit {
   loadPatients() {
     this.loading = true;
     this.error = null;
-    
+
     // Carregar fila de espera com urgência real e status de alocação
     this.regulatorService.getWaitingQueue(100).subscribe({
       next: (response) => {
@@ -1286,6 +1287,7 @@ export class RegulatorQueueComponent implements OnInit {
         }));
         this.aplicarFiltros();
         this.loading = false;
+        this.cdr.detectChanges(); // Força atualização da UI
       },
       error: (err) => {
         console.error('Erro ao carregar fila:', err);
@@ -1315,32 +1317,32 @@ export class RegulatorQueueComponent implements OnInit {
 
   aplicarFiltros() {
     let filtered = [...this.queue];
-    
+
     if (this.searchTerm) {
       const term = this.searchTerm.toLowerCase();
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         p.fullName.toLowerCase().includes(term) ||
         p.cpf.includes(this.searchTerm) ||
         p.email.toLowerCase().includes(term)
       );
     }
-    
+
     if (this.filtroUrgencia) {
       filtered = filtered.filter(p => p.urgency === this.filtroUrgencia);
     }
-    
+
     if (this.filtroEspecialidade) {
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         p.requestedSpecialty?.toLowerCase().includes(this.filtroEspecialidade.toLowerCase())
       );
     }
-    
+
     // Ordenar por urgência
     filtered.sort((a, b) => {
       const order = { urgent: 0, priority: 1, normal: 2 };
       return order[a.urgency] - order[b.urgency];
     });
-    
+
     this.queueFiltered = filtered;
   }
 
@@ -1490,15 +1492,15 @@ export class RegulatorQueueComponent implements OnInit {
 
   loadScheduleSlots(scheduleId: string) {
     this.loadingSlots = true;
-    
+
     // Buscar slots para os próximos 14 dias
     const startDate = new Date();
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + 14);
-    
+
     const startStr = startDate.toISOString().split('T')[0];
     const endStr = endDate.toISOString().split('T')[0];
-    
+
     this.regulatorService.getScheduleSlots(scheduleId, startStr, endStr).subscribe({
       next: (response) => {
         this.availableSlots = response.slots;
@@ -1538,13 +1540,13 @@ export class RegulatorQueueComponent implements OnInit {
       next: (response) => {
         this.allocating = false;
         this.allocationSuccess = `Paciente alocado com sucesso para ${this.formatSlotDate(this.selectedSlot!.date)} às ${this.selectedSlot!.time} com Dr(a). ${response.appointment.professional.name}`;
-        
+
         // Atualizar status do paciente na lista
         if (this.patientForAllocation) {
           this.patientForAllocation.hasAllocation = true;
           this.patientForAllocation.nextAppointmentDate = this.selectedSlot!.date;
         }
-        
+
         // Fechar modal após 2 segundos
         setTimeout(() => {
           this.closeAllocationModal();

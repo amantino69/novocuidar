@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -1016,44 +1016,45 @@ export class RegulatorSchedulesComponent implements OnInit {
   schedules: AvailableSchedule[] = [];
   schedulesFiltered: AvailableSchedule[] = [];
   specialties: Specialty[] = [];
-  
+
   loading = true;
   error: string | null = null;
-  
+
   filtroEspecialidade = '';
   filtroStatus = '';
-  
+
   selectedSchedule: AvailableSchedule | null = null;
 
   // Allocation Modal
   showAllocationModal = false;
   allocationSchedule: AvailableSchedule | null = null;
-  
+
   // Patient selection
   patientSearchTerm = '';
   patients: RegulatorPatient[] = [];
   selectedPatient: RegulatorPatient | null = null;
   loadingPatients = false;
   private searchTimeout: any;
-  
+
   // Slot selection
   availableSlots: ScheduleSlot[] = [];
   displayedSlots: ScheduleSlot[] = [];
   selectedSlot: ScheduleSlot | null = null;
   loadingSlots = false;
-  
+
   // Allocation
   allocationObservation = '';
   allocating = false;
-  
+
   // Toast
   showSuccessToast = false;
   successMessage = '';
 
   constructor(
     private authService: AuthService,
-    private regulatorService: RegulatorService
-  ) {}
+    private regulatorService: RegulatorService,
+    private cdr: ChangeDetectorRef
+  ) { }
 
   ngOnInit() {
     const user = this.authService.getCurrentUser();
@@ -1065,12 +1066,13 @@ export class RegulatorSchedulesComponent implements OnInit {
   loadSchedules() {
     this.loading = true;
     this.error = null;
-    
+
     this.regulatorService.getAvailableSchedules().subscribe({
       next: (data) => {
         this.schedules = data;
         this.aplicarFiltros();
         this.loading = false;
+        this.cdr.detectChanges(); // Força atualização da UI
       },
       error: (err) => {
         console.error('Erro ao carregar agendas:', err);
@@ -1093,19 +1095,19 @@ export class RegulatorSchedulesComponent implements OnInit {
 
   aplicarFiltros() {
     let filtered = [...this.schedules];
-    
+
     if (this.filtroEspecialidade) {
-      filtered = filtered.filter(s => 
+      filtered = filtered.filter(s =>
         s.professional.specialty.toLowerCase().includes(this.filtroEspecialidade.toLowerCase())
       );
     }
-    
+
     if (this.filtroStatus === 'active') {
       filtered = filtered.filter(s => s.isActive);
     } else if (this.filtroStatus === 'inactive') {
       filtered = filtered.filter(s => !s.isActive);
     }
-    
+
     this.schedulesFiltered = filtered;
   }
 
@@ -1181,12 +1183,12 @@ export class RegulatorSchedulesComponent implements OnInit {
     if (this.searchTimeout) {
       clearTimeout(this.searchTimeout);
     }
-    
+
     if (this.patientSearchTerm.length < 2) {
       this.patients = [];
       return;
     }
-    
+
     this.searchTimeout = setTimeout(() => {
       this.loadingPatients = true;
       this.regulatorService.searchPatientsForAllocation(this.patientSearchTerm).subscribe({
@@ -1220,7 +1222,7 @@ export class RegulatorSchedulesComponent implements OnInit {
   // Slots
   loadSlots() {
     if (!this.allocationSchedule) return;
-    
+
     this.loadingSlots = true;
     this.regulatorService.getScheduleSlots(this.allocationSchedule.id).subscribe({
       next: (response: ScheduleSlotsResponse) => {
@@ -1256,9 +1258,9 @@ export class RegulatorSchedulesComponent implements OnInit {
 
   confirmAllocation() {
     if (!this.canAllocate() || !this.allocationSchedule || !this.selectedPatient || !this.selectedSlot) return;
-    
+
     this.allocating = true;
-    
+
     this.regulatorService.allocatePatient({
       patientId: this.selectedPatient.id,
       scheduleId: this.allocationSchedule.id,
