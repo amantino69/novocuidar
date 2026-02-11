@@ -262,8 +262,8 @@ services:
       # AI Config
       - AI_ENABLED=${AI_ENABLED:-false}
       - AI_API_KEY=${AI_API_KEY:-}
-      - AI_API_URL=${AI_API_URL:-https://api.deepseek.com/v1/chat/completions}
-      - AI_MODEL=${AI_MODEL:-deepseek-chat}
+      - AI_API_URL=${AI_API_URL:-https://api.openai.com/v1/chat/completions}
+      - AI_MODEL=${AI_MODEL:-gpt-4o-mini}
       - AI_TIMEOUT_SECONDS=${AI_TIMEOUT_SECONDS:-60}
       # CNS Config
       - CNS_AMBIENTE=${CNS_AMBIENTE:-producao}

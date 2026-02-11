@@ -23,8 +23,8 @@ public class AIService : IAIService
         _httpClient.Timeout = TimeSpan.FromSeconds(120);
         
         _apiKey = Environment.GetEnvironmentVariable("AI_API_KEY") ?? "";
-        _apiUrl = Environment.GetEnvironmentVariable("AI_API_URL") ?? "https://api.deepseek.com/v1/chat/completions";
-        _model = Environment.GetEnvironmentVariable("AI_MODEL") ?? "deepseek-chat";
+        _apiUrl = Environment.GetEnvironmentVariable("AI_API_URL") ?? "https://api.openai.com/v1/chat/completions";
+        _model = Environment.GetEnvironmentVariable("AI_MODEL") ?? "gpt-4o-mini";
         
         if (!string.IsNullOrEmpty(_apiKey))
         {

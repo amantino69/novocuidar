@@ -82,8 +82,8 @@ services:
       - EMAIL_FROM_ADDRESS=${EMAIL_FROM_ADDRESS:-}
       - AI_ENABLED=${AI_ENABLED:-true}
       - AI_API_KEY=${AI_API_KEY:-}
-      - AI_API_URL=${AI_API_URL:-https://api.deepseek.com/v1/chat/completions}
-      - AI_MODEL=${AI_MODEL:-deepseek-chat}
+      - AI_API_URL=${AI_API_URL:-https://api.openai.com/v1/chat/completions}
+      - AI_MODEL=${AI_MODEL:-gpt-4o-mini}
       # Jitsi Self-Hosted
       - JITSI_ENABLED=${JITSI_ENABLED:-true}
       - JITSI_DOMAIN=${JITSI_DOMAIN:-meet.telecuidar.com.br}
