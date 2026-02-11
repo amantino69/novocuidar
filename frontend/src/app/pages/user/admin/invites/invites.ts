@@ -47,7 +47,7 @@ export class InvitesComponent implements OnInit, OnDestroy {
     { value: 'PATIENT', label: 'Pacientes' },
     { value: 'PROFESSIONAL', label: 'Profissionais' },
     { value: 'ADMIN', label: 'Administradores' },
-    { value: 'ASSISTANT', label: 'Assistentes' }
+    { value: 'ASSISTANT', label: 'Enfermagem' }
   ];
 
   statusOptions: FilterOption[] = [
@@ -235,7 +235,7 @@ export class InvitesComponent implements OnInit, OnDestroy {
       PATIENT: 'Paciente',
       PROFESSIONAL: 'Profissional',
       ADMIN: 'Administrador',
-      ASSISTANT: 'Assistente',
+      ASSISTANT: 'Enfermagem',
       RECEPTIONIST: 'Recepcionista',
       REGULATOR: 'Regulador',
     };

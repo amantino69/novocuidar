@@ -168,13 +168,13 @@ export class ReportsComponent implements OnInit, OnDestroy {
       'PATIENT': 'Paciente',
       'PROFESSIONAL': 'Profissional',
       'ADMIN': 'Administrador',
-      'ASSISTANT': 'Assistente',
+      'ASSISTANT': 'Enfermagem',
       'REGULATOR': 'Regulador',
       'RECEPTIONIST': 'Recepcionista',
       'Patient': 'Paciente',
       'Professional': 'Profissional',
       'Admin': 'Administrador',
-      'Assistant': 'Assistente',
+      'Assistant': 'Enfermagem',
       'Regulator': 'Regulador',
       'Receptionist': 'Recepcionista'
     };

@@ -43,7 +43,7 @@ export class InviteCreateModalComponent {
     { value: 'PATIENT', label: 'Paciente' },
     { value: 'PROFESSIONAL', label: 'Profissional' },
     { value: 'ADMIN', label: 'Administrador' },
-    { value: 'ASSISTANT', label: 'Assistente' }
+    { value: 'ASSISTANT', label: 'Enfermagem' }
   ];
 
   onBackdropClick(): void {

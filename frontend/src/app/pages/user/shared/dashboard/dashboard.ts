@@ -273,7 +273,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       'ADMIN': 'Administrador',
       'PATIENT': 'Paciente',
       'PROFESSIONAL': 'Profissional',
-      'ASSISTANT': 'Assistente'
+      'ASSISTANT': 'Enfermagem'
     };
     return roleMap[this.user?.role || 'PATIENT'] || 'Usuário';
   }

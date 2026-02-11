@@ -240,7 +240,7 @@ export class UserCreateModalComponent {
       PATIENT: 'Paciente',
       PROFESSIONAL: 'Profissional',
       ADMIN: 'Administrador',
-      ASSISTANT: 'Assistente',
+      ASSISTANT: 'Enfermagem',
       RECEPTIONIST: 'Recepcionista',
       REGULATOR: 'Regulador',
     };
@@ -252,7 +252,7 @@ export class UserCreateModalComponent {
       PATIENT: 'Usuário que receberá atendimento médico',
       PROFESSIONAL: 'Profissional de saúde que realizará atendimentos',
       ADMIN: 'Administrador com acesso total ao sistema',
-      ASSISTANT: 'Assistente que auxilia pacientes no consultório digital',
+      ASSISTANT: 'Profissional de enfermagem que auxilia pacientes no consultório digital',
       RECEPTIONIST: 'Recepcionista que gerencia agendamentos e atendimentos',
       REGULATOR: 'Regulador municipal que gerencia pacientes e estabelecimentos',
     };

@@ -253,7 +253,7 @@ export class UserLayoutComponent implements OnInit, OnDestroy {
       'PATIENT': 'Paciente',
       'PROFESSIONAL': 'Profissional',
       'ADMIN': 'Administrador',
-      'ASSISTANT': 'Assistente'
+      'ASSISTANT': 'Enfermagem'
     };
     return roleMap[role] || role;
   }

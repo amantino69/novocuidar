@@ -74,7 +74,7 @@ export class UsersComponent implements OnInit, OnDestroy {
     { value: 'PATIENT', label: 'Pacientes' },
     { value: 'PROFESSIONAL', label: 'Profissionais' },
     { value: 'ADMIN', label: 'Administradores' },
-    { value: 'ASSISTANT', label: 'Assistentes' }
+    { value: 'ASSISTANT', label: 'Enfermagem' }
   ];
 
   statusOptions: FilterOption[] = [
