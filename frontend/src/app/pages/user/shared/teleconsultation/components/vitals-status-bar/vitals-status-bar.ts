@@ -199,6 +199,11 @@ import { environment } from '@env/environment';
                 </button>
               }
             } @else if (!isProfessional) {
+              <!-- Selector de tipo de ausculta (cardíaca/pulmonar) -->
+              <select class="type-select" [(ngModel)]="auscultationType" title="Tipo de ausculta - define filtros de frequência">
+                <option value="cardiac">❤️ Cardíaca (20-300 Hz)</option>
+                <option value="pulmonary">🫁 Pulmonar (20-2000 Hz)</option>
+              </select>
               <!-- Selector de microfone para ausculta -->
               <select class="mic-select" [(ngModel)]="selectedMicrophoneId" (ngModelChange)="onMicrophoneSelected($event)" title="Microfone para ausculta">
                 <option value="">Mic Padrão</option>
@@ -782,7 +787,7 @@ import { environment } from '@env/environment';
           display: inline-block;
         }
         
-        .duration-select, .mic-select {
+        .duration-select, .mic-select, .type-select {
           padding: 4px 6px;
           border: 1px solid #475569;
           border-radius: 4px;
@@ -795,6 +800,12 @@ import { environment } from '@env/environment';
           &:focus {
             border-color: #3b82f6;
           }
+        }
+        
+        .type-select {
+          background: linear-gradient(135deg, #1e3a5f, #1e293b);
+          border-color: #3b82f6;
+          font-weight: 500;
         }
         
         .mic-select {
@@ -1168,16 +1179,16 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   phonocardiogramAudioUrl = '';
   isPlayingPhono = false;
   private needsWaveformRedraw = false;
-  
+
   // Reprodução de áudio - progresso e tempo
   phonoPlayProgress = 0;  // 0-100% para a linha animada
   phonoCurrentTime = 0;  // Tempo atual em segundos
   phonoDuration = 0;  // Duração total em segundos
-  
+
   // Seletor de saída de áudio (speakers)
   availableSpeakers: MediaDeviceInfo[] = [];
   selectedSpeakerId = '';
-  
+
   // Análise automática de FC do fonocardiograma
   phonoEstimatedBpm: number | null = null;
   phonoQuality: 'unknown' | 'very_low' | 'low' | 'good' | 'high' = 'unknown';
@@ -1193,12 +1204,15 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   selectedMicrophoneName = '';
   isTestingMic = false;  // Indica se está testando microfone
   micTestLevel = 0;  // Nível de áudio durante teste (0-100)
-  
+
   // Feedback em tempo real durante captura
   auscultaCountdown = 0;  // Countdown antes de iniciar (3, 2, 1)
   auscultaProgress = 0;  // Progresso da gravação (0-100%)
   auscultaLiveLevel = 0;  // Nível de áudio em tempo real durante gravação
   auscultaMaxLevel = 0;  // Maior nível detectado durante gravação
+  
+  // Tipo de ausculta: cardíaca (20-300Hz) ou pulmonar (20-2000Hz)
+  auscultationType: 'cardiac' | 'pulmonary' = 'cardiac';
 
   // Web Bluetooth
   bluetoothAvailable = false;
@@ -1373,7 +1387,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
               this.needsWaveformRedraw = true;
               this.cdr.detectChanges();
             }, 100);
-            
+
             // Análise automática do waveform
             this.analyzePhonoBpm(data.waveform, data.durationSeconds || 10);
           }
@@ -1384,7 +1398,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       })
     );
   }
-  
+
   /**
    * Analisa o waveform do fonocardiograma para estimar FC
    * Compara com a FC de dispositivos médicos
@@ -1395,10 +1409,10 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       this.phonoQuality = 'unknown';
       return;
     }
-    
+
     // Calcula RMS para avaliar qualidade
     const rms = Math.sqrt(waveform.reduce((sum, v) => sum + v * v, 0) / waveform.length);
-    
+
     if (rms < 0.01) {
       this.phonoQuality = 'very_low';
       this.phonoEstimatedBpm = null;
@@ -1411,50 +1425,50 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     } else {
       this.phonoQuality = 'high';
     }
-    
+
     // Detecção de picos (batimentos) simplificada
     const mean = waveform.reduce((a, b) => a + b, 0) / waveform.length;
     const std = Math.sqrt(waveform.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / waveform.length);
     const threshold = mean + 0.5 * std;
-    
+
     // Encontra picos
     const peaks: number[] = [];
     const minDistance = Math.floor(waveform.length / (durationSeconds * 3.3));  // Max 200 BPM
     let lastPeak = -minDistance;
-    
+
     for (let i = 1; i < waveform.length - 1; i++) {
-      if (waveform[i] > waveform[i-1] && 
-          waveform[i] > waveform[i+1] && 
-          waveform[i] > threshold &&
-          i - lastPeak >= minDistance) {
+      if (waveform[i] > waveform[i - 1] &&
+        waveform[i] > waveform[i + 1] &&
+        waveform[i] > threshold &&
+        i - lastPeak >= minDistance) {
         peaks.push(i);
         lastPeak = i;
       }
     }
-    
+
     console.log(`[VitalsBar] Análise ausculta: RMS=${rms.toFixed(3)}, Picos=${peaks.length}, Duração=${durationSeconds}s`);
-    
+
     if (peaks.length >= 2) {
       // Calcula intervalo médio entre picos
       const intervals: number[] = [];
       for (let i = 1; i < peaks.length; i++) {
-        intervals.push(peaks[i] - peaks[i-1]);
+        intervals.push(peaks[i] - peaks[i - 1]);
       }
-      
+
       const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
       const samplesPerSecond = waveform.length / durationSeconds;
       const avgIntervalSeconds = avgInterval / samplesPerSecond;
-      
+
       const estimatedBpm = Math.round(60 / avgIntervalSeconds);
-      
+
       // Validação: FC deve estar entre 40-180 BPM
       if (estimatedBpm >= 40 && estimatedBpm <= 180) {
         this.phonoEstimatedBpm = estimatedBpm;
-        
+
         // Compara com FC de dispositivos
         if (this.heartRate) {
           this.phonoBpmDiff = Math.abs(estimatedBpm - this.heartRate);
-          
+
           if (this.phonoBpmDiff <= 10) {
             this.phonoAnalysisMessage = `FC ausculta ~${estimatedBpm} BPM - Compatível com dispositivo (${this.heartRate} BPM). Diferença: ${this.phonoBpmDiff} BPM ✓`;
           } else if (this.phonoBpmDiff <= 20) {
@@ -1466,7 +1480,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
           this.phonoBpmDiff = null;
           this.phonoAnalysisMessage = `FC ausculta estimada: ~${estimatedBpm} BPM (sem medição de dispositivo para comparar)`;
         }
-        
+
         console.log(`[VitalsBar] ${this.phonoAnalysisMessage}`);
       } else {
         this.phonoEstimatedBpm = null;
@@ -1873,7 +1887,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
         console.error('[VitalsBar] Erro no áudio:', e);
         this.isPlayingPhono = false;
       };
-      
+
       // Configura saída de áudio selecionada (se suportado)
       if (this.selectedSpeakerId && 'setSinkId' in this.phonoAudioPlayer) {
         (this.phonoAudioPlayer as any).setSinkId(this.selectedSpeakerId)
@@ -1931,7 +1945,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   async onSpeakerSelected(deviceId: string): Promise<void> {
     this.selectedSpeakerId = deviceId;
     console.log('[VitalsBar] Alto-falante selecionado:', deviceId);
-    
+
     // Se tiver um player de áudio ativo, muda a saída
     if (this.phonoAudioPlayer && 'setSinkId' in this.phonoAudioPlayer) {
       try {
@@ -1978,7 +1992,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     this.auscultaCountdown = 3;
     this.auscultaMaxLevel = 0;
     this.showDeviceToast('⏱️', 'Preparar', 'Posicione o estetoscópio...', 'info');
-    
+
     for (let i = 3; i > 0; i--) {
       this.auscultaCountdown = i;
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -2014,6 +2028,46 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       // 2. Configura AudioContext para captura em PCM
       const audioContext = new AudioContext({ sampleRate: 8000 });
       const source = audioContext.createMediaStreamSource(stream);
+      
+      // Configuração de filtros baseada no tipo de ausculta
+      // - Cardíaca: 20-300 Hz (S1, S2, S3, S4, murmúrios básicos)
+      // - Pulmonar: 20-2000 Hz (roncos <200Hz, sibilos >400Hz, crepitações)
+      const isCardiac = this.auscultationType === 'cardiac';
+      const lowpassFreq = isCardiac ? 300 : 2000;  // Hz
+      
+      console.log(`[VitalsBar] Tipo de ausculta: ${this.auscultationType} - Lowpass: ${lowpassFreq} Hz`);
+      
+      // Filtro passa-alta para remover ruído de baixa frequência (movimento, vento)
+      const highpass = audioContext.createBiquadFilter();
+      highpass.type = 'highpass';
+      highpass.frequency.value = 20; // Corta abaixo de 20 Hz
+      highpass.Q.value = 0.7;
+      
+      // Filtro passa-baixa: frequência varia conforme tipo de ausculta
+      const lowpass = audioContext.createBiquadFilter();
+      lowpass.type = 'lowpass';
+      lowpass.frequency.value = lowpassFreq;
+      lowpass.Q.value = 0.7;
+      
+      // Filtro notch para remover ruído de rede elétrica (60 Hz Brasil + harmônicos)
+      // Aplicado em ambos os modos para remover interferência elétrica
+      const notch60 = audioContext.createBiquadFilter();
+      notch60.type = 'notch';
+      notch60.frequency.value = 60;
+      notch60.Q.value = 30; // Q alto = corte mais estreito
+      
+      const notch120 = audioContext.createBiquadFilter();
+      notch120.type = 'notch';
+      notch120.frequency.value = 120; // Segundo harmônico
+      notch120.Q.value = 30;
+      
+      const notch180 = audioContext.createBiquadFilter();
+      notch180.type = 'notch';
+      notch180.frequency.value = 180; // Terceiro harmônico
+      notch180.Q.value = 30;
+      
+      console.log(`[VitalsBar] Filtros aplicados: highpass 20Hz, lowpass ${lowpassFreq}Hz, notch 60/120/180 Hz`);
+      
       const processor = audioContext.createScriptProcessor(4096, 1, 1);
 
       const audioChunks: Float32Array[] = [];
@@ -2043,7 +2097,13 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
         this.auscultaProgress = Math.min(100, Math.round((samplesCollected / targetSamples) * 100));
       };
 
-      source.connect(processor);
+      // Encadeia filtros: source -> highpass -> lowpass -> notch60 -> notch120 -> notch180 -> processor
+      source.connect(highpass);
+      highpass.connect(lowpass);
+      lowpass.connect(notch60);
+      notch60.connect(notch120);
+      notch120.connect(notch180);
+      notch180.connect(processor);
       processor.connect(audioContext.destination);
 
       // 3. Aguarda duração da gravação
@@ -2056,7 +2116,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       await audioContext.close();
 
       console.log(`[VitalsBar] Captura concluída. Processando ${audioChunks.length} chunks... Max level: ${this.auscultaMaxLevel}%`);
-      
+
       // Verifica qualidade da captura
       if (this.auscultaMaxLevel < 5) {
         this.showDeviceToast('⚠️', 'Nível Baixo', 'Estetoscópio mal posicionado? Tente novamente.', 'warning');
@@ -2216,12 +2276,12 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
       this.currentBrowserMicrophone = micName;
       console.log('[VitalsBar] Microfone detectado:', micName);
-      
+
       // Carrega também lista de alto-falantes (saída de áudio)
       const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
       this.availableSpeakers = audioOutputs.filter(d => d.deviceId !== 'default' && d.deviceId !== 'communications');
       console.log('[VitalsBar] Alto-falantes disponíveis:', this.availableSpeakers.length);
-      
+
       // Se tiver speakers disponíveis, seleciona o primeiro por padrão
       if (this.availableSpeakers.length > 0 && !this.selectedSpeakerId) {
         this.selectedSpeakerId = this.availableSpeakers[0].deviceId;
