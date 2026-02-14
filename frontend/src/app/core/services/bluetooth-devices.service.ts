@@ -137,7 +137,7 @@ export class BluetoothDevicesService {
   }
 
   /**
-   * Conecta especificamente à balança Xiaomi MIBFS (Body Composition Scale)
+   * Conecta especificamente à balança OKOK ou Xiaomi MIBFS
    */
   async connectScaleMIBFS(): Promise<BluetoothDevice | null> {
     if (!this.isBluetoothAvailable()) {
@@ -146,13 +146,16 @@ export class BluetoothDevicesService {
     }
 
     try {
-      console.log('[BluetoothDevices] Buscando balança MIBFS...');
+      console.log('[BluetoothDevices] Buscando balança...');
       
-      // Solicita dispositivo - busca por nome MIBFS ou serviço Body Composition
+      // Busca por nome (OKOK, MIBFS, MI Scale, etc) ou por serviços padrão
       const device = await (navigator as any).bluetooth.requestDevice({
         filters: [
-          { name: 'MIBFS' },
-          { namePrefix: 'MI' },
+          { namePrefix: 'OKOK' },          // Balança OKOK
+          { namePrefix: 'Scale' },          // Balança genérica
+          { namePrefix: 'MI' },             // Xiaomi
+          { namePrefix: 'MIBFS' },          // Xiaomi Body Composition
+          { services: [GATT_SERVICES.WEIGHT_SCALE] },
           { services: [GATT_SERVICES.BODY_COMPOSITION] }
         ],
         optionalServices: [
@@ -214,10 +217,80 @@ export class BluetoothDevicesService {
   /**
    * Conecta a um monitor de pressão
    */
+  /**
+   * Conecta ao monitor de pressão Omron HEM-7156T (ou similar)
+   * Usa filtro por nome pois o Omron não anuncia serviço GATT padrão
+   */
   async connectBloodPressure(): Promise<BluetoothDevice | null> {
-    return this.connectDevice('blood_pressure', [
-      GATT_SERVICES.BLOOD_PRESSURE
-    ]);
+    if (!this.isBluetoothAvailable()) {
+      console.error('[BluetoothDevices] Web Bluetooth não disponível');
+      return null;
+    }
+
+    try {
+      console.log('[BluetoothDevices] Buscando monitor de pressão...');
+      
+      // IMPORTANTE: Omron não anuncia serviço padrão, buscar por nome ou aceitar qualquer dispositivo
+      const device = await (navigator as any).bluetooth.requestDevice({
+        filters: [
+          { namePrefix: 'BLESmart' },    // Omron usa esse prefixo
+          { namePrefix: 'Omron' },
+          { namePrefix: 'HEM' },
+          { services: [GATT_SERVICES.BLOOD_PRESSURE] }  // Fallback para outros monitores
+        ],
+        optionalServices: [
+          GATT_SERVICES.BLOOD_PRESSURE,
+          GATT_SERVICES.BATTERY,
+          GATT_SERVICES.DEVICE_INFO
+        ]
+      });
+
+      if (!device) {
+        console.log('[BluetoothDevices] Nenhum dispositivo selecionado');
+        return null;
+      }
+
+      const deviceId = device.id;
+      this._connectionStatus$.next({ deviceId, status: 'connecting' });
+
+      console.log(`[BluetoothDevices] Conectando a ${device.name}...`);
+      const server = await device.gatt.connect();
+      
+      this.gattServers.set(deviceId, server);
+
+      const bleDevice: BluetoothDevice = {
+        id: deviceId,
+        name: device.name || 'Monitor de Pressão',
+        type: 'blood_pressure',
+        connected: true,
+        batteryLevel: await this.readBatteryLevel(server)
+      };
+
+      this.devices.set(deviceId, bleDevice);
+      this._devices$.next(Array.from(this.devices.values()));
+      this._connectionStatus$.next({ deviceId, status: 'connected' });
+
+      device.addEventListener('gattserverdisconnected', () => {
+        this.ngZone.run(() => {
+          this.handleDisconnection(deviceId);
+        });
+      });
+
+      // Inicia leituras
+      await this.startBloodPressureReadings(server, deviceId);
+
+      console.log(`[BluetoothDevices] ${device.name} conectado com sucesso!`);
+      return bleDevice;
+
+    } catch (error: any) {
+      console.error('[BluetoothDevices] Erro ao conectar monitor de pressão:', error);
+      this._connectionStatus$.next({ 
+        deviceId: 'unknown', 
+        status: 'error', 
+        message: error.message 
+      });
+      return null;
+    }
   }
 
   /**
@@ -653,54 +726,69 @@ export class BluetoothDevicesService {
    * - Bytes após timestamp: Pulse Rate (2 bytes, se presente)
    */
   private async startBloodPressureReadings(server: BluetoothRemoteGATTServer, deviceId: string): Promise<void> {
-    const service = await server.getPrimaryService(GATT_SERVICES.BLOOD_PRESSURE);
-    
-    // 1. Configura listener para Blood Pressure Measurement (0x2a35)
-    const bpChar = await service.getCharacteristic(GATT_SERVICES.BLOOD_PRESSURE_MEASUREMENT);
-    console.log('[BluetoothDevices] Blood Pressure Measurement - Configurando listener...');
-    
-    await bpChar.startNotifications();
-    bpChar.addEventListener('characteristicvaluechanged', (event: Event) => {
-      const target = event.target as unknown as BluetoothRemoteGATTCharacteristic;
-      const value = target.value!;
-      this.ngZone.run(() => this.parseBloodPressureData(value, deviceId));
-    });
-    
-    // 2. Tenta configurar Intermediate Cuff Pressure (0x2a36) - opcional
     try {
-      const icpChar = await service.getCharacteristic(GATT_SERVICES.INTERMEDIATE_CUFF_PRESSURE);
-      console.log('[BluetoothDevices] Intermediate Cuff Pressure disponível');
-      await icpChar.startNotifications();
-      icpChar.addEventListener('characteristicvaluechanged', (event: Event) => {
-        console.log('[BluetoothDevices] Intermediate Cuff Pressure recebido (medição em andamento)');
-      });
-    } catch (e) {
-      console.log('[BluetoothDevices] Intermediate Cuff Pressure não disponível');
-    }
-    
-    // 3. Tenta usar Record Access Control Point (0x2a52) para solicitar dados armazenados
-    try {
-      const racpChar = await service.getCharacteristic(GATT_SERVICES.RECORD_ACCESS_CONTROL_POINT);
-      console.log('[BluetoothDevices] RACP disponível - solicitando dados armazenados...');
+      const service = await server.getPrimaryService(GATT_SERVICES.BLOOD_PRESSURE);
       
-      await racpChar.startNotifications();
-      racpChar.addEventListener('characteristicvaluechanged', (event: Event) => {
+      // 1. Configura listener para Blood Pressure Measurement (0x2a35)
+      const bpChar = await service.getCharacteristic(GATT_SERVICES.BLOOD_PRESSURE_MEASUREMENT);
+      console.log('[BluetoothDevices] Blood Pressure Measurement - Configurando listener...');
+      
+      await bpChar.startNotifications();
+      bpChar.addEventListener('characteristicvaluechanged', (event: Event) => {
         const target = event.target as unknown as BluetoothRemoteGATTCharacteristic;
         const value = target.value!;
-        const opCode = value.getUint8(0);
-        console.log('[BluetoothDevices] RACP Response:', opCode);
+        this.ngZone.run(() => this.parseBloodPressureData(value, deviceId));
       });
       
-      // Comando: Report All Stored Records (Op Code = 0x01, Operator = 0x01 = All)
-      const reportAllCmd = new Uint8Array([0x01, 0x01]);
-      await racpChar.writeValue(reportAllCmd);
-      console.log('[BluetoothDevices] RACP - Comando enviado para recuperar dados armazenados');
-    } catch (e) {
-      console.log('[BluetoothDevices] RACP não disponível - aguardando nova medição');
+      // 2. Tenta configurar Intermediate Cuff Pressure (0x2a36) - opcional
+      try {
+        const icpChar = await service.getCharacteristic(GATT_SERVICES.INTERMEDIATE_CUFF_PRESSURE);
+        console.log('[BluetoothDevices] Intermediate Cuff Pressure disponível');
+        await icpChar.startNotifications();
+        icpChar.addEventListener('characteristicvaluechanged', (event: Event) => {
+          console.log('[BluetoothDevices] Intermediate Cuff Pressure recebido (medição em andamento)');
+        });
+      } catch (e) {
+        console.log('[BluetoothDevices] Intermediate Cuff Pressure não disponível');
+      }
+      
+      // 3. Tenta usar Record Access Control Point (0x2a52) para solicitar dados armazenados
+      try {
+        const racpChar = await service.getCharacteristic(GATT_SERVICES.RECORD_ACCESS_CONTROL_POINT);
+        console.log('[BluetoothDevices] RACP disponível - solicitando dados armazenados...');
+        
+        await racpChar.startNotifications();
+        racpChar.addEventListener('characteristicvaluechanged', (event: Event) => {
+          const target = event.target as unknown as BluetoothRemoteGATTCharacteristic;
+          const value = target.value!;
+          const opCode = value.getUint8(0);
+          console.log('[BluetoothDevices] RACP Response:', opCode);
+        });
+        
+        // Comando: Report All Stored Records (Op Code = 0x01, Operator = 0x01 = All)
+        const reportAllCmd = new Uint8Array([0x01, 0x01]);
+        await racpChar.writeValue(reportAllCmd);
+        console.log('[BluetoothDevices] RACP - Comando enviado para recuperar dados armazenados');
+      } catch (e) {
+        console.log('[BluetoothDevices] RACP não disponível - aguardando nova medição');
+      }
+      
+      console.log('[BluetoothDevices] Blood Pressure - INICIE A MEDIÇÃO NO APARELHO!');
+      console.log('[BluetoothDevices] DICA OMRON: Após conectar, inicie a medição no aparelho. Os dados serão enviados ao final.');
+    } catch (error) {
+      console.error('[BluetoothDevices] Serviço Blood Pressure não encontrado!');
+      console.log('[BluetoothDevices] NOTA: Omron pode usar protocolo proprietário.');
+      console.log('[BluetoothDevices] Conecte o dispositivo e faça uma medição - tentaremos capturar os dados.');
+      
+      // Para Omron: emite mensagem para o usuário fazer medição manual
+      // Os dados podem não ser capturados automaticamente
+      this._readings$.next({
+        deviceId,
+        deviceType: 'blood_pressure',
+        timestamp: new Date(),
+        values: {}  // Valores vazios, usuário precisa digitar
+      });
     }
-    
-    console.log('[BluetoothDevices] Blood Pressure - INICIE A MEDIÇÃO NO APARELHO!');
-    console.log('[BluetoothDevices] DICA OMRON: Após conectar, inicie a medição no aparelho. Os dados serão enviados ao final.');
   }
 
   /**
