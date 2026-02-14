@@ -204,21 +204,6 @@ import { environment } from '@env/environment';
                 <option value="cardiac">❤️ Cardíaca (20-300 Hz)</option>
                 <option value="pulmonary">🫁 Pulmonar (20-2000 Hz)</option>
               </select>
-              <!-- Selector de microfone para ausculta -->
-              <select class="mic-select" [(ngModel)]="selectedMicrophoneId" (ngModelChange)="onMicrophoneSelected($event)" title="Microfone para ausculta">
-                <option value="">Mic Padrão</option>
-                @for (mic of availableMicrophones; track mic.deviceId) {
-                  <option [value]="mic.deviceId">{{ mic.label || 'Mic ' + ($index + 1) }}</option>
-                }
-              </select>
-              <!-- Botao de teste de microfone -->
-              <button class="btn-test-mic" [class.testing]="isTestingMic" (click)="testarMicrofone()" [disabled]="isTestingMic || isCapturingAusculta" title="Testar microfone selecionado (3s)">
-                @if (isTestingMic) {
-                  🎤 {{ micTestLevel }}%
-                } @else {
-                  🔊 Testar
-                }
-              </button>
               <!-- Selector de duracao + Botao Capturar -->
               <select class="duration-select" [(ngModel)]="auscultaDuration" title="Duracao da captura">
                 <option value="10">10s</option>
@@ -238,11 +223,6 @@ import { environment } from '@env/environment';
             } @else {
               <span class="phono-mic waiting">Aguardando captura...</span>
             }
-          </div>
-          <!-- Linha do microfone selecionado para ausculta -->
-          <div class="mic-info" *ngIf="!isProfessional">
-            <span class="mic-icon">🎤</span>
-            <span class="mic-name">{{ selectedMicrophoneName || currentBrowserMicrophone }}</span>
           </div>
         </div>
         
