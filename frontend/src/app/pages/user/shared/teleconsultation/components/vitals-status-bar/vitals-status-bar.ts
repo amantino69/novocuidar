@@ -175,6 +175,14 @@ import { environment } from '@env/environment';
                   <option [value]="mic.deviceId">{{ mic.label || 'Mic ' + ($index + 1) }}</option>
                 }
               </select>
+              <!-- Botao de teste de microfone -->
+              <button class="btn-test-mic" [class.testing]="isTestingMic" (click)="testarMicrofone()" [disabled]="isTestingMic || isCapturingAusculta" title="Testar microfone selecionado (3s)">
+                @if (isTestingMic) {
+                  🎤 {{ micTestLevel }}%
+                } @else {
+                  🔊 Testar
+                }
+              </button>
               <!-- Selector de duracao + Botao Capturar -->
               <select class="duration-select" [(ngModel)]="auscultaDuration" title="Duracao da captura">
                 <option value="10">10s</option>
@@ -672,7 +680,7 @@ import { environment } from '@env/environment';
           display: inline-block;
         }
         
-        .duration-select {
+        .duration-select, .mic-select {
           padding: 4px 6px;
           border: 1px solid #475569;
           border-radius: 4px;
@@ -685,6 +693,41 @@ import { environment } from '@env/environment';
           &:focus {
             border-color: #3b82f6;
           }
+        }
+        
+        .mic-select {
+          max-width: 120px;
+          text-overflow: ellipsis;
+        }
+        
+        .btn-test-mic {
+          padding: 4px 8px;
+          background: #475569;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          font-size: 10px;
+          cursor: pointer;
+          transition: all 0.2s;
+          
+          &:hover:not(:disabled) {
+            background: #64748b;
+          }
+          
+          &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+          
+          &.testing {
+            background: #22c55e;
+            animation: pulse 0.5s ease-in-out infinite;
+          }
+        }
+        
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.6; }
         }
         
         .btn-nova-captura {
@@ -1001,6 +1044,8 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   availableMicrophones: MediaDeviceInfo[] = [];
   selectedMicrophoneId = '';  // vazio = padrão do sistema
   selectedMicrophoneName = '';
+  isTestingMic = false;  // Indica se está testando microfone
+  micTestLevel = 0;  // Nível de áudio durante teste (0-100)
 
   // Web Bluetooth
   bluetoothAvailable = false;
@@ -1641,7 +1686,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
         sampleRate: 8000,
         channelCount: 1
       };
-      
+
       // Se usuário selecionou microfone específico para ausculta, usa ele
       if (this.selectedMicrophoneId) {
         audioConstraints.deviceId = { exact: this.selectedMicrophoneId };
@@ -1649,25 +1694,25 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       } else {
         console.log('[VitalsBar] Usando microfone padrão');
       }
-      
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
 
       // 2. Configura AudioContext para captura em PCM
       const audioContext = new AudioContext({ sampleRate: 8000 });
       const source = audioContext.createMediaStreamSource(stream);
       const processor = audioContext.createScriptProcessor(4096, 1, 1);
-      
+
       const audioChunks: Float32Array[] = [];
       let samplesCollected = 0;
       const targetSamples = duration * 8000; // 8kHz por X segundos
 
       processor.onaudioprocess = (e) => {
         if (samplesCollected >= targetSamples) return;
-        
+
         const inputData = e.inputBuffer.getChannelData(0);
         audioChunks.push(new Float32Array(inputData));
         samplesCollected += inputData.length;
-        
+
         // Atualiza progresso
         const progress = Math.min(100, Math.round((samplesCollected / targetSamples) * 100));
         if (progress % 20 === 0) {
@@ -1742,19 +1787,19 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   private generateWaveform(samples: Float32Array, numPoints: number): number[] {
     const waveform: number[] = [];
     const samplesPerPoint = Math.floor(samples.length / numPoints);
-    
+
     for (let i = 0; i < numPoints; i++) {
       let sum = 0;
       const start = i * samplesPerPoint;
       const end = Math.min(start + samplesPerPoint, samples.length);
-      
+
       for (let j = start; j < end; j++) {
         sum += Math.abs(samples[j]);
       }
-      
+
       waveform.push(sum / (end - start));
     }
-    
+
     // Normaliza para 0-1
     const max = Math.max(...waveform);
     return waveform.map(v => max > 0 ? v / max : 0);
@@ -1852,7 +1897,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
    */
   onMicrophoneSelected(deviceId: string): void {
     this.selectedMicrophoneId = deviceId;
-    
+
     if (deviceId) {
       const mic = this.availableMicrophones.find(m => m.deviceId === deviceId);
       if (mic) {
@@ -1871,6 +1916,89 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     } else {
       this.selectedMicrophoneName = '';
       console.log('[VitalsBar] Usando microfone padrão para ausculta');
+    }
+  }
+
+  /**
+   * Testa o microfone selecionado para verificar se está capturando áudio
+   * Mostra nível de áudio em tempo real por 3 segundos
+   */
+  async testarMicrofone(): Promise<void> {
+    if (this.isTestingMic) return;
+    
+    this.isTestingMic = true;
+    this.micTestLevel = 0;
+    
+    const micName = this.selectedMicrophoneName || this.currentBrowserMicrophone;
+    console.log(`[VitalsBar] Testando microfone: ${micName}`);
+    this.showDeviceToast('🎤', 'Testando Microfone', `${micName} - Fale ou faça som...`, 'info');
+    
+    try {
+      // Configura constraints do microfone
+      const audioConstraints: MediaTrackConstraints = {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false
+      };
+      
+      if (this.selectedMicrophoneId) {
+        audioConstraints.deviceId = { exact: this.selectedMicrophoneId };
+      }
+      
+      // Obtém stream do microfone
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+      
+      // Cria analisador de áudio
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      
+      // Monitora nível de áudio por 3 segundos
+      const startTime = Date.now();
+      const testDuration = 3000; // 3 segundos
+      
+      const updateLevel = () => {
+        if (Date.now() - startTime >= testDuration) {
+          // Finaliza teste
+          stream.getTracks().forEach(track => track.stop());
+          audioContext.close();
+          this.isTestingMic = false;
+          
+          if (this.micTestLevel > 10) {
+            this.showDeviceToast('✅', 'Microfone OK', `${micName} está funcionando!`, 'success');
+          } else {
+            this.showDeviceToast('⚠️', 'Sem áudio', `${micName} não captou som. Verifique conexão.`, 'warning');
+          }
+          return;
+        }
+        
+        // Calcula nível de áudio (RMS)
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i] * dataArray[i];
+        }
+        const rms = Math.sqrt(sum / dataArray.length);
+        const level = Math.min(100, Math.round((rms / 128) * 100));
+        
+        // Mantém o maior nível detectado
+        if (level > this.micTestLevel) {
+          this.micTestLevel = level;
+        }
+        
+        requestAnimationFrame(updateLevel);
+      };
+      
+      updateLevel();
+      
+    } catch (error: any) {
+      console.error('[VitalsBar] Erro ao testar microfone:', error);
+      this.showDeviceToast('❌', 'Erro', error.message || 'Falha ao acessar microfone', 'warning');
+      this.isTestingMic = false;
     }
   }
 
