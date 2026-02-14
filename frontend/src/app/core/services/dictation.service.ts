@@ -16,20 +16,20 @@ export class DictationService {
   private lastResultIndex = -1; // Track the latest result index
   private isBrowser: boolean;
   private noSpeechCount = 0; // Contador de erros no-speech consecutivos
-  
+
   public isDictationActive$ = new BehaviorSubject<boolean>(false);
   public isListening$ = new BehaviorSubject<boolean>(false);
   public isInitializing$ = new BehaviorSubject<boolean>(false); // Estado de inicialização
   public lastTranscript$ = new BehaviorSubject<string>(''); // Para feedback visual
 
   constructor(
-    private zone: NgZone, 
+    private zone: NgZone,
     private modalService: ModalService,
     private jitsiService: JitsiService,
     @Inject(PLATFORM_ID) platformId: Object
   ) {
     this.isBrowser = isPlatformBrowser(platformId);
-    
+
     if (this.isBrowser) {
       this.initRecognition();
     }
@@ -37,7 +37,7 @@ export class DictationService {
 
   private initRecognition(): void {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    
+
     if (!SpeechRecognition) {
       console.warn('[Dictation] SpeechRecognition não suportado neste navegador');
       return;
@@ -125,7 +125,7 @@ export class DictationService {
         }
       });
     };
-    
+
     // Setup global focus listener to track active input
     document.addEventListener('focusin', (e) => {
       const target = e.target as HTMLElement;
@@ -150,7 +150,7 @@ export class DictationService {
         }
       }
     });
-    
+
     console.log('[Dictation] Inicialização completa');
   }
 
@@ -160,7 +160,7 @@ export class DictationService {
       console.log('[Dictation] Já está inicializando, ignorando clique');
       return;
     }
-    
+
     if (this.isDictationActive$.value) {
       this.stopDictation();
     } else {
@@ -173,7 +173,7 @@ export class DictationService {
       console.warn('[Dictation] Não disponível no servidor');
       return;
     }
-    
+
     if (!this.recognition) {
       this.modalService.alert({
         title: 'Recurso Indisponível',
@@ -182,28 +182,43 @@ export class DictationService {
       }).subscribe();
       return;
     }
-    
+
     // Indica que está inicializando (feedback visual imediato)
     this.isInitializing$.next(true);
     console.log('[Dictation] Solicitando acesso ao microfone...');
-    
+
     // Solicita acesso explícito ao microfone primeiro
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       console.log('[Dictation] Microfone liberado com sucesso');
-      
+
       // Lista dispositivos para diagnóstico
       const devices = await navigator.mediaDevices.enumerateDevices();
       const audioInputs = devices.filter(d => d.kind === 'audioinput');
       console.log('[Dictation] Microfones disponíveis:', audioInputs.map(d => d.label || 'Sem nome'));
-      
+
       // Verifica se tem áudio ativo
       const audioTrack = stream.getAudioTracks()[0];
+      const micLabel = audioTrack.label.toLowerCase();
       console.log('[Dictation] Usando microfone:', audioTrack.label);
-      
+
+      // ALERTA: Detecta se está usando "Mixagem estéreo" ou "Stereo Mix" (loopback)
+      // Esse dispositivo captura áudio de SAÍDA, não o microfone físico!
+      if (micLabel.includes('mixagem') || micLabel.includes('stereo mix') || micLabel.includes('loopback') || micLabel.includes('what u hear')) {
+        console.error('[Dictation] ⚠️ PROBLEMA: Usando dispositivo de loopback ao invés de microfone real!');
+        stream.getTracks().forEach(t => t.stop());
+        this.isInitializing$.next(false);
+        this.modalService.alert({
+          title: '⚠️ Microfone Incorreto',
+          message: `O sistema está usando "${audioTrack.label}" que é um dispositivo de loopback, não um microfone real.\n\nPara corrigir:\n1. Clique direito no ícone de som do Windows\n2. Selecione "Configurações de som"\n3. Em "Entrada", escolha seu microfone real\n\nDepois tente novamente.`,
+          variant: 'warning'
+        }).subscribe();
+        return;
+      }
+
       // Para o stream de teste (o SpeechRecognition vai criar o próprio)
       stream.getTracks().forEach(t => t.stop());
-      
+
     } catch (err) {
       console.error('[Dictation] Erro ao acessar microfone:', err);
       this.isInitializing$.next(false); // Desativa estado de inicialização em caso de erro
@@ -214,19 +229,19 @@ export class DictationService {
       }).subscribe();
       return;
     }
-    
+
     console.log('[Dictation] Ativando modo ditado...');
     this.isDictationActive$.next(true);
     this.isInitializing$.next(false); // Desativa estado de inicialização após sucesso
     this.noSpeechCount = 0; // Reset contador ao iniciar
-    
+
     // Muta o microfone do Jitsi para o paciente não ouvir o médico ditando
     // E libera o microfone para o SpeechRecognition
     this.jitsiService.setLocalAudioMuted(true);
-    
+
     // Aguarda 300ms para o Jitsi liberar o microfone (importante no Chrome Android)
     await new Promise(resolve => setTimeout(resolve, 300));
-    
+
     this.startListening();
   }
 
@@ -236,7 +251,7 @@ export class DictationService {
     this.stopListening();
     this.activeElement = null;
     this.lastInterim = '';
-    
+
     // Desmuta o microfone do Jitsi quando parar de ditar
     this.jitsiService.setLocalAudioMuted(false);
   }
@@ -272,7 +287,7 @@ export class DictationService {
 
     // Only process results with index > ignoreResultsUntilIndex
     const startIndex = Math.max(event.resultIndex, this.ignoreResultsUntilIndex + 1);
-    
+
     for (let i = startIndex; i < event.results.length; ++i) {
       const transcript = event.results[i][0].transcript;
       if (event.results[i].isFinal) {
@@ -305,35 +320,35 @@ export class DictationService {
     }
 
     let currentValue = this.activeElement.value;
-    
+
     // 1. Remove previous interim text if it exists at the end
     if (this.lastInterim && currentValue.endsWith(this.lastInterim)) {
       currentValue = currentValue.slice(0, -this.lastInterim.length);
     }
-    
+
     // 2. Prepare text to add (Finals + Interim)
     let trackedInterim = '';
-    
+
     // Add finals
     if (newFinals) {
-       const prefix = (currentValue && !currentValue.endsWith(' ')) ? ' ' : '';
-       currentValue += prefix + newFinals;
+      const prefix = (currentValue && !currentValue.endsWith(' ')) ? ' ' : '';
+      currentValue += prefix + newFinals;
     }
-    
+
     // Add interim
     if (newInterim) {
-       const prefix = (currentValue && !currentValue.endsWith(' ')) ? ' ' : '';
-       trackedInterim = prefix + newInterim;
-       currentValue += trackedInterim;
+      const prefix = (currentValue && !currentValue.endsWith(' ')) ? ' ' : '';
+      trackedInterim = prefix + newInterim;
+      currentValue += trackedInterim;
     }
-    
+
     this.activeElement.value = currentValue;
     this.lastInterim = trackedInterim;
-    
+
     // Dispatch input event to trigger Angular/Reactive Forms updates
     this.activeElement.dispatchEvent(new Event('input', { bubbles: true }));
     this.activeElement.dispatchEvent(new Event('change', { bubbles: true }));
-    
+
     // Auto-scroll para o final do texto (resolve problema de texto oculto)
     this.scrollToEnd(this.activeElement);
   }
@@ -345,12 +360,12 @@ export class DictationService {
     // Move o cursor para o final
     element.selectionStart = element.value.length;
     element.selectionEnd = element.value.length;
-    
+
     // Para textareas, rola verticalmente até o final
     if (element instanceof HTMLTextAreaElement) {
       element.scrollTop = element.scrollHeight;
     }
-    
+
     // Força scroll horizontal para o final se necessário
     element.scrollLeft = element.scrollWidth;
   }
@@ -377,7 +392,7 @@ export class DictationService {
     const normalizedText = text.toLowerCase().trim()
       .replace(/[.,!?;:]+$/, '')  // Remove pontuação final
       .replace(/\s+/g, ' ');       // Normaliza espaços múltiplos
-    
+
     let currentValue = this.activeElement.value;
     let commandName = '';
 
@@ -386,8 +401,8 @@ export class DictationService {
 
     // APAGAR TUDO / LIMPAR TUDO / LIMPAR
     // Variações: "apagar tudo", "apaga tudo", "limpar tudo", "limpa tudo", "limpar", "limpa"
-    if (/^(apagar?|apaga|limpar?|limpa)\s*(tudo)?$/i.test(normalizedText) && 
-        (normalizedText.includes('tudo') || /^(limpar?|limpa)$/i.test(normalizedText))) {
+    if (/^(apagar?|apaga|limpar?|limpa)\s*(tudo)?$/i.test(normalizedText) &&
+      (normalizedText.includes('tudo') || /^(limpar?|limpa)$/i.test(normalizedText))) {
       console.log('[Dictation] ✅ Comando: APAGAR TUDO');
       this.activeElement.value = '';
       commandName = '🗑️ Tudo apagado';
@@ -405,7 +420,7 @@ export class DictationService {
         currentValue.lastIndexOf('?\n'),
         currentValue.lastIndexOf('!\n')
       );
-      
+
       if (lastSentenceEnd > 0) {
         // Mantém até o ponto (inclusive)
         this.activeElement.value = currentValue.substring(0, lastSentenceEnd + 2).trimEnd() + ' ';
@@ -420,7 +435,7 @@ export class DictationService {
     else if (/^(apagar?|apaga)\s*(a\s+)?linha$/i.test(normalizedText)) {
       console.log('[Dictation] ✅ Comando: APAGAR LINHA');
       const lastNewline = currentValue.lastIndexOf('\n');
-      
+
       if (lastNewline > 0) {
         this.activeElement.value = currentValue.substring(0, lastNewline + 1);
       } else {
@@ -435,7 +450,7 @@ export class DictationService {
       // Remove espaços finais e encontra a última palavra
       currentValue = currentValue.trimEnd();
       const lastSpaceIndex = currentValue.lastIndexOf(' ');
-      
+
       if (lastSpaceIndex > 0) {
         this.activeElement.value = currentValue.substring(0, lastSpaceIndex + 1);
       } else if (currentValue.length > 0) {
@@ -502,36 +517,36 @@ export class DictationService {
       { pattern: /\s*ponto\s+de\s+exclamação\s*/gi, replacement: '! ' },
       { pattern: /\s*ponto\s+e\s+vírgula\s*/gi, replacement: '; ' },
       { pattern: /\s*ponto\s*/gi, replacement: '. ' },
-      
+
       // Vírgula
       { pattern: /\s*vírgula\s*/gi, replacement: ', ' },
-      
+
       // Dois pontos
       { pattern: /\s*dois\s+pontos\s*/gi, replacement: ': ' },
-      
+
       // Interrogação e exclamação
       { pattern: /\s*interrogação\s*/gi, replacement: '? ' },
       { pattern: /\s*exclamação\s*/gi, replacement: '! ' },
-      
+
       // Parênteses
       { pattern: /\s*abre\s+parêntese[s]?\s*/gi, replacement: ' (' },
       { pattern: /\s*fecha\s+parêntese[s]?\s*/gi, replacement: ') ' },
-      
+
       // Travessão
       { pattern: /\s*travessão\s*/gi, replacement: ' — ' },
       { pattern: /\s*traço\s*/gi, replacement: ' — ' },
-      
+
       // Quebras de linha
       { pattern: /\s*(nova\s+linha|próxima\s+linha|enter)\s*/gi, replacement: '\n' },
       { pattern: /\s*(novo\s+parágrafo|parágrafo)\s*/gi, replacement: '\n\n' },
-      
+
       // Aspas
       { pattern: /\s*abre\s+aspas\s*/gi, replacement: ' "' },
       { pattern: /\s*fecha\s+aspas\s*/gi, replacement: '" ' },
     ];
 
     let result = text;
-    
+
     for (const { pattern, replacement } of punctuationMap) {
       result = result.replace(pattern, replacement);
     }
