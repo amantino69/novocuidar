@@ -207,6 +207,11 @@ import { environment } from '@env/environment';
               <span *ngIf="!(isConnectingBle && connectingDevice === 'scale')">⚖️</span>
               Balança
             </button>
+            <button class="btn-ble btn-eko" (click)="conectarEko()" [disabled]="isConnectingBle" title="Conectar Littmann CORE / Eko">
+              <span *ngIf="isConnectingBle && connectingDevice === 'stethoscope'" class="spinner-small"></span>
+              <span *ngIf="!(isConnectingBle && connectingDevice === 'stethoscope')">🩺</span>
+              Eko
+            </button>
             <span *ngIf="!bluetoothAvailable" class="ble-warning" title="Web Bluetooth não disponível neste navegador">⚠️</span>
           </div>
           
@@ -988,7 +993,11 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   // Web Bluetooth
   bluetoothAvailable = false;
   isConnectingBle = false;
-  connectingDevice: 'pressure' | 'scale' | null = null;
+  connectingDevice: 'pressure' | 'scale' | 'stethoscope' | null = null;
+
+  // Eko/Littmann CORE - serviços descobertos
+  ekoConnected = false;
+  ekoServices: string[] = [];
 
   private subscriptions = new Subscription();
   private patientData: User | null = null;
@@ -1900,6 +1909,53 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       }
     } catch (error: any) {
       console.error('[VitalsBar] Erro ao conectar balança:', error);
+      this.showDeviceToast('❌', 'Erro de conexão', error.message || 'Falha no Bluetooth', 'warning');
+    } finally {
+      this.isConnectingBle = false;
+      this.connectingDevice = null;
+    }
+  }
+
+  /**
+   * Conecta ao estetoscópio Littmann CORE / Eko via Web Bluetooth
+   * Descobre os serviços disponíveis e prepara para captura de áudio
+   */
+  async conectarEko(): Promise<void> {
+    if (!this.bluetoothAvailable) {
+      this.showDeviceToast('⚠️', 'Bluetooth indisponível', 'Use Chrome no tablet Android', 'warning');
+      return;
+    }
+
+    this.isConnectingBle = true;
+    this.connectingDevice = 'stethoscope';
+
+    try {
+      const result = await this.bluetoothService.connectStethoscope();
+
+      if (result.device) {
+        this.ekoConnected = true;
+        this.ekoServices = result.services;
+
+        // Mostra os serviços descobertos no console para debug
+        console.log('[VitalsBar] Eko conectado! Serviços:', result.services);
+
+        if (result.services.length > 0) {
+          this.showDeviceToast('🩺', 'Littmann CORE Conectado',
+            `${result.services.length} serviços encontrados. Veja console (F12) para UUIDs.`, 'success');
+
+          // Instrução para o usuário
+          alert(`Littmann CORE conectado!\n\nServiços encontrados: ${result.services.length}\n\n` +
+            `Para capturar áudio, precisamos identificar qual serviço transmite o áudio.\n\n` +
+            `Abra o Console do Chrome (F12 → Console) e veja os UUIDs listados.\n\n` +
+            `Serviços: ${result.services.join('\n')}`);
+        } else {
+          this.showDeviceToast('⚠️', 'Eko conectado', 'Nenhum serviço de áudio encontrado', 'warning');
+        }
+      } else {
+        this.showDeviceToast('❌', 'Conexão cancelada', 'Tente novamente', 'warning');
+      }
+    } catch (error: any) {
+      console.error('[VitalsBar] Erro ao conectar Eko:', error);
       this.showDeviceToast('❌', 'Erro de conexão', error.message || 'Falha no Bluetooth', 'warning');
     } finally {
       this.isConnectingBle = false;
