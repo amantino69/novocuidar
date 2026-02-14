@@ -981,7 +981,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   phonocardiogramAudioUrl = '';
   isPlayingPhono = false;
   private needsWaveformRedraw = false;
-  
+
   // Microfone atual do navegador (detectado dinamicamente)
   currentBrowserMicrophone = 'Detectando...';
 
@@ -1013,13 +1013,13 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
   ngOnInit(): void {
     this.setupSubscriptions();
-    
+
     // Subscreve ao status de conexão SignalR
     const connectionSub = this.medicalDevicesSync.isConnected$.subscribe(
       connected => {
         this.isConnected = connected;
         console.log('[VitalsBar] SignalR conectado:', connected);
-        
+
         // Ao reconectar (ex: após refresh), recarrega biometrics do backend
         if (connected && this.appointmentId) {
           this.loadBiometricsFromBackend();
@@ -1027,17 +1027,17 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       }
     );
     this.subscriptions.add(connectionSub);
-    
+
     // Carrega biometrics salvos do backend (para refresh da página)
     if (this.appointmentId) {
       this.loadBiometricsFromBackend();
     }
-    
+
     // AUTO-MARCAR como "acontecendo" quando entrar (não-profissional)
     if (!this.isProfessional && this.appointmentId) {
       this.autoMarcarAcontecendo();
     }
-    
+
     // Detecta microfone do navegador (para mostrar ao lado do fono)
     this.detectBrowserMicrophone();
     this.listenMicrophoneChanges();
@@ -1068,7 +1068,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
   private drawWaveform(): void {
     if (!this.phonocardiogram?.waveform || !this.waveformCanvasRef) return;
-    
+
     const canvas = this.waveformCanvasRef.nativeElement;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -1076,11 +1076,11 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     const waveform = this.phonocardiogram.waveform;
     const width = canvas.width;
     const height = canvas.height;
-    
+
     // Limpar canvas
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, width, height);
-    
+
     // Linha de base
     ctx.strokeStyle = '#333';
     ctx.lineWidth = 1;
@@ -1088,27 +1088,27 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     ctx.moveTo(0, height / 2);
     ctx.lineTo(width, height / 2);
     ctx.stroke();
-    
+
     // Desenhar waveform
     ctx.strokeStyle = '#00ff88';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    
+
     const stepX = width / (waveform.length - 1);
     const midY = height / 2;
     const amplitudeScale = height / 2 * 0.9;  // 90% da altura
-    
+
     for (let i = 0; i < waveform.length; i++) {
       const x = i * stepX;
       const y = midY - (waveform[i] * amplitudeScale);
-      
+
       if (i === 0) {
         ctx.moveTo(x, y);
       } else {
         ctx.lineTo(x, y);
       }
     }
-    
+
     ctx.stroke();
     console.log('[VitalsBar] Waveform desenhado:', waveform.length, 'pontos');
   }
@@ -1146,7 +1146,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
           }
           // NOTA: NÃO atualiza FC com heartRate da ausculta - cálculo impreciso
           // O médico avalia o som diretamente
-          
+
           // Marcar para redesenhar waveform após Angular criar o canvas (próximo ciclo)
           if (data.waveform && data.waveform.length > 0) {
             // Timeout para aguardar o @if criar o canvas no DOM
@@ -1165,14 +1165,14 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
   private loadPatientInfo(): void {
     if (!this.appointment) return;
-    
+
     // Info do paciente
     this.patientName = this.appointment.patientName || '';
-    
+
     // Info do profissional/consulta
     this.professionalName = this.appointment.professionalName || '';
     this.specialtyName = this.appointment.specialtyName || '';
-    
+
     // Formatar data e hora
     if (this.appointment.date) {
       const date = new Date(this.appointment.date);
@@ -1198,10 +1198,10 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
   private updateFromRemote(data: VitalSignsData): void {
     const v = data.vitals;
-    
+
     // Detecta quais medições chegaram para mostrar notificação
     const newMeasurements: string[] = [];
-    
+
     if (v.weight != null && v.weight !== this.weight) {
       this.weight = v.weight;
       newMeasurements.push(`Peso: ${v.weight} kg`);
@@ -1239,23 +1239,23 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
     this.calculateIMC();
     this.lastSync = new Date(data.timestamp);
-    
+
     // Mostra notificação visual se chegaram novas medições
     if (newMeasurements.length > 0 && !this.isProfessional) {
       this.showDeviceToast('⚕️', 'Medição Recebida!', newMeasurements.join(' • '), 'success');
     }
   }
-  
+
   /** Mostra toast de notificação para o paciente */
   private showDeviceToast(icon: string, title: string, message: string, type: 'success' | 'info' | 'warning'): void {
     // Limpa timeout anterior
     if (this.toastTimeout) {
       clearTimeout(this.toastTimeout);
     }
-    
+
     // Mostra o toast
     this.deviceToast = { icon, title, message, type };
-    
+
     // Remove após 5 segundos
     this.toastTimeout = setTimeout(() => {
       this.deviceToast = null;
@@ -1272,7 +1272,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
   private sendVitalsToHub(): void {
     if (!this.appointmentId) return;
-    
+
     const vitalsData: VitalSignsData = {
       appointmentId: this.appointmentId,
       senderRole: this.userRole,
@@ -1299,15 +1299,15 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
    */
   private loadBiometricsFromBackend(): void {
     if (!this.appointmentId) return;
-    
+
     const url = `${environment.apiUrl}/biometrics?appointmentId=${this.appointmentId}`;
     console.log('[VitalsBar] 📥 Carregando biometrics do backend...');
-    
+
     this.http.get<any>(url).subscribe({
       next: (biometrics) => {
         if (biometrics) {
           console.log('[VitalsBar] ✅ Biometrics carregados:', biometrics);
-          
+
           // Aplica os valores carregados
           if (biometrics.weight) this.weight = biometrics.weight;
           if (biometrics.height) this.height = biometrics.height;
@@ -1316,7 +1316,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
           if (biometrics.heartRate) this.heartRate = biometrics.heartRate;
           if (biometrics.oxygenSaturation) this.spo2 = biometrics.oxygenSaturation;
           if (biometrics.temperature) this.temperature = biometrics.temperature;
-          
+
           this.calculateIMC();
           this.cdr.detectChanges();
         }
@@ -1333,7 +1333,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
    */
   private async autoMarcarAcontecendo(): Promise<void> {
     if (!this.appointmentId) return;
-    
+
     try {
       await this.http.post(`${environment.apiUrl}/biometrics/acontecendo/${this.appointmentId}`, {}).toPromise();
       this.isAcontecendo = true;
@@ -1349,7 +1349,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
    */
   async toggleAcontecendo(): Promise<void> {
     if (!this.appointmentId) return;
-    
+
     try {
       if (this.isAcontecendo) {
         // Desmarcar
@@ -1379,52 +1379,52 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       console.log('[VitalsBar] Buscando cache de:', url);
       const response = await this.http.get<any>(url).toPromise();
       console.log('[VitalsBar] Resposta do cache:', JSON.stringify(response, null, 2));
-      
+
       if (response) {
         const captured: string[] = [];
         const devices = response.devices || {};
         console.log('[VitalsBar] Devices encontrados:', Object.keys(devices));
-        
+
         // Extrai dados da balança (scale)
         const scale = devices.scale?.values || {};
         console.log('[VitalsBar] Scale values:', scale);
-        if (scale.weight) { 
-          this.weight = Number(scale.weight); 
-          captured.push('Peso'); 
+        if (scale.weight) {
+          this.weight = Number(scale.weight);
+          captured.push('Peso');
           console.log('[VitalsBar] ✅ Peso capturado:', this.weight);
         }
-        
+
         // Extrai dados do aparelho de pressão (blood_pressure)
         const bp = devices.blood_pressure?.values || {};
-        if (bp.systolic) { 
-          this.systolic = Number(bp.systolic); 
-          captured.push('PA Sis'); 
+        if (bp.systolic) {
+          this.systolic = Number(bp.systolic);
+          captured.push('PA Sis');
         }
-        if (bp.diastolic) { 
-          this.diastolic = Number(bp.diastolic); 
-          captured.push('PA Dia'); 
+        if (bp.diastolic) {
+          this.diastolic = Number(bp.diastolic);
+          captured.push('PA Dia');
         }
-        if (bp.heartRate || bp.pulse) { 
-          this.heartRate = Number(bp.heartRate || bp.pulse); 
-          captured.push('FC'); 
+        if (bp.heartRate || bp.pulse) {
+          this.heartRate = Number(bp.heartRate || bp.pulse);
+          captured.push('FC');
         }
-        
+
         // Extrai dados do oxímetro
         const oximeter = devices.oximeter?.values || {};
-        if (oximeter.spo2) { 
-          this.spo2 = Number(oximeter.spo2); 
-          captured.push('SpO2'); 
+        if (oximeter.spo2) {
+          this.spo2 = Number(oximeter.spo2);
+          captured.push('SpO2');
         }
-        if (oximeter.pulseRate && !this.heartRate) { 
-          this.heartRate = Number(oximeter.pulseRate); 
-          captured.push('FC'); 
+        if (oximeter.pulseRate && !this.heartRate) {
+          this.heartRate = Number(oximeter.pulseRate);
+          captured.push('FC');
         }
-        
+
         // Extrai dados do termômetro
         const thermo = devices.thermometer?.values || {};
-        if (thermo.temperature) { 
-          this.temperature = Number(thermo.temperature); 
-          captured.push('Temp'); 
+        if (thermo.temperature) {
+          this.temperature = Number(thermo.temperature);
+          captured.push('Temp');
         }
 
         if (captured.length > 0) {
@@ -1469,10 +1469,10 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
       const response = await this.aiService.analyzeVitals(request).toPromise();
       if (response?.analysis) {
-        this.modalService.alert({ 
-          title: '🩺 Análise de Sinais Vitais', 
-          message: response.analysis, 
-          variant: 'info' 
+        this.modalService.alert({
+          title: '🩺 Análise de Sinais Vitais',
+          message: response.analysis,
+          variant: 'info'
         }).subscribe();
       }
     } catch (error) {
@@ -1526,24 +1526,24 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
   // Fonocardiograma - reproduzir áudio
   private phonoAudioPlayer: HTMLAudioElement | null = null;
-  
+
   playPhonocardiogram(): void {
     if (!isPlatformBrowser(this.platformId)) return;
-    
+
     console.log('[VitalsBar] playPhonocardiogram() chamado, URL:', this.phonocardiogramAudioUrl);
-    
+
     if (!this.phonocardiogramAudioUrl) {
       console.error('[VitalsBar] Nenhuma URL de áudio disponível');
       return;
     }
-    
+
     // Se já está tocando, pausa
     if (this.isPlayingPhono && this.phonoAudioPlayer) {
       this.phonoAudioPlayer.pause();
       this.isPlayingPhono = false;
       return;
     }
-    
+
     // Cria novo player se não existir
     if (!this.phonoAudioPlayer) {
       this.phonoAudioPlayer = new Audio();
@@ -1556,14 +1556,14 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
         this.isPlayingPhono = false;
       };
     }
-    
+
     // Atualiza URL e toca
     this.phonoAudioPlayer.src = this.phonocardiogramAudioUrl;
-    
+
     // Força interação do usuário para permitir play
     this.phonoAudioPlayer.muted = false;
     this.phonoAudioPlayer.volume = 1.0;
-    
+
     this.phonoAudioPlayer.play().then(() => {
       this.isPlayingPhono = true;
       console.log('[VitalsBar] ▶️ Tocando fonocardiograma');
@@ -1598,36 +1598,165 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   }
 
   /**
-   * Executa a solicitação de ausculta
+   * Executa a captura de ausculta DIRETAMENTE do microfone do navegador
+   * Usado quando não há PC - tablet captura direto do microfone
    */
-  private executarSolicitacaoAusculta(duration: number): void {
+  private async executarSolicitacaoAusculta(duration: number): Promise<void> {
     if (!this.appointmentId) {
       console.error('[VitalsBar] appointmentId não definido');
       return;
     }
 
     this.isCapturingAusculta = true;
-    console.log(`[VitalsBar] Solicitando captura de ausculta (${duration}s)...`);
+    console.log(`[VitalsBar] Iniciando captura de ausculta do microfone (${duration}s)...`);
+    this.showDeviceToast('🎤', 'Ausculta', `Prepare o estetoscópio - gravando ${duration}s...`, 'info');
 
-    this.http.post(`${environment.apiUrl}/biometrics/ausculta-request/${this.appointmentId}`, {
-      durationSeconds: duration,
-      position: 'cardiac'
-    }).subscribe({
-      next: (response: any) => {
-        console.log('[VitalsBar] Solicitacao enviada:', response);
-        this.showDeviceToast('MIC', 'Ausculta Solicitada', `Gravando ${duration}s...`, 'info');
+    try {
+      // 1. Solicita acesso ao microfone
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          sampleRate: 8000,
+          channelCount: 1
+        }
+      });
+
+      // 2. Configura AudioContext para captura em PCM
+      const audioContext = new AudioContext({ sampleRate: 8000 });
+      const source = audioContext.createMediaStreamSource(stream);
+      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      
+      const audioChunks: Float32Array[] = [];
+      let samplesCollected = 0;
+      const targetSamples = duration * 8000; // 8kHz por X segundos
+
+      processor.onaudioprocess = (e) => {
+        if (samplesCollected >= targetSamples) return;
         
-        // Aguarda duração + 2s buffer antes de liberar botão
-        setTimeout(() => {
-          this.isCapturingAusculta = false;
-        }, (duration + 2) * 1000);
-      },
-      error: (err) => {
-        console.error('[VitalsBar] Erro ao solicitar ausculta:', err);
-        this.isCapturingAusculta = false;
-        this.showDeviceToast('X', 'Erro', 'Nao foi possivel solicitar ausculta', 'warning');
+        const inputData = e.inputBuffer.getChannelData(0);
+        audioChunks.push(new Float32Array(inputData));
+        samplesCollected += inputData.length;
+        
+        // Atualiza progresso
+        const progress = Math.min(100, Math.round((samplesCollected / targetSamples) * 100));
+        if (progress % 20 === 0) {
+          console.log(`[VitalsBar] Capturando... ${progress}%`);
+        }
+      };
+
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+
+      // 3. Aguarda duração da gravação
+      await new Promise(resolve => setTimeout(resolve, duration * 1000));
+
+      // 4. Para a gravação
+      processor.disconnect();
+      source.disconnect();
+      stream.getTracks().forEach(track => track.stop());
+      await audioContext.close();
+
+      console.log(`[VitalsBar] Captura concluída. Processando ${audioChunks.length} chunks...`);
+      this.showDeviceToast('⏳', 'Processando', 'Enviando áudio...', 'info');
+
+      // 5. Combina chunks em um único array
+      const totalSamples = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+      const combinedAudio = new Float32Array(totalSamples);
+      let offset = 0;
+      for (const chunk of audioChunks) {
+        combinedAudio.set(chunk, offset);
+        offset += chunk.length;
       }
-    });
+
+      // 6. Converte Float32 (-1 a 1) para Int16 (PCM 16-bit)
+      const pcmData = new Int16Array(combinedAudio.length);
+      for (let i = 0; i < combinedAudio.length; i++) {
+        const s = Math.max(-1, Math.min(1, combinedAudio[i]));
+        pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+
+      // 7. Converte para Base64
+      const pcmBytes = new Uint8Array(pcmData.buffer);
+      const base64Audio = this.arrayBufferToBase64(pcmBytes);
+
+      // 8. Gera waveform simplificado (500 pontos)
+      const waveform = this.generateWaveform(combinedAudio, 500);
+
+      // 9. Envia para o backend
+      await this.enviarFonocardiograma(base64Audio, 8000, duration, waveform);
+
+    } catch (error: any) {
+      console.error('[VitalsBar] Erro ao capturar ausculta:', error);
+      this.showDeviceToast('❌', 'Erro', error.message || 'Falha ao acessar microfone', 'warning');
+    } finally {
+      this.isCapturingAusculta = false;
+    }
+  }
+
+  /**
+   * Converte ArrayBuffer para Base64
+   */
+  private arrayBufferToBase64(buffer: Uint8Array): string {
+    let binary = '';
+    const len = buffer.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(buffer[i]);
+    }
+    return btoa(binary);
+  }
+
+  /**
+   * Gera waveform simplificado para visualização
+   */
+  private generateWaveform(samples: Float32Array, numPoints: number): number[] {
+    const waveform: number[] = [];
+    const samplesPerPoint = Math.floor(samples.length / numPoints);
+    
+    for (let i = 0; i < numPoints; i++) {
+      let sum = 0;
+      const start = i * samplesPerPoint;
+      const end = Math.min(start + samplesPerPoint, samples.length);
+      
+      for (let j = start; j < end; j++) {
+        sum += Math.abs(samples[j]);
+      }
+      
+      waveform.push(sum / (end - start));
+    }
+    
+    // Normaliza para 0-1
+    const max = Math.max(...waveform);
+    return waveform.map(v => max > 0 ? v / max : 0);
+  }
+
+  /**
+   * Envia fonocardiograma para o backend
+   */
+  private async enviarFonocardiograma(audioBase64: string, sampleRate: number, duration: number, waveform: number[]): Promise<void> {
+    const payload = {
+      appointmentId: this.appointmentId,
+      deviceType: 'stethoscope',
+      audioData: audioBase64,
+      sampleRate: sampleRate,
+      format: 'pcm_s16le',
+      durationSeconds: duration,
+      waveform: waveform,
+      values: {
+        quality: 3  // Qualidade média (microfone comum)
+      },
+      timestamp: new Date().toISOString()
+    };
+
+    try {
+      const response = await this.http.post(`${environment.apiUrl}/biometrics/phonocardiogram`, payload).toPromise();
+      console.log('[VitalsBar] Fonocardiograma enviado:', response);
+      this.showDeviceToast('✅', 'Ausculta Enviada', `${duration}s de áudio capturado`, 'success');
+    } catch (error: any) {
+      console.error('[VitalsBar] Erro ao enviar fonocardiograma:', error);
+      throw error;
+    }
   }
 
   /**
@@ -1643,24 +1772,24 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       // Solicita permissão de microfone (necessário para listar dispositivos)
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach(track => track.stop()); // Para o stream imediatamente
-      
+
       const devices = await navigator.mediaDevices.enumerateDevices();
       const audioInputs = devices.filter(d => d.kind === 'audioinput');
-      
+
       if (audioInputs.length === 0) {
         this.currentBrowserMicrophone = 'Nenhum';
         return;
       }
-      
+
       // Encontra o microfone padrão (geralmente o primeiro ou o marcado como default)
       const defaultMic = audioInputs.find(d => d.deviceId === 'default') || audioInputs[0];
-      
+
       // Formata o nome para exibição
       let micName = defaultMic.label || 'Microfone ' + (audioInputs.indexOf(defaultMic) + 1);
-      
+
       // Remove prefixo "Default - " mas mantém o resto
       micName = micName.replace(/^Default\s*-\s*/i, '');
-      
+
       // Se o nome é genérico como "Microfone" mas tem info entre parênteses, usa ela
       // Ex: "Microfone (KT USB Audio)" -> "KT USB Audio"
       const parenthesesMatch = micName.match(/\(([^)]+)\)/);
@@ -1671,12 +1800,12 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
           micName = inParentheses;
         }
       }
-      
+
       // Limita tamanho
       if (micName.length > 30) {
         micName = micName.substring(0, 27) + '...';
       }
-      
+
       this.currentBrowserMicrophone = micName;
       console.log('[VitalsBar] Microfone detectado:', micName);
     } catch (error) {
@@ -1690,7 +1819,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
    */
   private listenMicrophoneChanges(): void {
     if (!isPlatformBrowser(this.platformId)) return;
-    
+
     navigator.mediaDevices.addEventListener('devicechange', () => {
       console.log('[VitalsBar] Dispositivos de midia alterados - redetectando microfone...');
       this.detectBrowserMicrophone();
@@ -1715,7 +1844,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       const device = await this.bluetoothService.connectBloodPressure();
       if (device) {
         this.showDeviceToast('💓', 'Omron conectado', 'Aguarde a medição...', 'success');
-        
+
         // Subscreve às leituras
         const sub = this.bluetoothService.readings$.subscribe((reading: VitalReading) => {
           if (reading.deviceType === 'blood_pressure') {
@@ -1755,7 +1884,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       const device = await this.bluetoothService.connectScale();
       if (device) {
         this.showDeviceToast('⚖️', 'Balança conectada', 'Suba na balança...', 'success');
-        
+
         // Subscreve às leituras
         const sub = this.bluetoothService.readings$.subscribe((reading: VitalReading) => {
           if (reading.deviceType === 'scale') {
