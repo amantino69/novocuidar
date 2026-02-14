@@ -168,6 +168,13 @@ import { environment } from '@env/environment';
                 </button>
               }
             } @else if (!isProfessional) {
+              <!-- Selector de microfone para ausculta -->
+              <select class="mic-select" [(ngModel)]="selectedMicrophoneId" (ngModelChange)="onMicrophoneSelected($event)" title="Microfone para ausculta">
+                <option value="">Mic Padrão</option>
+                @for (mic of availableMicrophones; track mic.deviceId) {
+                  <option [value]="mic.deviceId">{{ mic.label || 'Mic ' + ($index + 1) }}</option>
+                }
+              </select>
               <!-- Selector de duracao + Botao Capturar -->
               <select class="duration-select" [(ngModel)]="auscultaDuration" title="Duracao da captura">
                 <option value="10">10s</option>
@@ -186,10 +193,10 @@ import { environment } from '@env/environment';
               <span class="phono-mic waiting">Aguardando captura...</span>
             }
           </div>
-          <!-- Linha do microfone - sempre visivel para operador -->
+          <!-- Linha do microfone selecionado para ausculta -->
           <div class="mic-info" *ngIf="!isProfessional">
-            <span class="mic-icon">MIC:</span>
-            <span class="mic-name">{{ currentBrowserMicrophone }}</span>
+            <span class="mic-icon">🎤</span>
+            <span class="mic-name">{{ selectedMicrophoneName || currentBrowserMicrophone }}</span>
           </div>
         </div>
         
@@ -990,6 +997,11 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   // Microfone atual do navegador (detectado dinamicamente)
   currentBrowserMicrophone = 'Detectando...';
 
+  // Seletor de microfone para ausculta
+  availableMicrophones: MediaDeviceInfo[] = [];
+  selectedMicrophoneId = '';  // vazio = padrão do sistema
+  selectedMicrophoneName = '';
+
   // Web Bluetooth
   bluetoothAvailable = false;
   isConnectingBle = false;
@@ -1621,16 +1633,24 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     this.showDeviceToast('🎤', 'Ausculta', `Prepare o estetoscópio - gravando ${duration}s...`, 'info');
 
     try {
-      // 1. Solicita acesso ao microfone
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-          sampleRate: 8000,
-          channelCount: 1
-        }
-      });
+      // 1. Solicita acesso ao microfone (usa selecionado ou padrão)
+      const audioConstraints: MediaTrackConstraints = {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        sampleRate: 8000,
+        channelCount: 1
+      };
+      
+      // Se usuário selecionou microfone específico para ausculta, usa ele
+      if (this.selectedMicrophoneId) {
+        audioConstraints.deviceId = { exact: this.selectedMicrophoneId };
+        console.log(`[VitalsBar] Usando microfone específico: ${this.selectedMicrophoneName}`);
+      } else {
+        console.log('[VitalsBar] Usando microfone padrão');
+      }
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
 
       // 2. Configura AudioContext para captura em PCM
       const audioContext = new AudioContext({ sampleRate: 8000 });
@@ -1769,7 +1789,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   }
 
   /**
-   * Detecta o microfone padrão do navegador
+   * Detecta o microfone padrão do navegador e carrega lista de microfones disponíveis
    */
   private async detectBrowserMicrophone(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) {
@@ -1784,6 +1804,10 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
       const devices = await navigator.mediaDevices.enumerateDevices();
       const audioInputs = devices.filter(d => d.kind === 'audioinput');
+
+      // Salva lista de microfones disponíveis para o seletor
+      this.availableMicrophones = audioInputs.filter(d => d.deviceId !== 'default');
+      console.log('[VitalsBar] Microfones disponíveis:', this.availableMicrophones.length);
 
       if (audioInputs.length === 0) {
         this.currentBrowserMicrophone = 'Nenhum';
@@ -1820,6 +1844,33 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     } catch (error) {
       console.warn('[VitalsBar] Erro ao detectar microfone:', error);
       this.currentBrowserMicrophone = 'Sem permissao';
+    }
+  }
+
+  /**
+   * Handler quando usuário seleciona um microfone para ausculta
+   */
+  onMicrophoneSelected(deviceId: string): void {
+    this.selectedMicrophoneId = deviceId;
+    
+    if (deviceId) {
+      const mic = this.availableMicrophones.find(m => m.deviceId === deviceId);
+      if (mic) {
+        let name = mic.label || 'Microfone';
+        // Simplifica o nome
+        const match = name.match(/\(([^)]+)\)/);
+        if (match && match[1] && match[1].length > 3) {
+          name = match[1];
+        }
+        if (name.length > 25) {
+          name = name.substring(0, 22) + '...';
+        }
+        this.selectedMicrophoneName = name;
+        console.log('[VitalsBar] Microfone selecionado para ausculta:', name);
+      }
+    } else {
+      this.selectedMicrophoneName = '';
+      console.log('[VitalsBar] Usando microfone padrão para ausculta');
     }
   }
 
