@@ -6,6 +6,7 @@ import { HttpClient } from '@angular/common/http';
 
 import { IconComponent } from '@shared/components/atoms/icon/icon';
 import { MedicalDevicesSyncService, VitalSignsData, PhonocardiogramData } from '@app/core/services/medical-devices-sync.service';
+import { BluetoothDevicesService, VitalReading } from '@app/core/services/bluetooth-devices.service';
 import { Appointment } from '@core/services/appointments.service';
 import { UsersService, User } from '@core/services/users.service';
 import { AIService, AnalyzeVitalsRequest } from '@app/core/services/ai.service';
@@ -194,6 +195,21 @@ import { environment } from '@env/environment';
         
         <!-- Ações à direita - SIMPLIFICADO -->
         <div class="actions">
+          <!-- OPERADOR: Botões BLE para conectar dispositivos via Web Bluetooth -->
+          <div class="ble-buttons" *ngIf="!isProfessional">
+            <button class="btn-ble" (click)="conectarPressao()" [disabled]="isConnectingBle" title="Conectar Omron (Pressão)">
+              <span *ngIf="isConnectingBle && connectingDevice === 'pressure'" class="spinner-small"></span>
+              <span *ngIf="!(isConnectingBle && connectingDevice === 'pressure')">💓</span>
+              Pressão
+            </button>
+            <button class="btn-ble" (click)="conectarBalanca()" [disabled]="isConnectingBle" title="Conectar Balança">
+              <span *ngIf="isConnectingBle && connectingDevice === 'scale'" class="spinner-small"></span>
+              <span *ngIf="!(isConnectingBle && connectingDevice === 'scale')">⚖️</span>
+              Balança
+            </button>
+            <span *ngIf="!bluetoothAvailable" class="ble-warning" title="Web Bluetooth não disponível neste navegador">⚠️</span>
+          </div>
+          
           <!-- Indicador de sincronização -->
           <span *ngIf="lastSync" class="sync-info">
             <app-icon name="check-circle" [size]="16" />
@@ -410,6 +426,55 @@ import { environment } from '@env/environment';
     @keyframes pulse-green {
       0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.5); }
       50% { box-shadow: 0 0 30px rgba(34, 197, 94, 0.8); }
+    }
+    
+    /* Botões BLE para conectar dispositivos via Web Bluetooth */
+    .ble-buttons {
+      display: flex;
+      gap: 8px;
+      margin-right: 12px;
+    }
+    
+    .btn-ble {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: white;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+      
+      &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+      }
+      
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
+      }
+      
+      .spinner-small {
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+    }
+    
+    .ble-warning {
+      font-size: 18px;
+      cursor: help;
+      opacity: 0.7;
     }
     
     /* Botão de ajuda - abre guia de dispositivos */
@@ -920,6 +985,11 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   // Microfone atual do navegador (detectado dinamicamente)
   currentBrowserMicrophone = 'Detectando...';
 
+  // Web Bluetooth
+  bluetoothAvailable = false;
+  isConnectingBle = false;
+  connectingDevice: 'pressure' | 'scale' | null = null;
+
   private subscriptions = new Subscription();
   private patientData: User | null = null;
   private syncTimeout: any = null;
@@ -930,13 +1000,16 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
   constructor(
     private medicalDevicesSync: MedicalDevicesSyncService,
+    private bluetoothService: BluetoothDevicesService,
     private usersService: UsersService,
     private aiService: AIService,
     private modalService: ModalService,
     private http: HttpClient,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object
-  ) {}
+  ) {
+    this.bluetoothAvailable = this.bluetoothService.isBluetoothAvailable();
+  }
 
   ngOnInit(): void {
     this.setupSubscriptions();
@@ -1622,5 +1695,86 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       console.log('[VitalsBar] Dispositivos de midia alterados - redetectando microfone...');
       this.detectBrowserMicrophone();
     });
+  }
+
+  // ========== WEB BLUETOOTH (TABLET ANDROID) ==========
+
+  /**
+   * Conecta ao monitor de pressão via Web Bluetooth
+   */
+  async conectarPressao(): Promise<void> {
+    if (!this.bluetoothAvailable) {
+      this.showDeviceToast('⚠️', 'Bluetooth indisponível', 'Use Chrome no tablet Android', 'warning');
+      return;
+    }
+
+    this.isConnectingBle = true;
+    this.connectingDevice = 'pressure';
+
+    try {
+      const device = await this.bluetoothService.connectBloodPressure();
+      if (device) {
+        this.showDeviceToast('💓', 'Omron conectado', 'Aguarde a medição...', 'success');
+        
+        // Subscreve às leituras
+        const sub = this.bluetoothService.readings$.subscribe((reading: VitalReading) => {
+          if (reading.deviceType === 'blood_pressure') {
+            this.systolic = reading.values.systolic ?? null;
+            this.diastolic = reading.values.diastolic ?? null;
+            this.heartRate = reading.values.heartRate ?? null;
+            this.onVitalChange();
+            this.showDeviceToast('✅', 'Pressão capturada', `${this.systolic}/${this.diastolic} mmHg`, 'success');
+          }
+        });
+        this.subscriptions.add(sub);
+      } else {
+        this.showDeviceToast('❌', 'Conexão cancelada', 'Tente novamente', 'warning');
+      }
+    } catch (error: any) {
+      console.error('[VitalsBar] Erro ao conectar pressão:', error);
+      this.showDeviceToast('❌', 'Erro de conexão', error.message || 'Falha no Bluetooth', 'warning');
+    } finally {
+      this.isConnectingBle = false;
+      this.connectingDevice = null;
+    }
+  }
+
+  /**
+   * Conecta à balança via Web Bluetooth
+   */
+  async conectarBalanca(): Promise<void> {
+    if (!this.bluetoothAvailable) {
+      this.showDeviceToast('⚠️', 'Bluetooth indisponível', 'Use Chrome no tablet Android', 'warning');
+      return;
+    }
+
+    this.isConnectingBle = true;
+    this.connectingDevice = 'scale';
+
+    try {
+      const device = await this.bluetoothService.connectScale();
+      if (device) {
+        this.showDeviceToast('⚖️', 'Balança conectada', 'Suba na balança...', 'success');
+        
+        // Subscreve às leituras
+        const sub = this.bluetoothService.readings$.subscribe((reading: VitalReading) => {
+          if (reading.deviceType === 'scale') {
+            this.weight = reading.values.weight ?? null;
+            this.calculateIMC();
+            this.onVitalChange();
+            this.showDeviceToast('✅', 'Peso capturado', `${this.weight} kg`, 'success');
+          }
+        });
+        this.subscriptions.add(sub);
+      } else {
+        this.showDeviceToast('❌', 'Conexão cancelada', 'Tente novamente', 'warning');
+      }
+    } catch (error: any) {
+      console.error('[VitalsBar] Erro ao conectar balança:', error);
+      this.showDeviceToast('❌', 'Erro de conexão', error.message || 'Falha no Bluetooth', 'warning');
+    } finally {
+      this.isConnectingBle = false;
+      this.connectingDevice = null;
+    }
   }
 }
