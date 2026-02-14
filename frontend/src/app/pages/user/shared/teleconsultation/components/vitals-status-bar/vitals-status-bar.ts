@@ -1190,7 +1190,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   auscultaProgress = 0;  // Progresso da gravação (0-100%)
   auscultaLiveLevel = 0;  // Nível de áudio em tempo real durante gravação
   auscultaMaxLevel = 0;  // Maior nível detectado durante gravação
-  
+
   // Tipo de ausculta: cardíaca (20-300Hz) ou pulmonar (20-2000Hz)
   auscultationType: 'cardiac' | 'pulmonary' = 'cardiac';
 
@@ -2008,46 +2008,46 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       // 2. Configura AudioContext para captura em PCM
       const audioContext = new AudioContext({ sampleRate: 8000 });
       const source = audioContext.createMediaStreamSource(stream);
-      
+
       // Configuração de filtros baseada no tipo de ausculta
       // - Cardíaca: 20-300 Hz (S1, S2, S3, S4, murmúrios básicos)
       // - Pulmonar: 20-2000 Hz (roncos <200Hz, sibilos >400Hz, crepitações)
       const isCardiac = this.auscultationType === 'cardiac';
       const lowpassFreq = isCardiac ? 300 : 2000;  // Hz
-      
+
       console.log(`[VitalsBar] Tipo de ausculta: ${this.auscultationType} - Lowpass: ${lowpassFreq} Hz`);
-      
+
       // Filtro passa-alta para remover ruído de baixa frequência (movimento, vento)
       const highpass = audioContext.createBiquadFilter();
       highpass.type = 'highpass';
       highpass.frequency.value = 20; // Corta abaixo de 20 Hz
       highpass.Q.value = 0.7;
-      
+
       // Filtro passa-baixa: frequência varia conforme tipo de ausculta
       const lowpass = audioContext.createBiquadFilter();
       lowpass.type = 'lowpass';
       lowpass.frequency.value = lowpassFreq;
       lowpass.Q.value = 0.7;
-      
+
       // Filtro notch para remover ruído de rede elétrica (60 Hz Brasil + harmônicos)
       // Aplicado em ambos os modos para remover interferência elétrica
       const notch60 = audioContext.createBiquadFilter();
       notch60.type = 'notch';
       notch60.frequency.value = 60;
       notch60.Q.value = 30; // Q alto = corte mais estreito
-      
+
       const notch120 = audioContext.createBiquadFilter();
       notch120.type = 'notch';
       notch120.frequency.value = 120; // Segundo harmônico
       notch120.Q.value = 30;
-      
+
       const notch180 = audioContext.createBiquadFilter();
       notch180.type = 'notch';
       notch180.frequency.value = 180; // Terceiro harmônico
       notch180.Q.value = 30;
-      
+
       console.log(`[VitalsBar] Filtros aplicados: highpass 20Hz, lowpass ${lowpassFreq}Hz, notch 60/120/180 Hz`);
-      
+
       const processor = audioContext.createScriptProcessor(4096, 1, 1);
 
       const audioChunks: Float32Array[] = [];

@@ -15,6 +15,7 @@ export class DictationService {
   private ignoreResultsUntilIndex = -1; // Ignore results with index <= this value
   private lastResultIndex = -1; // Track the latest result index
   private isBrowser: boolean;
+  private noSpeechCount = 0; // Contador de erros no-speech consecutivos
   
   public isDictationActive$ = new BehaviorSubject<boolean>(false);
   public isListening$ = new BehaviorSubject<boolean>(false);
@@ -56,12 +57,14 @@ export class DictationService {
       this.zone.run(() => {
         // Track the latest result index (used when focusing a new field)
         this.lastResultIndex = event.results.length - 1;
+        // Reset contador de no-speech ao receber resultado
+        this.noSpeechCount = 0;
         this.handleResult(event);
       });
     };
 
     this.recognition.onerror = (event: any) => {
-      console.error('[Dictation] Erro:', event.error);
+      console.error('[Dictation] Erro:', event.error, '- timestamp:', new Date().toISOString());
       this.zone.run(() => {
         // Erros que devem parar o ditado
         if (event.error === 'not-allowed') {
@@ -78,6 +81,21 @@ export class DictationService {
             variant: 'warning'
           }).subscribe();
           this.stopListening();
+        } else if (event.error === 'no-speech') {
+          // No Android, erro no-speech pode indicar conflito com Jitsi
+          console.warn('[Dictation] no-speech - possível conflito com Jitsi ou microfone não captando');
+          this.noSpeechCount = (this.noSpeechCount || 0) + 1;
+          if (this.noSpeechCount >= 3) {
+            // Após 3 tentativas, avisa o usuário
+            this.modalService.alert({
+              title: 'Microfone não capta voz',
+              message: 'Possível conflito com videochamada. Tente: 1) Falar mais perto do microfone, 2) Mutar manualmente o Jitsi antes de ditar.',
+              variant: 'warning'
+            }).subscribe();
+            this.noSpeechCount = 0;
+          }
+        } else if (event.error === 'network') {
+          console.warn('[Dictation] Erro de rede - reconhecimento de voz requer internet');
         }
         // Erros transientes (no-speech, network, aborted) - apenas loga, o onend vai reiniciar
         // Não faz nada aqui para permitir reinício automático
@@ -200,9 +218,14 @@ export class DictationService {
     console.log('[Dictation] Ativando modo ditado...');
     this.isDictationActive$.next(true);
     this.isInitializing$.next(false); // Desativa estado de inicialização após sucesso
+    this.noSpeechCount = 0; // Reset contador ao iniciar
     
     // Muta o microfone do Jitsi para o paciente não ouvir o médico ditando
+    // E libera o microfone para o SpeechRecognition
     this.jitsiService.setLocalAudioMuted(true);
+    
+    // Aguarda 300ms para o Jitsi liberar o microfone (importante no Chrome Android)
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     this.startListening();
   }
