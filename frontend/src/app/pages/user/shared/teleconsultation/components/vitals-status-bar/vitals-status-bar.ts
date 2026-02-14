@@ -157,6 +157,17 @@ import { environment } from '@env/environment';
                 <app-icon [name]="isPlayingPhono ? 'pause' : 'play'" [size]="16" />
               </button>
               <audio #phonoAudio [src]="phonocardiogramAudioUrl" (ended)="isPlayingPhono = false" style="display:none;"></audio>
+              <!-- Análise automática da ausculta -->
+              @if (phonoEstimatedBpm !== null) {
+                <span class="phono-analysis" [class.good]="phonoBpmDiff !== null && phonoBpmDiff <= 10" [class.warning]="phonoBpmDiff !== null && phonoBpmDiff > 10 && phonoBpmDiff <= 20" [class.bad]="phonoBpmDiff !== null && phonoBpmDiff > 20" [title]="phonoAnalysisMessage">
+                  ~{{ phonoEstimatedBpm }} BPM
+                  @if (phonoBpmDiff !== null) {
+                    <span class="diff">(Δ{{ phonoBpmDiff }})</span>
+                  }
+                </span>
+              } @else if (phonoQuality === 'very_low' || phonoQuality === 'low') {
+                <span class="phono-analysis bad" title="Nível de áudio muito baixo - refaça a captura">⚠️ Sinal fraco</span>
+              }
               <!-- Botao Nova Captura para paciente/enfermagem -->
               @if (!isProfessional) {
                 <button class="btn-nova-captura" (click)="solicitarNovaAusculta()" [disabled]="isCapturingAusculta" title="Nova captura (10s)">
@@ -627,6 +638,37 @@ import { environment } from '@env/environment';
           opacity: 0.7;
         }
         
+        .phono-analysis {
+          font-size: 11px;
+          font-weight: 600;
+          padding: 2px 8px;
+          border-radius: 4px;
+          background: #475569;
+          color: white;
+          
+          .diff {
+            font-size: 10px;
+            font-weight: 400;
+            opacity: 0.8;
+            margin-left: 2px;
+          }
+          
+          &.good {
+            background: #22c55e;
+            color: white;
+          }
+          
+          &.warning {
+            background: #f59e0b;
+            color: #1e293b;
+          }
+          
+          &.bad {
+            background: #dc2626;
+            color: white;
+          }
+        }
+        
         .btn-play {
           width: 28px;
           height: 28px;
@@ -1068,6 +1110,12 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   phonocardiogramAudioUrl = '';
   isPlayingPhono = false;
   private needsWaveformRedraw = false;
+  
+  // Análise automática de FC do fonocardiograma
+  phonoEstimatedBpm: number | null = null;
+  phonoQuality: 'unknown' | 'very_low' | 'low' | 'good' | 'high' = 'unknown';
+  phonoBpmDiff: number | null = null;  // Diferença com dispositivos
+  phonoAnalysisMessage = '';  // Mensagem de comparação
 
   // Microfone atual do navegador (detectado dinamicamente)
   currentBrowserMicrophone = 'Detectando...';
@@ -1258,6 +1306,9 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
               this.needsWaveformRedraw = true;
               this.cdr.detectChanges();
             }, 100);
+            
+            // Análise automática do waveform
+            this.analyzePhonoBpm(data.waveform, data.durationSeconds || 10);
           }
           this.lastSync = new Date();
           this.isCapturingAusculta = false; // Parar spinner do botão
@@ -1265,6 +1316,99 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
         }
       })
     );
+  }
+  
+  /**
+   * Analisa o waveform do fonocardiograma para estimar FC
+   * Compara com a FC de dispositivos médicos
+   */
+  private analyzePhonoBpm(waveform: number[], durationSeconds: number): void {
+    if (!waveform || waveform.length < 50) {
+      this.phonoEstimatedBpm = null;
+      this.phonoQuality = 'unknown';
+      return;
+    }
+    
+    // Calcula RMS para avaliar qualidade
+    const rms = Math.sqrt(waveform.reduce((sum, v) => sum + v * v, 0) / waveform.length);
+    
+    if (rms < 0.01) {
+      this.phonoQuality = 'very_low';
+      this.phonoEstimatedBpm = null;
+      this.phonoAnalysisMessage = 'Nível de áudio muito baixo - estetoscópio mal posicionado?';
+      return;
+    } else if (rms < 0.03) {
+      this.phonoQuality = 'low';
+    } else if (rms < 0.15) {
+      this.phonoQuality = 'good';
+    } else {
+      this.phonoQuality = 'high';
+    }
+    
+    // Detecção de picos (batimentos) simplificada
+    const mean = waveform.reduce((a, b) => a + b, 0) / waveform.length;
+    const std = Math.sqrt(waveform.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / waveform.length);
+    const threshold = mean + 0.5 * std;
+    
+    // Encontra picos
+    const peaks: number[] = [];
+    const minDistance = Math.floor(waveform.length / (durationSeconds * 3.3));  // Max 200 BPM
+    let lastPeak = -minDistance;
+    
+    for (let i = 1; i < waveform.length - 1; i++) {
+      if (waveform[i] > waveform[i-1] && 
+          waveform[i] > waveform[i+1] && 
+          waveform[i] > threshold &&
+          i - lastPeak >= minDistance) {
+        peaks.push(i);
+        lastPeak = i;
+      }
+    }
+    
+    console.log(`[VitalsBar] Análise ausculta: RMS=${rms.toFixed(3)}, Picos=${peaks.length}, Duração=${durationSeconds}s`);
+    
+    if (peaks.length >= 2) {
+      // Calcula intervalo médio entre picos
+      const intervals: number[] = [];
+      for (let i = 1; i < peaks.length; i++) {
+        intervals.push(peaks[i] - peaks[i-1]);
+      }
+      
+      const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+      const samplesPerSecond = waveform.length / durationSeconds;
+      const avgIntervalSeconds = avgInterval / samplesPerSecond;
+      
+      const estimatedBpm = Math.round(60 / avgIntervalSeconds);
+      
+      // Validação: FC deve estar entre 40-180 BPM
+      if (estimatedBpm >= 40 && estimatedBpm <= 180) {
+        this.phonoEstimatedBpm = estimatedBpm;
+        
+        // Compara com FC de dispositivos
+        if (this.heartRate) {
+          this.phonoBpmDiff = Math.abs(estimatedBpm - this.heartRate);
+          
+          if (this.phonoBpmDiff <= 10) {
+            this.phonoAnalysisMessage = `FC ausculta ~${estimatedBpm} BPM - Compatível com dispositivo (${this.heartRate} BPM). Diferença: ${this.phonoBpmDiff} BPM ✓`;
+          } else if (this.phonoBpmDiff <= 20) {
+            this.phonoAnalysisMessage = `FC ausculta ~${estimatedBpm} BPM - Diferença moderada com dispositivo (${this.heartRate} BPM). Δ${this.phonoBpmDiff} BPM`;
+          } else {
+            this.phonoAnalysisMessage = `FC ausculta ~${estimatedBpm} BPM - Diferença alta com dispositivo (${this.heartRate} BPM). Δ${this.phonoBpmDiff} BPM - Considere refazer`;
+          }
+        } else {
+          this.phonoBpmDiff = null;
+          this.phonoAnalysisMessage = `FC ausculta estimada: ~${estimatedBpm} BPM (sem medição de dispositivo para comparar)`;
+        }
+        
+        console.log(`[VitalsBar] ${this.phonoAnalysisMessage}`);
+      } else {
+        this.phonoEstimatedBpm = null;
+        this.phonoAnalysisMessage = `FC fora do esperado (${estimatedBpm} BPM) - possível ruído ou posicionamento`;
+      }
+    } else {
+      this.phonoEstimatedBpm = null;
+      this.phonoAnalysisMessage = 'Poucos batimentos detectados - verifique posicionamento do estetoscópio';
+    }
   }
 
   private loadPatientInfo(): void {
