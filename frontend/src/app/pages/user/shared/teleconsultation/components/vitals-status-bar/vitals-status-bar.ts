@@ -150,13 +150,33 @@ import { environment } from '@env/environment';
           </label>
           <div class="phono-box">
             @if (phonocardiogram) {
-              <div class="phono-waveform">
+              <div class="phono-waveform" [class.playing]="isPlayingPhono">
                 <canvas #waveformCanvas width="200" height="40"></canvas>
+                <!-- Linha de progresso animada durante reprodução -->
+                @if (isPlayingPhono) {
+                  <div class="playhead" [style.left.%]="phonoPlayProgress"></div>
+                }
               </div>
-              <button class="btn-play" (click)="playPhonocardiogram()" [title]="'Ouvir fonocardiograma'">
-                <app-icon [name]="isPlayingPhono ? 'pause' : 'play'" [size]="16" />
+              <button class="btn-play" (click)="playPhonocardiogram()" [title]="isPlayingPhono ? 'Pausar' : 'Ouvir fonocardiograma'">
+                @if (isPlayingPhono) {
+                  ⏸️
+                } @else {
+                  ▶️
+                }
               </button>
-              <audio #phonoAudio [src]="phonocardiogramAudioUrl" (ended)="isPlayingPhono = false" style="display:none;"></audio>
+              <!-- Tempo de reprodução -->
+              @if (isPlayingPhono || phonoPlayProgress > 0) {
+                <span class="phono-time">{{ phonoCurrentTime }}s / {{ phonoDuration }}s</span>
+              }
+              <!-- Seletor de saída de áudio -->
+              @if (availableSpeakers.length > 1) {
+                <select class="speaker-select" [(ngModel)]="selectedSpeakerId" (ngModelChange)="onSpeakerSelected($event)" title="Saída de áudio">
+                  @for (speaker of availableSpeakers; track speaker.deviceId) {
+                    <option [value]="speaker.deviceId">🔊 {{ speaker.label || 'Alto-falante ' + ($index + 1) }}</option>
+                  }
+                </select>
+              }
+              <audio #phonoAudio [src]="phonocardiogramAudioUrl" (ended)="onPhonogramEnded()" (timeupdate)="onPhonogramTimeUpdate()" style="display:none;"></audio>
               <!-- Análise automática da ausculta -->
               @if (phonoEstimatedBpm !== null) {
                 <span class="phono-analysis" [class.good]="phonoBpmDiff !== null && phonoBpmDiff <= 10" [class.warning]="phonoBpmDiff !== null && phonoBpmDiff > 10 && phonoBpmDiff <= 20" [class.bad]="phonoBpmDiff !== null && phonoBpmDiff > 20" [title]="phonoAnalysisMessage">
@@ -615,9 +635,47 @@ import { environment } from '@env/environment';
           border-radius: 4px;
           overflow: hidden;
           background: #1a1a2e;
+          position: relative;
           
           canvas {
             display: block;
+          }
+          
+          .playhead {
+            position: absolute;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background: #dc2626;
+            box-shadow: 0 0 4px #dc2626;
+            transition: left 0.1s linear;
+          }
+          
+          &.playing {
+            box-shadow: 0 0 8px rgba(220, 38, 38, 0.5);
+          }
+        }
+        
+        .phono-time {
+          font-size: 10px;
+          color: #64748b;
+          font-family: monospace;
+          min-width: 55px;
+        }
+        
+        .speaker-select {
+          padding: 3px 5px;
+          border: 1px solid #475569;
+          border-radius: 4px;
+          background: #1e293b;
+          color: white;
+          font-size: 10px;
+          max-width: 100px;
+          cursor: pointer;
+          
+          &:focus {
+            border-color: #3b82f6;
+            outline: none;
           }
         }
         
@@ -1110,6 +1168,15 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   phonocardiogramAudioUrl = '';
   isPlayingPhono = false;
   private needsWaveformRedraw = false;
+  
+  // Reprodução de áudio - progresso e tempo
+  phonoPlayProgress = 0;  // 0-100% para a linha animada
+  phonoCurrentTime = 0;  // Tempo atual em segundos
+  phonoDuration = 0;  // Duração total em segundos
+  
+  // Seletor de saída de áudio (speakers)
+  availableSpeakers: MediaDeviceInfo[] = [];
+  selectedSpeakerId = '';
   
   // Análise automática de FC do fonocardiograma
   phonoEstimatedBpm: number | null = null;
@@ -1796,13 +1863,23 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     if (!this.phonoAudioPlayer) {
       this.phonoAudioPlayer = new Audio();
       this.phonoAudioPlayer.onended = () => {
-        this.isPlayingPhono = false;
-        console.log('[VitalsBar] Áudio terminou');
+        this.onPhonogramEnded();
+      };
+      this.phonoAudioPlayer.ontimeupdate = () => {
+        this.onPhonogramTimeUpdate();
+        this.cdr.detectChanges();  // Força atualização da UI
       };
       this.phonoAudioPlayer.onerror = (e) => {
         console.error('[VitalsBar] Erro no áudio:', e);
         this.isPlayingPhono = false;
       };
+      
+      // Configura saída de áudio selecionada (se suportado)
+      if (this.selectedSpeakerId && 'setSinkId' in this.phonoAudioPlayer) {
+        (this.phonoAudioPlayer as any).setSinkId(this.selectedSpeakerId)
+          .then(() => console.log('[VitalsBar] Saída de áudio configurada:', this.selectedSpeakerId))
+          .catch((e: any) => console.warn('[VitalsBar] Não foi possível configurar saída:', e));
+      }
     }
 
     // Atualiza URL e toca
@@ -1814,6 +1891,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
     this.phonoAudioPlayer.play().then(() => {
       this.isPlayingPhono = true;
+      this.phonoDuration = Math.round(this.phonoAudioPlayer!.duration || 0);
       console.log('[VitalsBar] ▶️ Tocando fonocardiograma');
     }).catch(err => {
       console.error('[VitalsBar] Erro ao reproduzir:', err);
@@ -1822,6 +1900,47 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
         window.open(this.phonocardiogramAudioUrl, '_blank');
       }
     });
+  }
+
+  /**
+   * Handler quando o fonocardiograma termina de tocar
+   */
+  onPhonogramEnded(): void {
+    this.isPlayingPhono = false;
+    this.phonoPlayProgress = 0;
+    this.phonoCurrentTime = 0;
+    console.log('[VitalsBar] ⏹️ Fonocardiograma terminou');
+  }
+
+  /**
+   * Handler para atualização de tempo do fonocardiograma
+   */
+  onPhonogramTimeUpdate(): void {
+    if (this.phonoAudioPlayer) {
+      const current = this.phonoAudioPlayer.currentTime || 0;
+      const duration = this.phonoAudioPlayer.duration || 1;
+      this.phonoCurrentTime = Math.round(current);
+      this.phonoDuration = Math.round(duration);
+      this.phonoPlayProgress = (current / duration) * 100;
+    }
+  }
+
+  /**
+   * Handler quando usuário seleciona um alto-falante para saída de áudio
+   */
+  async onSpeakerSelected(deviceId: string): Promise<void> {
+    this.selectedSpeakerId = deviceId;
+    console.log('[VitalsBar] Alto-falante selecionado:', deviceId);
+    
+    // Se tiver um player de áudio ativo, muda a saída
+    if (this.phonoAudioPlayer && 'setSinkId' in this.phonoAudioPlayer) {
+      try {
+        await (this.phonoAudioPlayer as any).setSinkId(deviceId);
+        console.log('[VitalsBar] Saída de áudio alterada para:', deviceId);
+      } catch (err) {
+        console.error('[VitalsBar] Erro ao mudar saída de áudio:', err);
+      }
+    }
   }
 
   /**
@@ -2097,6 +2216,16 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
       this.currentBrowserMicrophone = micName;
       console.log('[VitalsBar] Microfone detectado:', micName);
+      
+      // Carrega também lista de alto-falantes (saída de áudio)
+      const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+      this.availableSpeakers = audioOutputs.filter(d => d.deviceId !== 'default' && d.deviceId !== 'communications');
+      console.log('[VitalsBar] Alto-falantes disponíveis:', this.availableSpeakers.length);
+      
+      // Se tiver speakers disponíveis, seleciona o primeiro por padrão
+      if (this.availableSpeakers.length > 0 && !this.selectedSpeakerId) {
+        this.selectedSpeakerId = this.availableSpeakers[0].deviceId;
+      }
     } catch (error) {
       console.warn('[VitalsBar] Erro ao detectar microfone:', error);
       this.currentBrowserMicrophone = 'Sem permissao';
