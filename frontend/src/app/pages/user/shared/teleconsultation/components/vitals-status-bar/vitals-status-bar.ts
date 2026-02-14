@@ -190,9 +190,11 @@ import { environment } from '@env/environment';
                 <option value="20">20s</option>
                 <option value="30">30s</option>
               </select>
-              <button class="btn-ausculta" (click)="solicitarAusculta()" [disabled]="isCapturingAusculta" [title]="'Captura ' + auscultaDuration + 's de audio'">
-                @if (isCapturingAusculta) {
-                  <span class="spinner-small"></span> Gravando...
+              <button class="btn-ausculta" (click)="solicitarAusculta()" [disabled]="isCapturingAusculta || auscultaCountdown > 0" [title]="'Captura ' + auscultaDuration + 's de audio'">
+                @if (auscultaCountdown > 0) {
+                  <span class="countdown">{{ auscultaCountdown }}</span> Prepare...
+                } @else if (isCapturingAusculta) {
+                  <span class="live-level" [class.low]="auscultaLiveLevel < 5" [class.good]="auscultaLiveLevel >= 5">{{ auscultaLiveLevel }}%</span> {{ auscultaProgress }}%
                 } @else {
                   Capturar
                 }
@@ -730,6 +732,36 @@ import { environment } from '@env/environment';
           50% { opacity: 0.6; }
         }
         
+        .countdown {
+          font-size: 16px;
+          font-weight: bold;
+          color: #fbbf24;
+          animation: pulse 0.5s ease-in-out infinite;
+        }
+        
+        .live-level {
+          font-size: 11px;
+          font-weight: bold;
+          padding: 2px 4px;
+          border-radius: 3px;
+          
+          &.low {
+            background: #dc2626;
+            color: white;
+            animation: blink 0.3s ease-in-out infinite;
+          }
+          
+          &.good {
+            background: #22c55e;
+            color: white;
+          }
+        }
+        
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+        
         .btn-nova-captura {
           width: 24px;
           height: 24px;
@@ -1046,6 +1078,12 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   selectedMicrophoneName = '';
   isTestingMic = false;  // Indica se está testando microfone
   micTestLevel = 0;  // Nível de áudio durante teste (0-100)
+  
+  // Feedback em tempo real durante captura
+  auscultaCountdown = 0;  // Countdown antes de iniciar (3, 2, 1)
+  auscultaProgress = 0;  // Progresso da gravação (0-100%)
+  auscultaLiveLevel = 0;  // Nível de áudio em tempo real durante gravação
+  auscultaMaxLevel = 0;  // Maior nível detectado durante gravação
 
   // Web Bluetooth
   bluetoothAvailable = false;
@@ -1673,9 +1711,22 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       return;
     }
 
+    // Countdown 3-2-1 antes de iniciar
+    this.auscultaCountdown = 3;
+    this.auscultaMaxLevel = 0;
+    this.showDeviceToast('⏱️', 'Preparar', 'Posicione o estetoscópio...', 'info');
+    
+    for (let i = 3; i > 0; i--) {
+      this.auscultaCountdown = i;
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    this.auscultaCountdown = 0;
+
     this.isCapturingAusculta = true;
+    this.auscultaProgress = 0;
+    this.auscultaLiveLevel = 0;
     console.log(`[VitalsBar] Iniciando captura de ausculta do microfone (${duration}s)...`);
-    this.showDeviceToast('🎤', 'Ausculta', `Prepare o estetoscópio - gravando ${duration}s...`, 'info');
+    this.showDeviceToast('🔴', 'GRAVANDO', `Mantenha o estetoscópio posicionado...`, 'warning');
 
     try {
       // 1. Solicita acesso ao microfone (usa selecionado ou padrão)
@@ -1713,11 +1764,20 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
         audioChunks.push(new Float32Array(inputData));
         samplesCollected += inputData.length;
 
-        // Atualiza progresso
-        const progress = Math.min(100, Math.round((samplesCollected / targetSamples) * 100));
-        if (progress % 20 === 0) {
-          console.log(`[VitalsBar] Capturando... ${progress}%`);
+        // Calcula nível de áudio em tempo real (RMS)
+        let sum = 0;
+        for (let i = 0; i < inputData.length; i++) {
+          sum += inputData[i] * inputData[i];
         }
+        const rms = Math.sqrt(sum / inputData.length);
+        const level = Math.min(100, Math.round(rms * 500)); // Escala para 0-100
+        this.auscultaLiveLevel = level;
+        if (level > this.auscultaMaxLevel) {
+          this.auscultaMaxLevel = level;
+        }
+
+        // Atualiza progresso
+        this.auscultaProgress = Math.min(100, Math.round((samplesCollected / targetSamples) * 100));
       };
 
       source.connect(processor);
@@ -1732,8 +1792,15 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       stream.getTracks().forEach(track => track.stop());
       await audioContext.close();
 
-      console.log(`[VitalsBar] Captura concluída. Processando ${audioChunks.length} chunks...`);
-      this.showDeviceToast('⏳', 'Processando', 'Enviando áudio...', 'info');
+      console.log(`[VitalsBar] Captura concluída. Processando ${audioChunks.length} chunks... Max level: ${this.auscultaMaxLevel}%`);
+      
+      // Verifica qualidade da captura
+      if (this.auscultaMaxLevel < 5) {
+        this.showDeviceToast('⚠️', 'Nível Baixo', 'Estetoscópio mal posicionado? Tente novamente.', 'warning');
+        console.warn('[VitalsBar] Gravação com nível muito baixo - possível problema de posicionamento');
+      } else {
+        this.showDeviceToast('⏳', 'Processando', `Nível máx: ${this.auscultaMaxLevel}% - Enviando...`, 'info');
+      }
 
       // 5. Combina chunks em um único array
       const totalSamples = audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
@@ -1925,14 +1992,14 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
    */
   async testarMicrofone(): Promise<void> {
     if (this.isTestingMic) return;
-    
+
     this.isTestingMic = true;
     this.micTestLevel = 0;
-    
+
     const micName = this.selectedMicrophoneName || this.currentBrowserMicrophone;
     console.log(`[VitalsBar] Testando microfone: ${micName}`);
     this.showDeviceToast('🎤', 'Testando Microfone', `${micName} - Fale ou faça som...`, 'info');
-    
+
     try {
       // Configura constraints do microfone
       const audioConstraints: MediaTrackConstraints = {
@@ -1940,34 +2007,34 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
         noiseSuppression: false,
         autoGainControl: false
       };
-      
+
       if (this.selectedMicrophoneId) {
         audioConstraints.deviceId = { exact: this.selectedMicrophoneId };
       }
-      
+
       // Obtém stream do microfone
       const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
-      
+
       // Cria analisador de áudio
       const audioContext = new AudioContext();
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
       source.connect(analyser);
-      
+
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      
+
       // Monitora nível de áudio por 3 segundos
       const startTime = Date.now();
       const testDuration = 3000; // 3 segundos
-      
+
       const updateLevel = () => {
         if (Date.now() - startTime >= testDuration) {
           // Finaliza teste
           stream.getTracks().forEach(track => track.stop());
           audioContext.close();
           this.isTestingMic = false;
-          
+
           if (this.micTestLevel > 10) {
             this.showDeviceToast('✅', 'Microfone OK', `${micName} está funcionando!`, 'success');
           } else {
@@ -1975,7 +2042,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
           }
           return;
         }
-        
+
         // Calcula nível de áudio (RMS)
         analyser.getByteFrequencyData(dataArray);
         let sum = 0;
@@ -1984,17 +2051,17 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
         }
         const rms = Math.sqrt(sum / dataArray.length);
         const level = Math.min(100, Math.round((rms / 128) * 100));
-        
+
         // Mantém o maior nível detectado
         if (level > this.micTestLevel) {
           this.micTestLevel = level;
         }
-        
+
         requestAnimationFrame(updateLevel);
       };
-      
+
       updateLevel();
-      
+
     } catch (error: any) {
       console.error('[VitalsBar] Erro ao testar microfone:', error);
       this.showDeviceToast('❌', 'Erro', error.message || 'Falha ao acessar microfone', 'warning');
