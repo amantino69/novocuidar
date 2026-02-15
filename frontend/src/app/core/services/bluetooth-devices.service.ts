@@ -150,10 +150,131 @@ export class BluetoothDevicesService {
 
   /**
    * Conecta a uma balança (suporta MIBFS/Xiaomi e balanças genéricas)
-   * Usa acceptAllDevices para mostrar TODOS os dispositivos BLE próximos
+   * Primeiro tenta scan de advertisement (para OKOK), depois conexão GATT
    */
   async connectScale(): Promise<BluetoothDevice | null> {
+    // Tenta primeiro o modo scan (para balanças broadcast como OKOK)
+    const scanResult = await this.tryScaleAdvertisementScan();
+    if (scanResult) {
+      return scanResult;
+    }
+    // Fallback para conexão GATT tradicional
     return this.connectScaleAny();
+  }
+
+  /**
+   * Tenta ler peso via Advertisement Scan (API experimental)
+   * Funciona para balanças OKOK que transmitem por broadcast
+   */
+  private async tryScaleAdvertisementScan(): Promise<BluetoothDevice | null> {
+    // Verifica se a API experimental está disponível
+    if (!(navigator as any).bluetooth?.requestLEScan) {
+      this.log('requestLEScan não disponível - usando GATT', 'info');
+      return null;
+    }
+
+    try {
+      this.log('Tentando modo SCAN (broadcast)...', 'info');
+      this.log('SUBA NA BALANÇA AGORA!', 'warning');
+
+      const scan = await (navigator as any).bluetooth.requestLEScan({
+        acceptAllAdvertisements: true
+      });
+
+      this.log('Scan iniciado - aguardando 15s...', 'info');
+
+      return new Promise((resolve) => {
+        let found = false;
+        const timeout = setTimeout(() => {
+          scan.stop();
+          if (!found) {
+            this.log('Timeout scan - nenhum peso detectado', 'warning');
+            resolve(null);
+          }
+        }, 15000);
+
+        (navigator as any).bluetooth.addEventListener('advertisementreceived', (event: any) => {
+          const name = event.device?.name || '';
+          const data = event.manufacturerData || event.serviceData;
+
+          // Log todos os advertisements para debug
+          if (name.toLowerCase().includes('okok') || name.toLowerCase().includes('scale')) {
+            this.log(`Adv: ${name}`, 'info');
+          }
+
+          // Tenta extrair peso dos dados de manufacturer/service
+          if (data) {
+            for (const [key, value] of data.entries()) {
+              const bytes = new Uint8Array(value.buffer);
+              this.log(`Dados adv: [${Array.from(bytes).join(',')}]`, 'data');
+
+              // Tenta interpretar como peso
+              const peso = this.tryParseWeightFromBytes(bytes);
+              if (peso !== null && peso > 2 && peso < 300) {
+                this.log(`>>> PESO (broadcast): ${peso.toFixed(1)} kg`, 'data');
+                found = true;
+                clearTimeout(timeout);
+                scan.stop();
+
+                // Emite leitura
+                this._readings$.next({
+                  deviceId: 'scan-broadcast',
+                  deviceType: 'scale',
+                  timestamp: new Date(),
+                  values: { weight: parseFloat(peso.toFixed(1)) }
+                });
+
+                // Cria dispositivo virtual
+                const bleDevice: BluetoothDevice = {
+                  id: 'scan-broadcast',
+                  name: name || 'Balança (broadcast)',
+                  type: 'scale',
+                  connected: true
+                };
+                this.devices.set('scan-broadcast', bleDevice);
+                this._devices$.next(Array.from(this.devices.values()));
+
+                resolve(bleDevice);
+              }
+            }
+          }
+        });
+      });
+
+    } catch (error: any) {
+      this.log(`Scan falhou: ${error.message}`, 'warning');
+      return null;
+    }
+  }
+
+  /**
+   * Tenta interpretar array de bytes como peso
+   */
+  private tryParseWeightFromBytes(bytes: Uint8Array): number | null {
+    const len = bytes.length;
+    if (len < 2) return null;
+
+    // Formato OKOK: geralmente bytes no meio contém peso
+    // Tenta várias posições e divisores
+    const positions = [
+      { start: 0, divisor: 100 },
+      { start: 0, divisor: 10 },
+      { start: 2, divisor: 100 },
+      { start: 2, divisor: 10 },
+      { start: 4, divisor: 100 },
+      { start: 4, divisor: 10 },
+    ];
+
+    for (const { start, divisor } of positions) {
+      if (start + 1 < len) {
+        const peso = (bytes[start] | (bytes[start + 1] << 8)) / divisor;
+        if (peso > 2 && peso < 300) {
+          return peso;
+        }
+      }
+    }
+
+    return null;
   }
 
   /**
