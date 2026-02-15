@@ -8,7 +8,7 @@ Captura sinais BLE dos dispositivos médicos e envia para o servidor.
 
 REQUISITOS:
 - Termux instalado pelo F-Droid (NÃO usar Play Store!)
-- Python 3.10+ 
+- Python 3.8+ 
 - Permissões: Bluetooth, Localização, Internet
 
 INSTALAÇÃO (no Termux):
@@ -21,6 +21,8 @@ USO:
   python tablet_gateway.py --local      # Homologação local
   python tablet_gateway.py --test       # Modo teste (simula dispositivos)
 """
+
+from __future__ import annotations  # Compatibilidade Python 3.8+
 
 import asyncio
 import argparse
