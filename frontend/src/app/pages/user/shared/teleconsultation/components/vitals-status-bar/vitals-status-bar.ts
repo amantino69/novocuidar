@@ -2398,6 +2398,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
   /**
    * Conecta ao monitor de pressão via Web Bluetooth
+   * Usa reconexão rápida se já pareou anteriormente (evita picker de 2 minutos)
    */
   async conectarPressao(): Promise<void> {
     if (!this.bluetoothAvailable) {
@@ -2408,8 +2409,15 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     this.isConnectingBle = true;
     this.connectingDevice = 'pressure';
 
+    // Verifica se já conhece o dispositivo (pareado antes)
+    const knownName = this.bluetoothService.getKnownDeviceName('blood_pressure');
+    if (knownName) {
+      this.showDeviceToast('🔄', 'Reconectando...', knownName, 'info');
+    }
+
     try {
-      const device = await this.bluetoothService.connectBloodPressure();
+      // Usa connectOrReconnect que tenta reconexão rápida primeiro
+      const device = await this.bluetoothService.connectOrReconnect('blood_pressure');
       if (device) {
         this.showDeviceToast('💓', 'Omron conectado', 'Aguarde a medição...', 'success');
 
@@ -2438,6 +2446,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
 
   /**
    * Conecta à balança via Web Bluetooth
+   * Usa reconexão rápida se já pareou anteriormente (evita picker de 2 minutos)
    */
   async conectarBalanca(): Promise<void> {
     if (!this.bluetoothAvailable) {
@@ -2448,8 +2457,15 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     this.isConnectingBle = true;
     this.connectingDevice = 'scale';
 
+    // Verifica se já conhece o dispositivo (pareado antes)
+    const knownName = this.bluetoothService.getKnownDeviceName('scale');
+    if (knownName) {
+      this.showDeviceToast('🔄', 'Reconectando...', knownName, 'info');
+    }
+
     try {
-      const device = await this.bluetoothService.connectScale();
+      // Usa connectOrReconnect que tenta reconexão rápida primeiro
+      const device = await this.bluetoothService.connectOrReconnect('scale');
       if (device) {
         this.showDeviceToast('⚖️', 'Balança conectada', 'Suba na balança...', 'success');
 
@@ -2478,6 +2494,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   /**
    * Conecta ao estetoscópio Littmann CORE / Eko via Web Bluetooth
    * Descobre os serviços disponíveis e prepara para captura de áudio
+   * Tenta reconectar se já pareado anteriormente
    */
   async conectarEko(): Promise<void> {
     if (!this.bluetoothAvailable) {
@@ -2485,8 +2502,34 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       return;
     }
 
+    // Se já está conectado, mostra mensagem e retorna
+    if (this.bluetoothService.isDeviceConnected('stethoscope')) {
+      this.showDeviceToast('✅', 'Já conectado', 'Littmann CORE pronto', 'success');
+      return;
+    }
+
     this.isConnectingBle = true;
     this.connectingDevice = 'stethoscope';
+
+    // Verifica se já conhece o dispositivo (pareado antes)
+    const knownName = this.bluetoothService.getKnownDeviceName('stethoscope');
+    if (knownName) {
+      this.showDeviceToast('🔄', 'Reconnectando...', knownName, 'info');
+      
+      // Tenta reconexão rápida primeiro
+      try {
+        const device = await this.bluetoothService.reconnect('stethoscope');
+        if (device) {
+          this.ekoConnected = true;
+          this.showDeviceToast('🩺', 'Littmann CORE Reconectado', device.name, 'success');
+          this.isConnectingBle = false;
+          this.connectingDevice = null;
+          return;
+        }
+      } catch (e) {
+        console.log('[VitalsBar] Reconexão Eko falhou, abrindo picker...');
+      }
+    }
 
     try {
       const result = await this.bluetoothService.connectStethoscope();

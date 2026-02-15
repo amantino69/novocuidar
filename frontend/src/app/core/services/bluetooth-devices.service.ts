@@ -90,6 +90,10 @@ export class BluetoothDevicesService {
   private isBrowser: boolean;
   private devices = new Map<string, BluetoothDevice>();
   private gattServers = new Map<string, BluetoothRemoteGATTServer>();
+  // Guarda referência aos dispositivos Web Bluetooth originais para reconexão
+  private webBluetoothDevices = new Map<string, any>();
+  // Mapeia tipo -> deviceId para encontrar dispositivo por tipo
+  private deviceByType = new Map<DeviceType, string>();
 
   // Estado reativo
   private _devices$ = new BehaviorSubject<BluetoothDevice[]>([]);
@@ -184,6 +188,9 @@ export class BluetoothDevicesService {
       const server = await device.gatt.connect();
 
       this.gattServers.set(deviceId, server);
+      // Guarda device original para reconexão
+      this.webBluetoothDevices.set(deviceId, device);
+      this.deviceByType.set('scale', deviceId);
 
       const bleDevice: BluetoothDevice = {
         id: deviceId,
@@ -263,6 +270,9 @@ export class BluetoothDevicesService {
       const server = await device.gatt.connect();
 
       this.gattServers.set(deviceId, server);
+      // Guarda device original para reconexão
+      this.webBluetoothDevices.set(deviceId, device);
+      this.deviceByType.set('blood_pressure', deviceId);
 
       const bleDevice: BluetoothDevice = {
         id: deviceId,
@@ -344,6 +354,9 @@ export class BluetoothDevicesService {
       const server = await device.gatt.connect();
 
       this.gattServers.set(deviceId, server);
+      // Guarda device original para reconexão
+      this.webBluetoothDevices.set(deviceId, device);
+      this.deviceByType.set('stethoscope', deviceId);
 
       // Enumera todos os serviços disponíveis para descoberta
       console.log('[BluetoothDevices] Enumerando serviços do Littmann CORE...');
@@ -478,6 +491,9 @@ export class BluetoothDevicesService {
       const server = await device.gatt.connect();
 
       this.gattServers.set(deviceId, server);
+      // Guarda device original para reconexão
+      this.webBluetoothDevices.set(deviceId, device);
+      this.deviceByType.set(type, deviceId);
 
       // Cria o registro do dispositivo
       const bleDevice: BluetoothDevice = {
@@ -992,6 +1008,141 @@ export class BluetoothDevicesService {
     this.gattServers.forEach((server, deviceId) => {
       this.disconnect(deviceId);
     });
+  }
+
+  /**
+   * Verifica se já temos um dispositivo conhecido de um tipo específico  
+   * (pareado anteriormente nesta sessão)
+   */
+  hasKnownDevice(type: DeviceType): boolean {
+    const deviceId = this.deviceByType.get(type);
+    return !!deviceId && this.webBluetoothDevices.has(deviceId);
+  }
+
+  /**
+   * Verifica se um dispositivo específico está conectado
+   */
+  isDeviceConnected(type: DeviceType): boolean {
+    const deviceId = this.deviceByType.get(type);
+    if (!deviceId) return false;
+    const device = this.devices.get(deviceId);
+    return device?.connected ?? false;
+  }
+
+  /**
+   * Obtém nome do dispositivo conhecido de um tipo
+   */
+  getKnownDeviceName(type: DeviceType): string | null {
+    const deviceId = this.deviceByType.get(type);
+    if (!deviceId) return null;
+    const device = this.devices.get(deviceId);
+    return device?.name ?? null;
+  }
+
+  /**
+   * Reconecta a um dispositivo já conhecido (sem picker do navegador)
+   * Retorna true se reconectou com sucesso
+   */
+  async reconnect(type: DeviceType): Promise<BluetoothDevice | null> {
+    const deviceId = this.deviceByType.get(type);
+    if (!deviceId) {
+      console.log(`[BluetoothDevices] Nenhum dispositivo ${type} conhecido`);
+      return null;
+    }
+
+    const webDevice = this.webBluetoothDevices.get(deviceId);
+    if (!webDevice) {
+      console.log(`[BluetoothDevices] Dispositivo Web Bluetooth ${type} não encontrado na memória`);
+      return null;
+    }
+
+    // Se já está conectado, retorna o dispositivo
+    const existingServer = this.gattServers.get(deviceId);
+    if (existingServer?.connected) {
+      console.log(`[BluetoothDevices] ${type} já está conectado`);
+      const existingDevice = this.devices.get(deviceId);
+      return existingDevice ?? null;
+    }
+
+    try {
+      this._connectionStatus$.next({ deviceId, status: 'connecting' });
+      console.log(`[BluetoothDevices] Reconectando a ${webDevice.name}...`);
+
+      // Reconecta sem abrir picker
+      const server = await webDevice.gatt.connect();
+      this.gattServers.set(deviceId, server);
+
+      // Atualiza estado do dispositivo
+      const bleDevice = this.devices.get(deviceId);
+      if (bleDevice) {
+        bleDevice.connected = true;
+        bleDevice.batteryLevel = await this.readBatteryLevel(server);
+        this.devices.set(deviceId, bleDevice);
+        this._devices$.next(Array.from(this.devices.values()));
+      }
+
+      this._connectionStatus$.next({ deviceId, status: 'connected' });
+
+      // Reinicia leituras
+      await this.startReadings(server, type, deviceId);
+
+      console.log(`[BluetoothDevices] ${webDevice.name} reconectado com sucesso!`);
+      return bleDevice ?? null;
+
+    } catch (error: any) {
+      console.error(`[BluetoothDevices] Erro ao reconectar ${type}:`, error);
+      this._connectionStatus$.next({
+        deviceId,
+        status: 'error',
+        message: error.message
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Conecta ou reconecta automaticamente a um tipo de dispositivo
+   * Usa reconexão rápida se já conhece o dispositivo
+   */
+  async connectOrReconnect(type: DeviceType): Promise<BluetoothDevice | null> {
+    // Se já conhece e está conectado, só retorna 
+    if (this.isDeviceConnected(type)) {
+      const deviceId = this.deviceByType.get(type);
+      if (deviceId) {
+        const device = this.devices.get(deviceId);
+        console.log(`[BluetoothDevices] ${type} já conectado: ${device?.name}`);
+        return device ?? null;
+      }
+    }
+
+    // Se conhece mas desconectado, tenta reconectar 
+    if (this.hasKnownDevice(type)) {
+      console.log(`[BluetoothDevices] Tentando reconectar ${type}...`);
+      const reconnected = await this.reconnect(type);
+      if (reconnected) {
+        return reconnected;
+      }
+      // Falhou reconexão, vai pedir novo pareamento
+      console.log(`[BluetoothDevices] Reconexão falhou, solicitando novo pareamento`);
+    }
+
+    // Não conhece ou reconexão falhou - abre picker
+    switch (type) {
+      case 'scale':
+        return this.connectScale();
+      case 'blood_pressure':
+        return this.connectBloodPressure();
+      case 'stethoscope':
+        const result = await this.connectStethoscope();
+        return result.device;
+      case 'thermometer':
+        return this.connectThermometer();
+      case 'oximeter':
+        return this.connectOximeter();
+      default:
+        console.error(`[BluetoothDevices] Tipo desconhecido: ${type}`);
+        return null;
+    }
   }
 
   /**
