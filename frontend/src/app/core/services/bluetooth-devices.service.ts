@@ -141,13 +141,97 @@ export class BluetoothDevicesService {
 
   /**
    * Conecta a uma balança (suporta MIBFS/Xiaomi e balanças genéricas)
+   * Usa acceptAllDevices para mostrar TODOS os dispositivos BLE próximos
    */
   async connectScale(): Promise<BluetoothDevice | null> {
-    return this.connectScaleMIBFS();
+    return this.connectScaleAny();
   }
 
   /**
-   * Conecta especificamente à balança OKOK ou Xiaomi MIBFS
+   * Conecta a qualquer balança BLE - mostra todos dispositivos para seleção manual
+   * Resolve problema de balanças com nomes não-padrão no Android
+   */
+  async connectScaleAny(): Promise<BluetoothDevice | null> {
+    if (!this.isBluetoothAvailable()) {
+      console.error('[BluetoothDevices] Web Bluetooth não disponível');
+      return null;
+    }
+
+    try {
+      console.log('[BluetoothDevices] Buscando balança (modo: todos dispositivos)...');
+
+      // acceptAllDevices: true mostra TODOS os dispositivos BLE próximos
+      const device = await (navigator as any).bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: [
+          GATT_SERVICES.BODY_COMPOSITION,
+          GATT_SERVICES.WEIGHT_SCALE,
+          GATT_SERVICES.BATTERY,
+          GATT_SERVICES.DEVICE_INFO,
+          // UUIDs genéricos para balanças chinesas
+          '0000fff0-0000-1000-8000-00805f9b34fb',
+          '0000ffe0-0000-1000-8000-00805f9b34fb',
+        ]
+      });
+
+      if (!device) {
+        console.log('[BluetoothDevices] Nenhum dispositivo selecionado');
+        return null;
+      }
+
+      const deviceId = device.id;
+      this._connectionStatus$.next({ deviceId, status: 'connecting' });
+
+      console.log(`[BluetoothDevices] Conectando a ${device.name}...`);
+      const server = await device.gatt.connect();
+
+      this.gattServers.set(deviceId, server);
+      // Guarda device original para reconexão
+      this.webBluetoothDevices.set(deviceId, device);
+      this.deviceByType.set('scale', deviceId);
+
+      const bleDevice: BluetoothDevice = {
+        id: deviceId,
+        name: device.name || 'Balança',
+        type: 'scale',
+        connected: true,
+        batteryLevel: await this.readBatteryLevel(server)
+      };
+
+      this.devices.set(deviceId, bleDevice);
+      this._devices$.next(Array.from(this.devices.values()));
+      this._connectionStatus$.next({ deviceId, status: 'connected' });
+
+      device.addEventListener('gattserverdisconnected', () => {
+        this.ngZone.run(() => {
+          this.handleDisconnection(deviceId);
+        });
+      });
+
+      // Tenta iniciar leitura (pode falhar se balança não usar protocolo padrão)
+      try {
+        await this.startMIBFSReadings(server, deviceId);
+      } catch (e) {
+        console.warn('[BluetoothDevices] Balança não usa protocolo MIBFS, tentando genérico...');
+        await this.startGenericScaleReadings(server, deviceId);
+      }
+
+      console.log(`[BluetoothDevices] ${device.name} conectado com sucesso!`);
+      return bleDevice;
+
+    } catch (error: any) {
+      console.error('[BluetoothDevices] Erro ao conectar balança:', error);
+      this._connectionStatus$.next({
+        deviceId: 'unknown',
+        status: 'error',
+        message: error.message
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Conecta especificamente à balança OKOK ou Xiaomi MIBFS (filtros específicos)
    */
   async connectScaleMIBFS(): Promise<BluetoothDevice | null> {
     if (!this.isBluetoothAvailable()) {
@@ -773,6 +857,121 @@ export class BluetoothDevicesService {
       console.log('[BluetoothDevices] Tentando fallback para Weight Scale genérico...');
       await this.startScaleReadings(server, deviceId);
     }
+  }
+
+  /**
+   * Leituras genéricas para balanças que não usam protocolo MIBFS
+   * Tenta descobrir serviços disponíveis e ler peso
+   */
+  private async startGenericScaleReadings(server: BluetoothRemoteGATTServer, deviceId: string): Promise<void> {
+    try {
+      console.log('[BluetoothDevices] Iniciando leituras genéricas de balança...');
+
+      // Enumera todos os serviços disponíveis
+      const services = await server.getPrimaryServices();
+      console.log('[BluetoothDevices] Serviços encontrados:', services.map(s => s.uuid).join(', '));
+
+      for (const service of services) {
+        console.log(`[BluetoothDevices] Analisando serviço: ${service.uuid}`);
+
+        try {
+          const characteristics = await service.getCharacteristics();
+
+          for (const char of characteristics) {
+            console.log(`[BluetoothDevices]   Característica: ${char.uuid}, notify: ${char.properties.notify}, read: ${char.properties.read}`);
+
+            // Se suporta notificações, ativa
+            if (char.properties.notify) {
+              try {
+                await char.startNotifications();
+                console.log(`[BluetoothDevices]   -> Notificações ativadas para ${char.uuid}`);
+
+                char.addEventListener('characteristicvaluechanged', (event: Event) => {
+                  const target = event.target as unknown as BluetoothRemoteGATTCharacteristic;
+                  const value = target.value!;
+
+                  this.ngZone.run(() => {
+                    const bytes = Array.from(new Uint8Array(value.buffer));
+                    console.log(`[BluetoothDevices] Dados recebidos de ${char.uuid}:`, bytes.join(', '));
+
+                    // Tenta interpretar como peso (diversos formatos comuns)
+                    const peso = this.tryParseWeight(value);
+                    if (peso !== null && peso > 2 && peso < 300) {
+                      console.log(`[BluetoothDevices] PESO DETECTADO: ${peso.toFixed(1)} kg`);
+
+                      this._readings$.next({
+                        deviceId,
+                        deviceType: 'scale',
+                        timestamp: new Date(),
+                        values: { weight: parseFloat(peso.toFixed(1)) }
+                      });
+
+                      this.updateDeviceLastReading(deviceId);
+                    }
+                  });
+                });
+              } catch (e) {
+                console.log(`[BluetoothDevices]   -> Falha ao ativar notificações: ${e}`);
+              }
+            }
+          }
+        } catch (e) {
+          console.log(`[BluetoothDevices] Erro ao enumerar características de ${service.uuid}:`, e);
+        }
+      }
+
+      console.log('[BluetoothDevices] Listeners genéricos registrados. SUBA NA BALANÇA!');
+
+    } catch (error) {
+      console.error('[BluetoothDevices] Erro ao iniciar leituras genéricas:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Tenta interpretar um DataView como valor de peso
+   * Suporta diversos formatos comuns de balanças chinesas
+   */
+  private tryParseWeight(value: DataView): number | null {
+    const len = value.byteLength;
+
+    // Formato 1: MIBFS/Xiaomi - peso em bytes 2-3 (little endian, /200)
+    if (len >= 4) {
+      const peso1 = value.getUint16(2, true) / 200;
+      if (peso1 > 2 && peso1 < 300) {
+        console.log(`[BluetoothDevices] Formato MIBFS detectado: ${peso1.toFixed(1)} kg`);
+        return peso1;
+      }
+    }
+
+    // Formato 2: Weight Scale Service - peso em bytes 1-2 (little endian, /200)
+    if (len >= 3) {
+      const peso2 = value.getUint16(1, true) / 200;
+      if (peso2 > 2 && peso2 < 300) {
+        console.log(`[BluetoothDevices] Formato WSS detectado: ${peso2.toFixed(1)} kg`);
+        return peso2;
+      }
+    }
+
+    // Formato 3: Balanças simples - peso em bytes 0-1 (little endian, /100)
+    if (len >= 2) {
+      const peso3 = value.getUint16(0, true) / 100;
+      if (peso3 > 2 && peso3 < 300) {
+        console.log(`[BluetoothDevices] Formato simples /100 detectado: ${peso3.toFixed(1)} kg`);
+        return peso3;
+      }
+    }
+
+    // Formato 4: Balanças simples - peso em bytes 0-1 (little endian, /10)
+    if (len >= 2) {
+      const peso4 = value.getUint16(0, true) / 10;
+      if (peso4 > 2 && peso4 < 300) {
+        console.log(`[BluetoothDevices] Formato simples /10 detectado: ${peso4.toFixed(1)} kg`);
+        return peso4;
+      }
+    }
+
+    return null;
   }
 
   /**

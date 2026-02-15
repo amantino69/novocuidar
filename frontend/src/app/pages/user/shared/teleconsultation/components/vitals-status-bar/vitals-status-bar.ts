@@ -2515,7 +2515,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     const knownName = this.bluetoothService.getKnownDeviceName('stethoscope');
     if (knownName) {
       this.showDeviceToast('🔄', 'Reconnectando...', knownName, 'info');
-      
+
       // Tenta reconexão rápida primeiro
       try {
         const device = await this.bluetoothService.reconnect('stethoscope');
