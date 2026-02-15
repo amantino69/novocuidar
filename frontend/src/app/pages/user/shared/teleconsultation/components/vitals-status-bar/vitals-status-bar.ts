@@ -259,6 +259,12 @@ import { environment } from '@env/environment';
             {{ captureMessage }}
           </span>
           
+          <!-- Botão DEBUG BLE (Android) -->
+          <button *ngIf="!isProfessional" class="btn-debug" (click)="toggleBleDebug()" 
+                  [class.active]="showBleDebug" title="Ver logs BLE">
+            🔧
+          </button>
+          
           <!-- Botão de ajuda - abre guia de dispositivos -->
           <button *ngIf="!isProfessional && !showDeviceGuide" class="btn-help" (click)="showDeviceGuide = true" title="Como usar os dispositivos">
             ❓
@@ -279,6 +285,24 @@ import { environment } from '@env/environment';
         <div class="toast-content">
           <strong>{{ deviceToast.title }}</strong>
           <span>{{ deviceToast.message }}</span>
+        </div>
+      </div>
+      
+      <!-- PAINEL DEBUG BLE (para Android sem F12) -->
+      <div class="ble-debug-panel" *ngIf="showBleDebug">
+        <div class="debug-header">
+          <span>🔧 Debug BLE</span>
+          <button (click)="clearBleDebug()">Limpar</button>
+          <button (click)="showBleDebug = false">✕</button>
+        </div>
+        <div class="debug-logs">
+          <div *ngFor="let log of bleDebugLogs" class="debug-line" [class]="log.type">
+            <span class="time">{{ log.time }}</span>
+            <span class="msg">{{ log.msg }}</span>
+          </div>
+          <div *ngIf="bleDebugLogs.length === 0" class="debug-empty">
+            Aguardando dados BLE...
+          </div>
         </div>
       </div>
     </div>
@@ -532,6 +556,105 @@ import { environment } from '@env/environment';
       &:hover {
         background: #3b82f6;
         transform: scale(1.1);
+      }
+    }
+    
+    /* Botão DEBUG BLE */
+    .btn-debug {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #f59e0b;
+      border-radius: 50%;
+      background: rgba(245, 158, 11, 0.2);
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      
+      &:hover, &.active {
+        background: #f59e0b;
+        transform: scale(1.1);
+      }
+    }
+    
+    /* Painel Debug BLE (console visual para Android) */
+    .ble-debug-panel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      max-height: 40vh;
+      background: #1a1a2e;
+      border-top: 3px solid #f59e0b;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      font-family: monospace;
+      font-size: 12px;
+      
+      .debug-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 12px;
+        background: #16213e;
+        border-bottom: 1px solid #f59e0b;
+        
+        span {
+          flex: 1;
+          color: #f59e0b;
+          font-weight: bold;
+        }
+        
+        button {
+          padding: 4px 12px;
+          border: 1px solid #555;
+          border-radius: 4px;
+          background: #2a2a4a;
+          color: #fff;
+          cursor: pointer;
+          
+          &:hover {
+            background: #3a3a5a;
+          }
+        }
+      }
+      
+      .debug-logs {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+        
+        .debug-line {
+          display: flex;
+          gap: 8px;
+          padding: 3px 6px;
+          border-bottom: 1px solid #333;
+          
+          .time {
+            color: #888;
+            min-width: 70px;
+          }
+          
+          .msg {
+            color: #ddd;
+            word-break: break-all;
+          }
+          
+          &.info .msg { color: #60a5fa; }
+          &.success .msg { color: #34d399; }
+          &.warning .msg { color: #fbbf24; }
+          &.error .msg { color: #f87171; }
+          &.data .msg { color: #a78bfa; font-weight: bold; }
+        }
+        
+        .debug-empty {
+          color: #666;
+          text-align: center;
+          padding: 20px;
+        }
       }
     }
     
@@ -1150,6 +1273,10 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   showDeviceGuide = true; // Guia de uso dos dispositivos (visível inicialmente)
   auscultaDuration = 10;  // Duração da captura de ausculta em segundos
 
+  // DEBUG BLE (console visual para Android)
+  showBleDebug = false;
+  bleDebugLogs: { time: string; msg: string; type: 'info' | 'success' | 'warning' | 'error' | 'data' }[] = [];
+
   // Toast de notificação para feedback visual de dispositivos
   deviceToast: { icon: string; title: string; message: string; type: 'success' | 'info' | 'warning' } | null = null;
   private toastTimeout: any = null;
@@ -1240,6 +1367,12 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       }
     );
     this.subscriptions.add(connectionSub);
+
+    // Subscreve aos logs de debug do Bluetooth (para painel visual no Android)
+    const debugSub = this.bluetoothService.debugLog$.subscribe(log => {
+      this.addBleDebug(log.msg, log.type);
+    });
+    this.subscriptions.add(debugSub);
 
     // Carrega biometrics salvos do backend (para refresh da página)
     if (this.appointmentId) {
@@ -2451,27 +2584,35 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   async conectarBalanca(): Promise<void> {
     if (!this.bluetoothAvailable) {
       this.showDeviceToast('⚠️', 'Bluetooth indisponível', 'Use Chrome no tablet Android', 'warning');
+      this.addBleDebug('BLE não disponível neste navegador', 'error');
       return;
     }
 
     this.isConnectingBle = true;
     this.connectingDevice = 'scale';
+    this.addBleDebug('Iniciando conexão com balança...', 'info');
 
     // Verifica se já conhece o dispositivo (pareado antes)
     const knownName = this.bluetoothService.getKnownDeviceName('scale');
     if (knownName) {
       this.showDeviceToast('🔄', 'Reconectando...', knownName, 'info');
+      this.addBleDebug(`Dispositivo conhecido: ${knownName}`, 'info');
     }
 
     try {
       // Usa connectOrReconnect que tenta reconexão rápida primeiro
+      this.addBleDebug('Abrindo picker de dispositivos...', 'info');
       const device = await this.bluetoothService.connectOrReconnect('scale');
+      
       if (device) {
+        this.addBleDebug(`CONECTADO: ${device.name} (${device.id})`, 'success');
         this.showDeviceToast('⚖️', 'Balança conectada', 'Suba na balança...', 'success');
 
         // Subscreve às leituras
+        this.addBleDebug('Aguardando dados da balança...', 'info');
         const sub = this.bluetoothService.readings$.subscribe((reading: VitalReading) => {
           if (reading.deviceType === 'scale') {
+            this.addBleDebug(`>>> PESO: ${reading.values.weight} kg`, 'data');
             this.weight = reading.values.weight ?? null;
             this.calculateIMC();
             this.onVitalChange();
@@ -2480,9 +2621,11 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
         });
         this.subscriptions.add(sub);
       } else {
+        this.addBleDebug('Conexão cancelada pelo usuário', 'warning');
         this.showDeviceToast('❌', 'Conexão cancelada', 'Tente novamente', 'warning');
       }
     } catch (error: any) {
+      this.addBleDebug(`ERRO: ${error.message}`, 'error');
       console.error('[VitalsBar] Erro ao conectar balança:', error);
       this.showDeviceToast('❌', 'Erro de conexão', error.message || 'Falha no Bluetooth', 'warning');
     } finally {
@@ -2562,6 +2705,31 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     } finally {
       this.isConnectingBle = false;
       this.connectingDevice = null;
+    }
+  }
+
+  // ========== DEBUG BLE (Console Visual Android) ==========
+
+  toggleBleDebug(): void {
+    this.showBleDebug = !this.showBleDebug;
+    if (this.showBleDebug) {
+      this.addBleDebug('Painel debug ativado', 'info');
+    }
+  }
+
+  clearBleDebug(): void {
+    this.bleDebugLogs = [];
+  }
+
+  addBleDebug(msg: string, type: 'info' | 'success' | 'warning' | 'error' | 'data' = 'info'): void {
+    const now = new Date();
+    const time = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    this.bleDebugLogs.push({ time, msg, type });
+    
+    // Limita a 100 linhas
+    if (this.bleDebugLogs.length > 100) {
+      this.bleDebugLogs.shift();
     }
   }
 }

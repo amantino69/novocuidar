@@ -105,6 +105,15 @@ export class BluetoothDevicesService {
   private _connectionStatus$ = new BehaviorSubject<{ deviceId: string; status: 'connecting' | 'connected' | 'disconnected' | 'error'; message?: string } | null>(null);
   public connectionStatus$ = this._connectionStatus$.asObservable();
 
+  // DEBUG: Logs para exibição visual (Android sem F12)
+  private _debugLog$ = new Subject<{ msg: string; type: 'info' | 'success' | 'warning' | 'error' | 'data' }>();
+  public debugLog$ = this._debugLog$.asObservable();
+
+  private log(msg: string, type: 'info' | 'success' | 'warning' | 'error' | 'data' = 'info'): void {
+    console.log(`[BLE] ${msg}`);
+    this._debugLog$.next({ msg, type });
+  }
+
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
     private ngZone: NgZone
@@ -153,12 +162,12 @@ export class BluetoothDevicesService {
    */
   async connectScaleAny(): Promise<BluetoothDevice | null> {
     if (!this.isBluetoothAvailable()) {
-      console.error('[BluetoothDevices] Web Bluetooth não disponível');
+      this.log('Web Bluetooth não disponível', 'error');
       return null;
     }
 
     try {
-      console.log('[BluetoothDevices] Buscando balança (modo: todos dispositivos)...');
+      this.log('Buscando balança (todos dispositivos)...', 'info');
 
       // acceptAllDevices: true mostra TODOS os dispositivos BLE próximos
       const device = await (navigator as any).bluetooth.requestDevice({
@@ -175,15 +184,16 @@ export class BluetoothDevicesService {
       });
 
       if (!device) {
-        console.log('[BluetoothDevices] Nenhum dispositivo selecionado');
+        this.log('Nenhum dispositivo selecionado', 'warning');
         return null;
       }
 
       const deviceId = device.id;
       this._connectionStatus$.next({ deviceId, status: 'connecting' });
 
-      console.log(`[BluetoothDevices] Conectando a ${device.name}...`);
+      this.log(`Conectando a ${device.name || deviceId}...`, 'info');
       const server = await device.gatt.connect();
+      this.log('GATT Server conectado!', 'success');
 
       this.gattServers.set(deviceId, server);
       // Guarda device original para reconexão
@@ -210,17 +220,18 @@ export class BluetoothDevicesService {
 
       // Tenta iniciar leitura (pode falhar se balança não usar protocolo padrão)
       try {
+        this.log('Tentando protocolo MIBFS...', 'info');
         await this.startMIBFSReadings(server, deviceId);
       } catch (e) {
-        console.warn('[BluetoothDevices] Balança não usa protocolo MIBFS, tentando genérico...');
+        this.log('MIBFS falhou, tentando genérico...', 'warning');
         await this.startGenericScaleReadings(server, deviceId);
       }
 
-      console.log(`[BluetoothDevices] ${device.name} conectado com sucesso!`);
+      this.log(`${device.name || 'Balança'} conectada! Aguardando peso...`, 'success');
       return bleDevice;
 
     } catch (error: any) {
-      console.error('[BluetoothDevices] Erro ao conectar balança:', error);
+      this.log(`ERRO: ${error.message}`, 'error');
       this._connectionStatus$.next({
         deviceId: 'unknown',
         status: 'error',
@@ -852,9 +863,7 @@ export class BluetoothDevicesService {
       console.log('[BluetoothDevices] MIBFS - Listener registrado. SUBA NA BALANÇA!');
 
     } catch (error) {
-      console.error('[BluetoothDevices] Erro ao iniciar leituras MIBFS:', error);
-      // Fallback para serviço Weight Scale genérico
-      console.log('[BluetoothDevices] Tentando fallback para Weight Scale genérico...');
+      this.log('Erro leituras MIBFS - tentando fallback...', 'warning');
       await this.startScaleReadings(server, deviceId);
     }
   }
@@ -865,26 +874,27 @@ export class BluetoothDevicesService {
    */
   private async startGenericScaleReadings(server: BluetoothRemoteGATTServer, deviceId: string): Promise<void> {
     try {
-      console.log('[BluetoothDevices] Iniciando leituras genéricas de balança...');
+      this.log('Iniciando leituras genéricas...', 'info');
 
       // Enumera todos os serviços disponíveis
       const services = await server.getPrimaryServices();
-      console.log('[BluetoothDevices] Serviços encontrados:', services.map(s => s.uuid).join(', '));
+      this.log(`Serviços: ${services.length} encontrados`, 'info');
 
       for (const service of services) {
-        console.log(`[BluetoothDevices] Analisando serviço: ${service.uuid}`);
+        const shortUuid = service.uuid.substring(0, 8);
+        this.log(`Serviço: ${shortUuid}...`, 'info');
 
         try {
           const characteristics = await service.getCharacteristics();
 
           for (const char of characteristics) {
-            console.log(`[BluetoothDevices]   Característica: ${char.uuid}, notify: ${char.properties.notify}, read: ${char.properties.read}`);
+            const shortCharUuid = char.uuid.substring(0, 8);
 
             // Se suporta notificações, ativa
             if (char.properties.notify) {
               try {
                 await char.startNotifications();
-                console.log(`[BluetoothDevices]   -> Notificações ativadas para ${char.uuid}`);
+                this.log(`Notify ON: ${shortCharUuid}`, 'success');
 
                 char.addEventListener('characteristicvaluechanged', (event: Event) => {
                   const target = event.target as unknown as BluetoothRemoteGATTCharacteristic;
@@ -892,12 +902,12 @@ export class BluetoothDevicesService {
 
                   this.ngZone.run(() => {
                     const bytes = Array.from(new Uint8Array(value.buffer));
-                    console.log(`[BluetoothDevices] Dados recebidos de ${char.uuid}:`, bytes.join(', '));
+                    this.log(`Dados: [${bytes.slice(0,8).join(',')}${bytes.length > 8 ? '...' : ''}]`, 'info');
 
                     // Tenta interpretar como peso (diversos formatos comuns)
                     const peso = this.tryParseWeight(value);
                     if (peso !== null && peso > 2 && peso < 300) {
-                      console.log(`[BluetoothDevices] PESO DETECTADO: ${peso.toFixed(1)} kg`);
+                      this.log(`>>> PESO: ${peso.toFixed(1)} kg`, 'data');
 
                       this._readings$.next({
                         deviceId,
