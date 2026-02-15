@@ -211,7 +211,7 @@ import { environment } from '@env/environment';
   `,
   styles: [`
     .device-connection-panel {
-      padding: 12px;
+      padding: 8px;
       height: 100%;
       overflow-y: auto;
     }
@@ -220,15 +220,18 @@ import { environment } from '@env/environment';
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+      gap: 4px;
 
       .header-left {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
+        flex-wrap: wrap;
         
         .title {
-          font-size: 14px;
+          font-size: 12px;
           font-weight: 600;
           color: var(--text-primary);
         }
@@ -236,13 +239,13 @@ import { environment } from '@env/environment';
         .patient-info-inline {
           display: flex;
           align-items: center;
-          gap: 4px;
-          font-size: 11px;
+          gap: 3px;
+          font-size: 10px;
           color: #0369a1;
           background: #e0f2fe;
-          padding: 2px 8px;
-          border-radius: 10px;
-          margin-left: 6px;
+          padding: 2px 6px;
+          border-radius: 8px;
+          margin-left: 4px;
 
           .sep {
             color: #7dd3fc;
@@ -251,9 +254,9 @@ import { environment } from '@env/environment';
       }
 
       .connection-status {
-        font-size: 10px;
-        padding: 2px 8px;
-        border-radius: 10px;
+        font-size: 9px;
+        padding: 2px 6px;
+        border-radius: 8px;
         background: var(--bg-danger);
         color: var(--text-danger);
 
@@ -265,36 +268,40 @@ import { environment } from '@env/environment';
     }
 
     .description {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--text-secondary);
-      margin: 0 0 10px 0;
+      margin: 0 0 8px 0;
     }
 
     .capture-section {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 12px;
-      padding: 10px;
+      gap: 6px;
+      margin-bottom: 10px;
+      padding: 8px;
       background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
       border: 1px dashed #3b82f6;
-      border-radius: 8px;
+      border-radius: 6px;
     }
 
     .btn-capture {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 8px 14px;
+      gap: 4px;
+      padding: 6px 10px;
       background: linear-gradient(135deg, #3b82f6, #2563eb);
       color: white;
       border: none;
-      border-radius: 6px;
-      font-size: 13px;
+      border-radius: 5px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
       box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+      flex: 1 1 auto;
+      min-width: 100px;
+      justify-content: center;
 
       &:hover:not(:disabled) {
         background: linear-gradient(135deg, #2563eb, #1d4ed8);
@@ -312,17 +319,20 @@ import { environment } from '@env/environment';
     .btn-ausculta {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 8px 14px;
+      gap: 4px;
+      padding: 6px 10px;
       background: linear-gradient(135deg, #ef4444, #dc2626);
       color: white;
       border: none;
-      border-radius: 6px;
-      font-size: 13px;
+      border-radius: 5px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
       box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+      flex: 1 1 auto;
+      min-width: 80px;
+      justify-content: center;
 
       &:hover:not(:disabled) {
         background: linear-gradient(135deg, #dc2626, #b91c1c);
@@ -338,8 +348,11 @@ import { environment } from '@env/environment';
     }
 
     .capture-message {
-      font-size: 12px;
+      font-size: 10px;
       font-weight: 500;
+      width: 100%;
+      text-align: center;
+      margin-top: 4px;
       
       &.success {
         color: #10b981;
@@ -353,28 +366,28 @@ import { environment } from '@env/environment';
     .warning-banner {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 8px;
+      gap: 4px;
+      padding: 6px;
       background: var(--bg-warning);
       color: var(--text-warning);
-      border-radius: 6px;
-      margin-bottom: 10px;
-      font-size: 11px;
+      border-radius: 5px;
+      margin-bottom: 8px;
+      font-size: 10px;
     }
 
     .vitals-form {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
     }
 
     .vital-card {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
+      gap: 8px;
+      padding: 8px 10px;
       background: var(--bg-secondary);
-      border-radius: 10px;
+      border-radius: 8px;
       border: 1px solid var(--border-color);
     }
 
@@ -382,10 +395,10 @@ import { environment } from '@env/environment';
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 36px;
-      height: 36px;
-      min-width: 36px;
-      border-radius: 8px;
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      border-radius: 6px;
       background: var(--bg-tertiary);
 
       &.spo2 { color: #ef4444; }
@@ -396,23 +409,25 @@ import { environment } from '@env/environment';
 
     .vital-fields {
       flex: 1;
+      min-width: 0;
     }
 
     .field-row {
       display: flex;
-      gap: 10px;
+      gap: 6px;
     }
 
     .field-group {
       flex: 1;
+      min-width: 0;
       
       &.full {
-        max-width: 140px;
+        max-width: 120px;
       }
 
       label {
         display: block;
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 500;
         color: var(--text-secondary);
         margin-bottom: 2px;
@@ -425,17 +440,17 @@ import { environment } from '@env/environment';
       align-items: center;
       background: var(--bg-primary);
       border: 1px solid var(--border-color);
-      border-radius: 6px;
+      border-radius: 5px;
       overflow: hidden;
 
       input {
         flex: 1;
         width: 100%;
-        min-width: 50px;
-        padding: 6px 8px;
+        min-width: 40px;
+        padding: 5px 6px;
         border: none;
         background: transparent;
-        font-size: 14px;
+        font-size: 12px;
         font-weight: 600;
         color: var(--text-primary);
         outline: none;
@@ -453,11 +468,12 @@ import { environment } from '@env/environment';
       }
 
       .unit {
-        padding: 8px 12px;
-        font-size: 13px;
+        padding: 5px 8px;
+        font-size: 11px;
         color: var(--text-secondary);
         background: var(--bg-tertiary);
         border-left: 1px solid var(--border-color);
+        white-space: nowrap;
       }
     }
 

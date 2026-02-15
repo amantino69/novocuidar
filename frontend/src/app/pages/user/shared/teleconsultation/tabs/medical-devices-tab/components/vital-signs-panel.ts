@@ -356,31 +356,31 @@ interface VitalDisplay {
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 20px;
+      padding: 16px;
       color: var(--text-secondary);
 
       .waiting-icon {
-        width: 60px;
-        height: 60px;
+        width: 48px;
+        height: 48px;
         display: flex;
         align-items: center;
         justify-content: center;
         background: var(--bg-secondary);
         border-radius: 50%;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
         animation: waiting-pulse 2s infinite;
       }
 
       p {
         margin: 0;
-        font-size: 12px;
+        font-size: 11px;
       }
     }
 
     .vitals-grid.compact {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+      gap: 6px;
       flex: 1;
       align-content: start;
     }
@@ -388,10 +388,10 @@ interface VitalDisplay {
     .vital-card {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
+      gap: 6px;
+      padding: 6px 8px;
       background: var(--bg-secondary);
-      border-radius: 8px;
+      border-radius: 6px;
       position: relative;
       transition: all 0.3s ease;
 
@@ -404,12 +404,13 @@ interface VitalDisplay {
       }
 
       .vital-icon {
-        width: 28px;
-        height: 28px;
+        width: 24px;
+        height: 24px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 6px;
+        border-radius: 5px;
+        flex-shrink: 0;
         
         &.spo2 { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
         &.pulse { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
@@ -424,26 +425,29 @@ interface VitalDisplay {
         flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 1px;
+        gap: 0;
         min-width: 0;
 
         .vital-label {
-          font-size: 9px;
+          font-size: 8px;
           color: var(--text-secondary);
           text-transform: uppercase;
-          letter-spacing: 0.3px;
+          letter-spacing: 0.2px;
           font-weight: 600;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .vital-value {
-          font-size: 18px;
+          font-size: 14px;
           font-weight: 700;
           color: var(--text-primary);
           line-height: 1.1;
           font-variant-numeric: tabular-nums;
 
           small {
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 400;
             margin-left: 1px;
             color: var(--text-tertiary);
@@ -451,7 +455,7 @@ interface VitalDisplay {
         }
 
         .imc-classification {
-          font-size: 9px;
+          font-size: 8px;
           color: var(--text-secondary);
           font-weight: 500;
         }
@@ -459,10 +463,10 @@ interface VitalDisplay {
 
       .vital-indicator {
         position: absolute;
-        top: 6px;
-        right: 6px;
-        width: 8px;
-        height: 8px;
+        top: 4px;
+        right: 4px;
+        width: 6px;
+        height: 6px;
         border-radius: 50%;
 
         &.normal { background: #10b981; }

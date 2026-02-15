@@ -4,31 +4,64 @@
 
 @use './variables' as *;
 
-// Responsive Breakpoints
+// ========================================
+// RESPONSIVE BREAKPOINTS - ESTRATÉGIA:
+// - mobile: smartphones pequenos (até 480px)
+// - mobile-landscape: smartphones horizontais (481px-767px)
+// - tablet: tablets e telas médias (768px-1023px)
+// - desktop: notebooks e desktops (1024px+)
+// ========================================
+
+// Mobile portrait (smartphones pequenos)
 @mixin mobile {
-  @media (min-width: $breakpoint-mobile) and (max-width: #{$breakpoint-tablet - 1px}) {
+  @media (max-width: 480px) {
     @content;
   }
 }
 
+// Mobile landscape (smartphones horizontais)
+@mixin mobile-landscape {
+  @media (min-width: 481px) and (max-width: 767px) {
+    @content;
+  }
+}
+
+// Tablet (tablets verticais e horizontais)
 @mixin tablet {
-  @media (min-width: $breakpoint-tablet) and (max-width: #{$breakpoint-desktop-hd - 1px}) {
+  @media (min-width: 768px) and (max-width: 1023px) {
     @content;
   }
 }
 
+// Mobile + Tablet combinados (uso mais comum para responsividade)
+@mixin mobile-and-tablet {
+  @media (max-width: 1023px) {
+    @content;
+  }
+}
+
+// Apenas mobile (portrait + landscape)
+@mixin mobile-all {
+  @media (max-width: 767px) {
+    @content;
+  }
+}
+
+// Desktop HD (notebooks e monitores médios)
 @mixin desktop-hd {
-  @media (min-width: $breakpoint-desktop-hd) and (max-width: #{$breakpoint-desktop-full-hd - 1px}) {
+  @media (min-width: 1024px) and (max-width: #{$breakpoint-desktop-full-hd - 1px}) {
     @content;
   }
 }
 
+// Desktop Full HD (monitores grandes)
 @mixin desktop-full-hd {
   @media (min-width: $breakpoint-desktop-full-hd) {
     @content;
   }
 }
 
+// Utilitários genéricos
 @mixin min-width($breakpoint) {
   @media (min-width: $breakpoint) {
     @content;

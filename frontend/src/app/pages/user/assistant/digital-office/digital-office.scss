@@ -5,16 +5,22 @@
   width: 100%;
   margin: 0;
   overflow-x: hidden;
+  padding: $spacing-md;
+
+  @include mobile {
+    padding: $spacing-sm;
+  }
 
   &__header {
     @include flex-between;
     align-items: flex-start;
-    margin-bottom: $spacing-2xl;
-    gap: $spacing-xl;
+    margin-bottom: $spacing-xl;
+    gap: $spacing-md;
 
-    @include mobile {
+    @include mobile-and-tablet {
       flex-direction: column;
       align-items: stretch;
+      margin-bottom: $spacing-md;
     }
   }
 
@@ -32,12 +38,24 @@
   &__title {
     @include heading-1;
     margin: 0 0 $spacing-xs 0;
+
+    @include mobile {
+      font-size: $font-size-xl;
+    }
+
+    @include tablet {
+      font-size: $font-size-2xl;
+    }
   }
 
   &__subtitle {
     color: var(--text-secondary);
     font-size: $font-size-lg;
     margin: 0;
+
+    @include mobile {
+      font-size: $font-size-sm;
+    }
   }
 
   // ============================================
@@ -71,10 +89,10 @@
 
   &__spontaneous-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: $spacing-md;
 
-    @include mobile {
+    @include mobile-and-tablet {
       grid-template-columns: 1fr;
     }
   }
@@ -194,7 +212,11 @@
   &__filter-tabs {
     display: flex;
     flex-wrap: wrap;
-    gap: $spacing-sm;
+    gap: $spacing-xs;
+
+    @include mobile {
+      gap: 4px;
+    }
   }
 
   &__filter-tab {
@@ -210,6 +232,20 @@
     color: var(--text-secondary);
     cursor: pointer;
     @include transition(all);
+
+    @include mobile {
+      padding: 8px 10px;
+      font-size: 11px;
+      gap: 4px;
+      flex: 1 1 calc(50% - 4px);
+      min-width: 0;
+      justify-content: center;
+    }
+
+    @include tablet {
+      padding: $spacing-sm;
+      font-size: $font-size-xs;
+    }
 
     &:hover {
       border-color: var(--primary-300);
@@ -229,13 +265,17 @@
     gap: $spacing-md;
     align-items: flex-end;
 
-    @include mobile {
+    @include mobile-and-tablet {
       flex-direction: column;
       align-items: stretch;
     }
 
     app-filter-select {
       min-width: 180px;
+
+      @include mobile {
+        min-width: 100%;
+      }
     }
   }
 
@@ -378,20 +418,23 @@
   }
 
   // =====================================================================
-  // DESKTOP VIEW - TABLE
+  // DESKTOP VIEW - TABLE (apenas em desktop 1024px+)
   // =====================================================================
   &__desktop-view {
     display: block;
 
-    @include mobile {
+    @include mobile-and-tablet {
       display: none;
     }
   }
 
+  // =====================================================================
+  // MOBILE VIEW - CARDS (mobile e tablets até 1023px)
+  // =====================================================================
   &__mobile-view {
     display: none;
 
-    @include mobile {
+    @include mobile-and-tablet {
       display: block;
     }
   }
@@ -403,13 +446,6 @@
     overflow: hidden;
     margin-bottom: $spacing-xl;
     max-width: 100%;
-
-    @include mobile {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      margin-left: 0;
-      margin-right: 0;
-    }
   }
 }
 
@@ -582,9 +618,15 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: $radius-xl;
-  padding: $spacing-lg;
-  margin-bottom: $spacing-lg;
+  padding: $spacing-md;
+  margin-bottom: $spacing-md;
   @include transition(all);
+
+  @include mobile {
+    padding: $spacing-sm;
+    margin-bottom: $spacing-sm;
+    border-radius: $radius-lg;
+  }
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -595,52 +637,65 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: $spacing-md;
-    margin-bottom: $spacing-lg;
-    padding-bottom: $spacing-lg;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-md;
+    padding-bottom: $spacing-md;
     border-bottom: 1px solid var(--border);
+
+    @include mobile {
+      margin-bottom: $spacing-sm;
+      padding-bottom: $spacing-sm;
+    }
   }
 
   &__datetime {
     display: flex;
     flex-direction: column;
-    gap: $spacing-xs;
+    gap: 2px;
   }
 
   &__date {
-    font-size: $font-size-base;
+    font-size: $font-size-sm;
     font-weight: $font-weight-semibold;
     color: var(--text-primary);
+
+    @include mobile {
+      font-size: $font-size-xs;
+    }
   }
 
   &__time {
-    font-size: $font-size-sm;
+    font-size: $font-size-xs;
     color: var(--text-secondary);
     font-weight: $font-weight-medium;
   }
 
   &__content {
-    margin-bottom: $spacing-lg;
+    margin-bottom: $spacing-md;
+
+    @include mobile {
+      margin-bottom: $spacing-sm;
+    }
   }
 
   &__info {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: $spacing-md;
+    gap: $spacing-sm;
 
     @include mobile {
-      grid-template-columns: 1fr;
+      gap: $spacing-xs;
     }
   }
 
   &__info-group {
     display: flex;
     flex-direction: column;
-    gap: $spacing-xs;
+    gap: 2px;
   }
 
   &__label {
-    font-size: $font-size-xs;
+    font-size: 10px;
     font-weight: $font-weight-semibold;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -648,51 +703,66 @@
   }
 
   &__value {
-    font-size: $font-size-base;
+    font-size: $font-size-sm;
     font-weight: $font-weight-medium;
     color: var(--text-primary);
+
+    @include mobile {
+      font-size: $font-size-xs;
+    }
   }
 
   &__actions {
     display: flex;
-    flex-direction: column;
-    gap: $spacing-md;
-    padding-top: $spacing-lg;
+    gap: $spacing-sm;
+    padding-top: $spacing-md;
     border-top: 1px solid var(--border);
+
+    @include mobile {
+      flex-direction: column;
+      gap: $spacing-xs;
+      padding-top: $spacing-sm;
+    }
   }
 
-  // Botão primário grande - "Entrar na Consulta"
+  // Botão primário - "Entrar na Consulta"
   &__btn-primary {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: $spacing-sm;
-    padding: $spacing-md $spacing-lg;
+    gap: $spacing-xs;
+    flex: 1;
+    padding: 10px $spacing-md;
     background: linear-gradient(145deg, #60a5fa 0%, #3b82f6 40%, #2563eb 100%);
     color: white;
     border: none;
-    border-radius: $radius-lg;
-    font-size: $font-size-base;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
     font-weight: $font-weight-semibold;
     cursor: pointer;
     @include transition(all);
     box-shadow:
-      0 4px 0 #1d4ed8,
-      0 6px 16px rgba(59, 130, 246, 0.35);
+      0 3px 0 #1d4ed8,
+      0 4px 12px rgba(59, 130, 246, 0.3);
+
+    @include mobile {
+      padding: 8px $spacing-sm;
+      font-size: $font-size-xs;
+    }
 
     &:hover {
       background: linear-gradient(145deg, #60a5fa 0%, #3b82f6 100%);
-      transform: translateY(-2px);
+      transform: translateY(-1px);
       box-shadow:
-        0 6px 0 #1d4ed8,
-        0 10px 24px rgba(59, 130, 246, 0.45);
+        0 4px 0 #1d4ed8,
+        0 6px 16px rgba(59, 130, 246, 0.4);
     }
 
     &:active {
-      transform: translateY(2px);
+      transform: translateY(1px);
       box-shadow:
-        0 2px 0 #1d4ed8,
-        0 3px 8px rgba(59, 130, 246, 0.25);
+        0 1px 0 #1d4ed8,
+        0 2px 6px rgba(59, 130, 246, 0.2);
     }
 
     app-icon {
@@ -705,16 +775,23 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: $spacing-sm;
-    padding: $spacing-md $spacing-lg;
+    gap: $spacing-xs;
+    flex: 0 0 auto;
+    padding: 10px $spacing-md;
     background: var(--surface-secondary, #f8fafc);
     color: var(--text-primary);
     border: 1px solid var(--border);
-    border-radius: $radius-lg;
-    font-size: $font-size-base;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
     font-weight: $font-weight-medium;
     cursor: pointer;
     @include transition(all);
+
+    @include mobile {
+      padding: 8px $spacing-sm;
+      font-size: $font-size-xs;
+      flex: 1;
+    }
 
     &:hover {
       background: var(--neutral-100);
