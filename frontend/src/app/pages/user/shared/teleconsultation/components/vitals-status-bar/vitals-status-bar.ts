@@ -292,6 +292,7 @@ import { environment } from '@env/environment';
       <div class="ble-debug-panel" *ngIf="showBleDebug">
         <div class="debug-header">
           <span>🔧 Debug BLE</span>
+          <button class="btn-copy" (click)="copyBleDebug()">📋 Copiar</button>
           <button (click)="clearBleDebug()">Limpar</button>
           <button (click)="showBleDebug = false">✕</button>
         </div>
@@ -304,6 +305,8 @@ import { environment } from '@env/environment';
             Aguardando dados BLE...
           </div>
         </div>
+        <!-- Mensagem de cópia -->
+        <div class="copy-toast" *ngIf="bleCopyMessage">{{ bleCopyMessage }}</div>
       </div>
     </div>
   `,
@@ -655,6 +658,34 @@ import { environment } from '@env/environment';
           text-align: center;
           padding: 20px;
         }
+      }
+      
+      .btn-copy {
+        background: #10b981 !important;
+        border-color: #10b981 !important;
+        font-weight: bold;
+      }
+      
+      .copy-toast {
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #10b981;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: bold;
+        animation: fadeInOut 3s ease;
+        white-space: nowrap;
+      }
+      
+      @keyframes fadeInOut {
+        0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+        10% { opacity: 1; transform: translateX(-50%) translateY(0); }
+        80% { opacity: 1; }
+        100% { opacity: 0; }
       }
     }
     
@@ -1276,6 +1307,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
   // DEBUG BLE (console visual para Android)
   showBleDebug = false;
   bleDebugLogs: { time: string; msg: string; type: 'info' | 'success' | 'warning' | 'error' | 'data' }[] = [];
+  bleCopyMessage = '';  // Mensagem de feedback ao copiar
 
   // Toast de notificação para feedback visual de dispositivos
   deviceToast: { icon: string; title: string; message: string; type: 'success' | 'info' | 'warning' } | null = null;
@@ -2603,7 +2635,7 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
       // Usa connectOrReconnect que tenta reconexão rápida primeiro
       this.addBleDebug('Abrindo picker de dispositivos...', 'info');
       const device = await this.bluetoothService.connectOrReconnect('scale');
-      
+
       if (device) {
         this.addBleDebug(`CONECTADO: ${device.name} (${device.id})`, 'success');
         this.showDeviceToast('⚖️', 'Balança conectada', 'Suba na balança...', 'success');
@@ -2721,12 +2753,43 @@ export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, A
     this.bleDebugLogs = [];
   }
 
+  copyBleDebug(): void {
+    if (this.bleDebugLogs.length === 0) {
+      this.bleCopyMessage = 'Nenhum log para copiar';
+      setTimeout(() => this.bleCopyMessage = '', 2000);
+      return;
+    }
+
+    // Formata os logs para texto
+    const text = this.bleDebugLogs
+      .map(log => `${log.time} [${log.type.toUpperCase()}] ${log.msg}`)
+      .join('\n');
+
+    // Copia para clipboard
+    navigator.clipboard.writeText(text).then(() => {
+      this.bleCopyMessage = '✅ Copiado! Cole no chat.';
+      setTimeout(() => this.bleCopyMessage = '', 3000);
+    }).catch(err => {
+      // Fallback para Android antigo
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      this.bleCopyMessage = '✅ Copiado! Cole no chat.';
+      setTimeout(() => this.bleCopyMessage = '', 3000);
+    });
+  }
+
   addBleDebug(msg: string, type: 'info' | 'success' | 'warning' | 'error' | 'data' = 'info'): void {
     const now = new Date();
     const time = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    
+
     this.bleDebugLogs.push({ time, msg, type });
-    
+
     // Limita a 100 linhas
     if (this.bleDebugLogs.length > 100) {
       this.bleDebugLogs.shift();

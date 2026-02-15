@@ -902,7 +902,7 @@ export class BluetoothDevicesService {
 
                   this.ngZone.run(() => {
                     const bytes = Array.from(new Uint8Array(value.buffer));
-                    this.log(`Dados: [${bytes.slice(0,8).join(',')}${bytes.length > 8 ? '...' : ''}]`, 'info');
+                    this.log(`Dados: [${bytes.slice(0, 8).join(',')}${bytes.length > 8 ? '...' : ''}]`, 'info');
 
                     // Tenta interpretar como peso (diversos formatos comuns)
                     const peso = this.tryParseWeight(value);
