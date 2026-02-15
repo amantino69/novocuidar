@@ -32,6 +32,18 @@
     background: var(--surface);
     border-top: 3px solid var(--primary-500);
     
+    // Mobile: Limitar altura máxima para deixar espaço pro vídeo
+    @include mobile {
+      max-height: 45vh; // Máximo 45% da tela
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    // Telas muito pequenas: ainda mais compacto
+    @media (max-width: 380px) {
+      max-height: 40vh;
+    }
+    
     app-vitals-status-bar {
       display: block;
       width: 100%;

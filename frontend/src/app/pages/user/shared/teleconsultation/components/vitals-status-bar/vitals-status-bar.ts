@@ -1259,6 +1259,266 @@ import { environment } from '@env/environment';
       .value-box input { width: 55px; padding: 8px; font-size: 16px; }
       .btn-capture, .btn-analyze { padding: 12px 18px; font-size: 14px; }
     }
+    
+    /* ============ MOBILE COMPACTO (≤ 500px) ============ */
+    @media (max-width: 500px) {
+      .vitals-bar {
+        font-size: 10px;
+      }
+      
+      /* Ocultar guia de dispositivos por padrão em mobile */
+      .device-guide {
+        padding: 8px 12px;
+        
+        .guide-header { font-size: 12px; margin-bottom: 6px; }
+        .guide-items { gap: 8px; }
+        .guide-item { 
+          min-width: 150px; 
+          padding: 6px 8px; 
+          font-size: 10px;
+          .guide-icon { font-size: 18px; }
+          strong { font-size: 11px; }
+        }
+      }
+      
+      /* Linha 1 - Info minimalista */
+      .row-1 {
+        padding: 4px 8px;
+        gap: 4px;
+        min-height: 28px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        &::-webkit-scrollbar { display: none; }
+        
+        .left-info, .right-info {
+          gap: 4px;
+          flex-wrap: nowrap;
+        }
+        
+        .chip {
+          display: flex;
+          padding: 2px 6px;
+          font-size: 10px;
+          border-radius: 4px;
+          white-space: nowrap;
+          
+          .label { display: none; }
+          strong { font-size: 10px; }
+        }
+      }
+      
+      /* Linha 2 - Sinais Vitais Super Compactos */
+      .row-2 {
+        padding: 4px 6px;
+        gap: 4px;
+        min-height: auto;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-auto-rows: minmax(38px, auto);
+      }
+      
+      .vital {
+        min-width: unset !important;
+        padding: 3px 5px;
+        border-radius: 6px;
+        gap: 1px;
+        
+        label {
+          font-size: 8px;
+          gap: 2px;
+          
+          app-icon {
+            width: 10px !important;
+            height: 10px !important;
+          }
+        }
+        
+        &.phono {
+          grid-column: span 2;
+          padding: 4px 6px;
+          
+          label { font-size: 9px; }
+          
+          .phono-box {
+            gap: 4px;
+            flex-wrap: wrap;
+            
+            .phono-waveform {
+              width: 100px;
+              height: 24px;
+            }
+            
+            .btn-play {
+              width: 22px;
+              height: 22px;
+              font-size: 10px;
+            }
+            
+            .btn-ausculta {
+              padding: 4px 8px;
+              font-size: 10px;
+            }
+            
+            .type-select, .duration-select {
+              padding: 2px 4px;
+              font-size: 9px;
+            }
+            
+            .phono-analysis {
+              font-size: 9px;
+              padding: 1px 4px;
+            }
+          }
+        }
+      }
+      
+      .value-box {
+        gap: 2px;
+        
+        input {
+          width: 38px !important;
+          padding: 3px 4px;
+          font-size: 12px !important;
+          border-radius: 4px;
+        }
+        
+        .readonly {
+          font-size: 12px !important;
+          min-width: 28px;
+          
+          &.calc {
+            padding: 2px 4px;
+            border-radius: 4px;
+          }
+        }
+        
+        small {
+          font-size: 8px;
+        }
+      }
+      
+      /* Actions compactas */
+      .actions {
+        grid-column: span 4;
+        gap: 6px;
+        justify-content: center;
+        margin-top: 2px;
+        padding-top: 4px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+      }
+      
+      .ble-buttons {
+        gap: 4px;
+        margin-right: 0;
+        
+        .btn-ble {
+          padding: 4px 8px;
+          font-size: 10px;
+          border-radius: 6px;
+          gap: 3px;
+        }
+      }
+      
+      .btn-debug, .btn-help {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+      }
+      
+      .sync-info {
+        padding: 4px 8px;
+        font-size: 10px;
+        gap: 4px;
+        
+        app-icon {
+          width: 12px !important;
+          height: 12px !important;
+        }
+      }
+      
+      .btn-analyze {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+        gap: 6px;
+        
+        app-icon {
+          width: 16px !important;
+          height: 16px !important;
+        }
+      }
+      
+      /* Toast de device mais compacto */
+      .device-toast {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+        padding: 10px 12px;
+        
+        .toast-icon { font-size: 24px; }
+        .toast-content {
+          strong { font-size: 13px; }
+          span { font-size: 11px; }
+        }
+      }
+    }
+    
+    /* ============ MOBILE EXTRA PEQUENO (≤ 380px) ============ */
+    @media (max-width: 380px) {
+      .row-1 {
+        display: none; /* Oculta info do médico/paciente em telas muito pequenas */
+      }
+      
+      .row-2 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      
+      .vital {
+        padding: 2px 4px;
+        
+        label {
+          font-size: 7px;
+          
+          app-icon { display: none; }
+        }
+        
+        &.phono {
+          grid-column: span 3;
+        }
+      }
+      
+      .value-box {
+        input {
+          width: 34px !important;
+          padding: 2px 3px;
+          font-size: 11px !important;
+        }
+        
+        .readonly {
+          font-size: 11px !important;
+        }
+        
+        small {
+          font-size: 7px;
+        }
+      }
+      
+      .actions {
+        grid-column: span 3;
+      }
+      
+      .ble-buttons .btn-ble {
+        padding: 3px 6px;
+        font-size: 9px;
+        
+        /* Ocultar texto, mostrar só emoji */
+        span:last-child:not(.spinner-small) {
+          display: none;
+        }
+      }
+    }
   `]
 })
 export class VitalsStatusBarComponent implements OnInit, OnDestroy, OnChanges, AfterViewChecked {
