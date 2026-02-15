@@ -211,7 +211,7 @@ import { environment } from '@env/environment';
   `,
   styles: [`
     .device-connection-panel {
-      padding: 8px;
+      padding: 6px;
       height: 100%;
       overflow-y: auto;
     }
@@ -220,18 +220,18 @@ import { environment } from '@env/environment';
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       flex-wrap: wrap;
-      gap: 4px;
+      gap: 2px;
 
       .header-left {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 3px;
         flex-wrap: wrap;
         
         .title {
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 600;
           color: var(--text-primary);
         }
@@ -239,13 +239,13 @@ import { environment } from '@env/environment';
         .patient-info-inline {
           display: flex;
           align-items: center;
-          gap: 3px;
-          font-size: 10px;
+          gap: 2px;
+          font-size: 9px;
           color: #0369a1;
           background: #e0f2fe;
-          padding: 2px 6px;
-          border-radius: 8px;
-          margin-left: 4px;
+          padding: 1px 5px;
+          border-radius: 6px;
+          margin-left: 3px;
 
           .sep {
             color: #7dd3fc;
@@ -254,9 +254,9 @@ import { environment } from '@env/environment';
       }
 
       .connection-status {
-        font-size: 9px;
-        padding: 2px 6px;
-        border-radius: 8px;
+        font-size: 8px;
+        padding: 1px 4px;
+        border-radius: 6px;
         background: var(--bg-danger);
         color: var(--text-danger);
 
@@ -268,45 +268,45 @@ import { environment } from '@env/environment';
     }
 
     .description {
-      font-size: 10px;
+      font-size: 9px;
       color: var(--text-secondary);
-      margin: 0 0 8px 0;
+      margin: 0 0 4px 0;
     }
 
     .capture-section {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 6px;
-      margin-bottom: 10px;
-      padding: 8px;
+      gap: 4px;
+      margin-bottom: 6px;
+      padding: 6px;
       background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
       border: 1px dashed #3b82f6;
-      border-radius: 6px;
+      border-radius: 4px;
     }
 
     .btn-capture {
       display: flex;
       align-items: center;
-      gap: 4px;
-      padding: 6px 10px;
+      gap: 3px;
+      padding: 5px 8px;
       background: linear-gradient(135deg, #3b82f6, #2563eb);
       color: white;
       border: none;
-      border-radius: 5px;
-      font-size: 11px;
+      border-radius: 4px;
+      font-size: 10px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
-      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+      box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
       flex: 1 1 auto;
-      min-width: 100px;
+      min-width: 80px;
       justify-content: center;
 
       &:hover:not(:disabled) {
         background: linear-gradient(135deg, #2563eb, #1d4ed8);
         transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+        box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
       }
 
       &:disabled {
@@ -319,25 +319,25 @@ import { environment } from '@env/environment';
     .btn-ausculta {
       display: flex;
       align-items: center;
-      gap: 4px;
-      padding: 6px 10px;
+      gap: 3px;
+      padding: 5px 8px;
       background: linear-gradient(135deg, #ef4444, #dc2626);
       color: white;
       border: none;
-      border-radius: 5px;
-      font-size: 11px;
+      border-radius: 4px;
+      font-size: 10px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
-      box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+      box-shadow: 0 1px 3px rgba(239, 68, 68, 0.3);
       flex: 1 1 auto;
-      min-width: 80px;
+      min-width: 70px;
       justify-content: center;
 
       &:hover:not(:disabled) {
         background: linear-gradient(135deg, #dc2626, #b91c1c);
         transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
+        box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
       }
 
       &:disabled {
@@ -348,11 +348,11 @@ import { environment } from '@env/environment';
     }
 
     .capture-message {
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 500;
       width: 100%;
       text-align: center;
-      margin-top: 4px;
+      margin-top: 2px;
       
       &.success {
         color: #10b981;
@@ -366,28 +366,28 @@ import { environment } from '@env/environment';
     .warning-banner {
       display: flex;
       align-items: center;
-      gap: 4px;
-      padding: 6px;
+      gap: 3px;
+      padding: 4px;
       background: var(--bg-warning);
       color: var(--text-warning);
-      border-radius: 5px;
-      margin-bottom: 8px;
-      font-size: 10px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      font-size: 9px;
     }
 
     .vitals-form {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px;
     }
 
     .vital-card {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
+      gap: 4px;
+      padding: 5px 6px;
       background: var(--bg-secondary);
-      border-radius: 8px;
+      border-radius: 6px;
       border: 1px solid var(--border-color);
     }
 
@@ -395,11 +395,16 @@ import { environment } from '@env/environment';
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 32px;
-      height: 32px;
-      min-width: 32px;
-      border-radius: 6px;
+      width: 22px;
+      height: 22px;
+      min-width: 22px;
+      border-radius: 4px;
       background: var(--bg-tertiary);
+
+      app-icon {
+        width: 14px !important;
+        height: 14px !important;
+      }
 
       &.spo2 { color: #ef4444; }
       &.pressure { color: #8b5cf6; }
@@ -414,7 +419,7 @@ import { environment } from '@env/environment';
 
     .field-row {
       display: flex;
-      gap: 6px;
+      gap: 3px;
     }
 
     .field-group {
@@ -422,16 +427,17 @@ import { environment } from '@env/environment';
       min-width: 0;
       
       &.full {
-        max-width: 120px;
+        max-width: 80px;
       }
 
       label {
         display: block;
-        font-size: 9px;
-        font-weight: 500;
+        font-size: 7px;
+        font-weight: 600;
         color: var(--text-secondary);
-        margin-bottom: 2px;
+        margin-bottom: 1px;
         text-transform: uppercase;
+        letter-spacing: 0.3px;
       }
     }
 
@@ -440,17 +446,17 @@ import { environment } from '@env/environment';
       align-items: center;
       background: var(--bg-primary);
       border: 1px solid var(--border-color);
-      border-radius: 5px;
+      border-radius: 4px;
       overflow: hidden;
 
       input {
         flex: 1;
         width: 100%;
-        min-width: 40px;
-        padding: 5px 6px;
+        min-width: 28px;
+        padding: 3px 4px;
         border: none;
         background: transparent;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 600;
         color: var(--text-primary);
         outline: none;
@@ -468,8 +474,8 @@ import { environment } from '@env/environment';
       }
 
       .unit {
-        padding: 5px 8px;
-        font-size: 11px;
+        padding: 3px 5px;
+        font-size: 9px;
         color: var(--text-secondary);
         background: var(--bg-tertiary);
         border-left: 1px solid var(--border-color);

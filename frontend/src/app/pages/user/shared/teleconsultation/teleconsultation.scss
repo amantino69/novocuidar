@@ -193,30 +193,18 @@
     top: auto;
     left: auto;
     width: 100%;
-    height: 80px; // Fixed height for desktop
+    height: 60px; // Reduced from 80px
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    padding: 0 $spacing-2xl;
+    padding: 0 $spacing-lg;
     display: flex;
     align-items: center;
     transition: all $transition-base;
-    z-index: 150; // Above Jitsi (z-index: 100)
+    z-index: 150;
     color: var(--text-primary);
     flex-shrink: 0;
-    overflow: visible; // Allow dropdowns to overflow
-    max-height: 80px;
-    
-    // Classes removidas - usar tema do sistema
-
-    padding: 0 $spacing-2xl;
-    display: flex;
-    align-items: center;
-    transition: all $transition-base;
-    z-index: 150; // Above Jitsi (z-index: 100)
-    color: var(--text-primary);
-    flex-shrink: 0;
-    overflow: visible; // Allow dropdowns to overflow
-    max-height: 80px;
+    overflow: visible;
+    max-height: 60px;
 
     // When sidebar is full-screen and header is visible, put header above sidebar
     &.above-sidebar {
@@ -224,16 +212,25 @@
       top: 0;
       left: 0;
       right: 0;
-      z-index: 70; // Above sidebar full-screen (z-index: 60)
+      z-index: 70;
+    }
+
+    @include tablet {
+      height: 50px;
+      min-height: 50px;
+      max-height: 50px;
+      padding: $spacing-sm $spacing-md;
     }
 
     @include mobile {
-      height: auto; // Auto height for mobile to fit content
-      min-height: 80px;
-      padding: $spacing-md; // Reduced padding
-      flex-direction: column; // Stack content vertically
+      height: auto;
+      min-height: 44px;
+      max-height: none;
+      padding: $spacing-xs $spacing-sm;
+      flex-direction: row;
+      flex-wrap: wrap;
       justify-content: center;
-      max-height: 200px; // Enough for mobile layout
+      gap: $spacing-xs;
     }
 
     &.hidden {
@@ -332,13 +329,19 @@
       .controls-section {
         display: flex;
         align-items: center;
-        gap: $spacing-md;
+        gap: $spacing-sm;
+        flex-wrap: wrap;
+
+        @include tablet {
+          gap: $spacing-xs;
+        }
 
         @include mobile {
           width: 100%;
-          justify-content: space-between;
-          padding-top: $spacing-sm;
-          border-top: 1px solid var(--border);
+          justify-content: center;
+          gap: 4px;
+          padding: 0;
+          border-top: none;
         }
 
         .sidebar-btn {
@@ -353,23 +356,55 @@
           }
         }
 
+        // Botões compactos para mobile
+        app-button {
+          @include tablet {
+            --button-padding-y: 4px;
+            --button-padding-x: 8px;
+            font-size: 11px !important;
+            
+            app-icon {
+              width: 14px !important;
+              height: 14px !important;
+            }
+          }
+
+          @include mobile {
+            --button-padding-y: 3px;
+            --button-padding-x: 6px;
+            font-size: 9px !important;
+            
+            app-icon {
+              width: 12px !important;
+              height: 12px !important;
+            }
+          }
+        }
+
         // Botão de controle quadrado compacto para header principal
         .control-btn {
           display: flex;
           flex-direction: column;
-          padding: 8px 12px;
-          min-width: 60px;
-          border-radius: 8px;
+          padding: 6px 10px;
+          min-width: 50px;
+          border-radius: 6px;
           border: none;
           background: linear-gradient(180deg, var(--primary-500) 0%, var(--primary-600) 100%);
           color: white;
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 500;
           cursor: pointer;
           transition: all 0.2s ease;
           align-items: center;
           justify-content: center;
           gap: 2px;
+
+          @include mobile {
+            padding: 4px 6px;
+            min-width: 40px;
+            font-size: 8px;
+            border-radius: 4px;
+          }
 
           app-icon {
             flex-shrink: 0;
